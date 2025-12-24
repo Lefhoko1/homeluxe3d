@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeLuxe 3D - Virtual Furniture Showroom</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+        
+        :root {
+            --primary: #1a2332;
+            --secondary: #2c5f7a;
+            --accent: #d4a574;
+            --light: #f8f9fa;
+            --text: #2d3436;
+            --border: #e1e8ed;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            overflow: hidden;
+            color: var(--text);
+        }
+        
+        /* Layout Grid */
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 380px;
+            grid-template-rows: 70px 45px 1fr 90px;
+            height: 100vh;
+            gap: 0;
+        }
+        
+        /* Header */
+        #header {
+            grid-column: 1 / -1;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        
+        #header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        .header-subtitle {
+            font-size: 11px;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Thin Featured Shops Banner */
+        .shops-banner {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 20px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .banner-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--secondary);
+            font-weight: 600;
+            white-space: nowrap;
+            padding-right: 15px;
+            border-right: 2px solid var(--border);
+        }
+        
+        .shops-scroll {
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .shops-track {
+            display: flex;
+            gap: 20px;
+            animation: scroll 25s linear infinite;
+        }
+        
+        .shops-track:hover {
+            animation-play-state: paused;
+        }
+        
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        .shop-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 15px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary);
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .shop-badge:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        
+        .shop-badge.active {
+            background: linear-gradient(135deg, var(--accent) 0%, #c89860 100%);
+            color: white;
+            border-color: var(--accent);
+            animation: beep 0.6s ease-out;
+            box-shadow: 0 4px 15px rgba(212, 165, 116, 0.4);
+        }
+        
+        @keyframes beep {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .shop-badge-icon {
+            font-size: 16px;
+        }
+        
+        /* Left Panel - Tour Navigation */
+        #tour-panel {
+            grid-row: 3 / 4;
+            background: white;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .room-filter {
+            margin-bottom: 20px;
+        }
+        
+        .room-filter-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .room-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .room-tab {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .room-tab:hover {
+            background: var(--light);
+            border-color: var(--accent);
+        }
+        
+        .room-tab.active {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+            color: white;
+            border-color: var(--secondary);
+        }
+        
+        .room-tab-icon {
+            font-size: 18px;
+        }
+        
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+        
+        .tour-header {
+            margin-bottom: 15px;
+        }
+        
+        .tour-header h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .tour-header p {
+            font-size: 12px;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        
+        .progress-section {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #dee2e6;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), var(--accent));
+            border-radius: 3px;
+            transition: width 0.6s ease;
+            width: 0%;
+        }
+        
+        .progress-text {
+            font-size: 11px;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+        
+        .furniture-list {
+            list-style: none;
+        }
+        
+        .furniture-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            border: 1px solid var(--border);
+        }
+        
+        .furniture-item:hover {
+            background: var(--light);
+            border-color: var(--accent);
+        }
+        
+        .furniture-item.active {
+            background: linear-gradient(135deg, var(--secondary) 0%, #3a7a9e 100%);
+            color: white;
+            border-color: var(--secondary);
+        }
+        
+        .furniture-icon {
+            font-size: 28px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--light);
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        
+        .furniture-item.active .furniture-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .furniture-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .furniture-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .furniture-shop {
+            font-size: 10px;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* Center - 3D Canvas */
+        #canvas-container {
+            grid-row: 3 / 4;
+            position: relative;
+            background: linear-gradient(180deg, #e8eef2 0%, #d4dce3 100%);
+        }
+        
+        .canvas-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            z-index: 10;
+        }
+        
+        .rotation-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26, 35, 50, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+        
+        .rotation-icon {
+            animation: rotate 3s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Right Panel - Product Details */
+        #product-panel {
+            grid-row: 3 / 4;
+            background: white;
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 0;
+        }
+        
+        .product-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 25px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .product-header-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+        
+        .product-shop-badge {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .product-shop-icon {
+            font-size: 20px;
+        }
+        
+        .product-header h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 700;
+            flex: 1;
+        }
+        
+        .product-category {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+        
+        .product-body {
+            padding: 25px;
+        }
+        
+        .price-tag {
+            background: linear-gradient(135deg, var(--accent) 0%, #c89860 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .price-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            opacity: 0.9;
+        }
+        
+        .price-value {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .product-description {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #495057;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+        
+        .specs-section {
+            margin-bottom: 20px;
+        }
+        
+        .specs-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .spec-grid {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .spec-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .spec-label {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .spec-value {
+            color: var(--text);
+            text-align: right;
+        }
+        
+        .shop-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .shop-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .shop-icon-large {
+            font-size: 36px;
+            width: 55px;
+            height: 55px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--border);
+        }
+        
+        .shop-info h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 3px;
+        }
+        
+        .shop-info p {
+            font-size: 11px;
+            color: #6c757d;
+        }
+        
+        .contact-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .contact-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--secondary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .cta-button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(44, 95, 122, 0.3);
+        }
+        
+        /* Bottom Controls */
+        #tour-controls {
+            grid-column: 1 / -1;
+            background: white;
+            border-top: 1px solid var(--border);
+            padding: 18px 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .control-btn {
+            background: white;
+            border: 2px solid var(--border);
+            color: var(--primary);
+            padding: 12px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .control-btn:hover:not(:disabled) {
+            background: var(--light);
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+        
+        .control-btn.primary {
+            background: var(--secondary);
+            border-color: var(--secondary);
+            color: white;
+        }
+        
+        .control-btn.primary:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            z-index: 1000;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 1024px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 70px 45px auto 1fr 90px;
+            }
+            
+            #tour-panel {
+                grid-column: 1;
+                grid-row: 3;
+                max-height: 200px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 4;
+            }
+            
+            #product-panel {
+                display: none;
+            }
+            
+            .furniture-list {
+                display: flex;
+                overflow-x: auto;
+                gap: 8px;
+                padding-bottom: 10px;
+            }
+            
+            .furniture-item {
+                min-width: 200px;
+            }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--secondary);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div id="header">
+            <div>
+                <h1>🏡 HomeLuxe 3D</h1>
+                <div class="header-subtitle">Virtual Furniture Showroom</div>
+            </div>
+        </div>
+        
+        <!-- Thin Featured Shops Banner -->
+        <div class="shops-banner">
+            <div class="banner-label">✨ Featured Shops</div>
+            <div class="shops-scroll">
+                <div class="shops-track" id="shops-track"></div>
+            </div>
+        </div>
+        
+        <!-- Left Panel - Tour Navigation -->
+        <div id="tour-panel">
+            <div class="room-filter">
+                <div class="room-filter-label">Room Categories</div>
+                <div class="room-tabs">
+                    <div class="room-tab active" data-room="living-room">
+                        <span class="room-tab-icon">🛋️</span>
+                        Living Room
+                    </div>
+                    <div class="room-tab" data-room="bedroom">
+                        <span class="room-tab-icon">🛏️</span>
+                        Bedroom
+                    </div>
+                    <div class="room-tab" data-room="dining-room">
+                        <span class="room-tab-icon">🍽️</span>
+                        Dining Room
+                    </div>
+                    <div class="room-tab" data-room="outdoor">
+                        <span class="room-tab-icon">🌳</span>
+                        Outdoor
+                    </div>
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="tour-header">
+                <h3>Furniture Tour</h3>
+                <p>Select items to view in 360°</p>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-text" id="progress-text">Ready to start</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+            
+            <ul class="furniture-list" id="furniture-list"></ul>
+        </div>
+        
+        <!-- Center - 3D Canvas -->
+        <div id="canvas-container">
+            <div class="canvas-overlay" id="canvas-title">Select a room to begin</div>
+            <div class="rotation-indicator">
+                <span class="rotation-icon">↻</span>
+                <span>360° View Active</span>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Product Details -->
+        <div id="product-panel">
+            <div class="product-header">
+                <div class="product-category" id="product-category">Select an item</div>
+                <div class="product-header-row">
+                    <h2 id="product-name">Welcome to HomeLuxe 3D</h2>
+                    <div class="product-shop-badge" id="product-shop-badge" style="display: none;">
+                        <span class="product-shop-icon" id="product-shop-icon-header">🏪</span>
+                        <span id="product-shop-name-header">Shop</span>
+                    </div>
+                </div>
+            </div>
+            <div class="product-body">
+                <div class="price-tag">
+                    <div class="price-label">Price</div>
+                    <div class="price-value" id="product-price">P 0</div>
+                </div>
+                
+                <div class="product-description" id="product-description">
+                    Select any furniture item to view in immersive 3D with complete specifications and pricing.
+                </div>
+                
+                <div class="specs-section">
+                    <h3>📋 Specifications</h3>
+                    <div class="spec-grid" id="product-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Select item</span>
+                            <span class="spec-value">to view specs</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="shop-section">
+                    <div class="shop-header">
+                        <div class="shop-icon-large" id="shop-icon">🏪</div>
+                        <div class="shop-info">
+                            <h3 id="shop-name">Shop Name</h3>
+                            <p id="shop-description">Premium retailer</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-grid">
+                        <div class="contact-item">
+                            <div class="contact-icon">📞</div>
+                            <span id="shop-phone">+267 395 8821</span>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">📧</div>
+                            <span id="shop-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e78e898188a7948f8897c98590">[email&#160;protected]</a></span>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">📍</div>
+                            <span id="shop-address">Gaborone</span>
+                        </div>
+                    </div>
+                    
+                    <button class="cta-button">Contact Shop Now</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Controls -->
+        <div id="tour-controls">
+            <button class="control-btn" id="prev-btn" disabled>← Previous</button>
+            <button class="control-btn primary" id="auto-play">▶ Auto Tour</button>
+            <button class="control-btn" id="next-btn" disabled>Next →</button>
+        </div>
+    </div>
+    
+    <div id="loading">Loading 3D Showroom...</div>
+    
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Shop Database
+        const shops = {
+            luxeHome: {
+                name: "Luxe Home Gallery",
+                icon: "🏛️",
+                description: "Premium furniture & decor",
+                phone: "+267 395 8821",
+                email: "sales@luxehome.bw",
+                address: "Main Mall, Gaborone"
+            },
+            artisan: {
+                name: "Artisan Furniture",
+                icon: "🎨",
+                description: "Handcrafted pieces",
+                phone: "+267 390 2156",
+                email: "info@artisanfurn.bw",
+                address: "African Mall, Gaborone"
+            },
+            techHome: {
+                name: "Tech & Home",
+                icon: "📱",
+                description: "Modern solutions",
+                phone: "+267 391 7788",
+                email: "contact@techhome.bw",
+                address: "Game City, Gaborone"
+            },
+            illuminate: {
+                name: "Illuminate Decor",
+                icon: "💡",
+                description: "Lighting specialists",
+                phone: "+267 393 2244",
+                email: "hello@illuminate.bw",
+                address: "Riverwalk Mall, Gaborone"
+            },
+            sleepHaven: {
+                name: "Sleep Haven",
+                icon: "😴",
+                description: "Bedroom comfort",
+                phone: "+267 393 6655",
+                email: "hello@sleephaven.bw",
+                address: "Block 8, Gaborone"
+            },
+            homeEssentials: {
+                name: "Home Essentials",
+                icon: "🏠",
+                description: "Complete home solutions",
+                phone: "+267 318 5544",
+                email: "orders@homeessentials.bw",
+                address: "Broadhurst, Gaborone"
+            },
+            gardenLife: {
+                name: "Garden Life",
+                icon: "🌿",
+                description: "Outdoor experts",
+                phone: "+267 394 7788",
+                email: "info@gardenlife.bw",
+                address: "Kgale View, Gaborone"
+            }
+        };
+        
+        // Products by Room
+        const roomProducts = {
+            "living-room": [
+                {
+                    id: "sofa",
+                    name: "Luxe Velvet Sectional",
+                    category: "Seating",
+                    price: "P 15,999",
+                    icon: "🛋️",
+                    shop: "luxeHome",
+                    description: "Premium velvet upholstery with solid oak frame. High-density foam cushions with removable covers.",
+                    specs: { "Material": "Velvet & Oak", "Dimensions": "300cm × 180cm × 85cm", "Color": "Navy Blue", "Warranty": "5 Years" },
+                    cameraPos: { distance: 5, height: 1.5, target: { x: -2, y: 0.6, z: -3 } }
+                },
+                {
+                    id: "coffeeTable",
+                    name: "Oak Coffee Table",
+                    category: "Tables",
+                    price: "P 3,499",
+                    icon: "☕",
+                    shop: "artisan",
+                    description: "Handcrafted solid oak with natural oil finish and sturdy construction.",
+                    specs: { "Material": "Solid Oak", "Dimensions": "120cm × 70cm × 45cm", "Finish": "Natural Oil" },
+                    cameraPos: { distance: 3.5, height: 1, target: { x: -1.5, y: 0.5, z: -1 } }
+                },
+                {
+                    id: "tvStand",
+                    name: "Entertainment Center",
+                    category: "Media",
+                    price: "P 5,499",
+                    icon: "📺",
+                    shop: "techHome",
+                    description: "Modern TV stand with cable management. Supports TVs up to 65 inches.",
+                    specs: { "Material": "MDF & Glass", "TV Support": "Up to 65\"", "Storage": "2 Drawers" },
+                    cameraPos: { distance: 4.5, height: 1.2, target: { x: 0, y: 0.6, z: -5.3 } }
+                },
+                {
+                    id: "lamp",
+                    name: "Designer Floor Lamp",
+                    category: "Lighting",
+                    price: "P 1,899",
+                    icon: "💡",
+                    shop: "illuminate",
+                    description: "Contemporary lamp with adjustable brightness and fabric shade.",
+                    specs: { "Height": "170cm", "Type": "LED Compatible", "Features": "Dimmable" },
+                    cameraPos: { distance: 3, height: 1.4, target: { x: 3.6, y: 1, z: -3.2 } }
+                },
+                {
+                    id: "rug",
+                    name: "Premium Wool Rug",
+                    category: "Decor",
+                    price: "P 2,799",
+                    icon: "🎨",
+                    shop: "luxeHome",
+                    description: "Hand-woven wool rug with geometric pattern.",
+                    specs: { "Material": "100% Wool", "Size": "200cm × 150cm", "Pattern": "Geometric" },
+                    cameraPos: { distance: 4, height: 2.5, target: { x: -1.8, y: 0.2, z: -2 } }
+                }
+            ],
+            "bedroom": [
+                {
+                    id: "bed",
+                    name: "Cloud King Bed",
+                    category: "Beds",
+                    price: "P 12,999",
+                    icon: "🛏️",
+                    shop: "sleepHaven",
+                    description: "Luxurious king bed with upholstered headboard and storage.",
+                    specs: { "Size": "King 180×200cm", "Material": "Fabric & Wood", "Storage": "4 Drawers" },
+                    cameraPos: { distance: 5, height: 1.5, target: { x: 0, y: 0.8, z: 0 } }
+                },
+                {
+                    id: "wardrobe",
+                    name: "Sliding Wardrobe",
+                    category: "Storage",
+                    price: "P 8,499",
+                    icon: "👔",
+                    shop: "sleepHaven",
+                    description: "Spacious wardrobe with sliding doors and LED lighting.",
+                    specs: { "Dimensions": "250×220×60cm", "Doors": "3 Sliding", "Interior": "Shelves & Rails" },
+                    cameraPos: { distance: 5, height: 1.8, target: { x: -4, y: 1.2, z: 0 } }
+                }
+            ],
+            "dining-room": [
+                {
+                    id: "diningTable",
+                    name: "Family Dining Set",
+                    category: "Dining",
+                    price: "P 8,999",
+                    icon: "🍽️",
+                    shop: "homeEssentials",
+                    description: "6-seater set with extendable table and upholstered chairs.",
+                    specs: { "Table": "180×90cm", "Extendable": "Up to 240cm", "Chairs": "6 Included" },
+                    cameraPos: { distance: 5, height: 1.5, target: { x: 2, y: 0.8, z: 3 } }
+                },
+                {
+                    id: "buffet",
+                    name: "Modern Buffet",
+                    category: "Storage",
+                    price: "P 4,799",
+                    icon: "🍷",
+                    shop: "homeEssentials",
+                    description: "Elegant buffet with glass doors and wine storage.",
+                    specs: { "Material": "Wood & Glass", "Dimensions": "160×45×90cm", "Storage": "Shelves & Rack" },
+                    cameraPos: { distance: 4, height: 1.2, target: { x: -3, y: 0.8, z: 3 } }
+                }
+            ],
+            "outdoor": [
+                {
+                    id: "patio",
+                    name: "Luxury Patio Set",
+                    category: "Outdoor",
+                    price: "P 9,999",
+                    icon: "🌴",
+                    shop: "gardenLife",
+                    description: "Weather-resistant patio set with 8 chairs and umbrella.",
+                    specs: { "Material": "Teak & Aluminum", "Seats": "8 People", "Weather": "All-Weather" },
+                    cameraPos: { distance: 6, height: 1.5, target: { x: 0, y: 0.8, z: 8 } }
+                },
+                {
+                    id: "lounge",
+                    name: "Outdoor Lounge",
+                    category: "Seating",
+                    price: "P 12,499",
+                    icon: "🏖️",
+                    shop: "gardenLife",
+                    description: "Comfortable outdoor sofa with weather-resistant cushions.",
+                    specs: { "Material": "Wicker & Sunbrella", "Pieces": "Sofa, 2 Chairs, Table", "Cushions": "Included" },
+                    cameraPos: { distance: 5, height: 1.2, target: { x: 5, y: 0.6, z: 5 } }
+                }
+            ]
+        };
+        
+        let currentRoom = "living-room";
+        let currentIndex = -1;
+        let autoPlayInterval = null;
+        let showcaseRotation = 0;
+        let targetShowcaseRotation = 0;
+        let isShowcasing = false;
+        
+        // 3D Scene Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xe8eef2);
+        
+        const camera = new THREE.PerspectiveCamera(60, 
+            document.getElementById('canvas-container').clientWidth / 
+            document.getElementById('canvas-container').clientHeight, 
+            0.1, 1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const canvasContainer = document.getElementById('canvas-container');
+        renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        canvasContainer.appendChild(renderer.domElement);
+        
+        let targetCameraDistance = 15;
+        let targetCameraHeight = 2;
+        let targetCameraTarget = new THREE.Vector3(0, 1.5, 0);
+        let cameraDistance = 15;
+        let cameraHeight = 2;
+        let cameraTarget = new THREE.Vector3(0, 1.5, 0);
+        
+        // Materials
+        const materials = {
+            grass: new THREE.MeshStandardMaterial({ color: 0x5a7c65, roughness: 0.9 }),
+            floor: new THREE.MeshStandardMaterial({ color: 0xd4b89c, roughness: 0.6 }),
+            wall: new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness: 0.8 }),
+            ceiling: new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.9 }),
+            wood: new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.5 }),
+            woodDark: new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.4 }),
+            fabric: new THREE.MeshStandardMaterial({ color: 0x2c5f7a, roughness: 0.9 }),
+            metal: new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.2, metalness: 0.8 }),
+            glass: new THREE.MeshPhysicalMaterial({ color: 0xb8d4e8, transparent: true, opacity: 0.3, roughness: 0.05, transmission: 0.95 }),
+            roof: new THREE.MeshStandardMaterial({ color: 0x7a5c47, roughness: 0.8 }),
+            door: new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.4 }),
+            ceramic: new THREE.MeshStandardMaterial({ color: 0xe8d5c4, roughness: 0.3 }),
+            plant: new THREE.MeshStandardMaterial({ color: 0x3d6b3d, roughness: 0.8 })
+        };
+        
+        function createBox(w, h, d, mat, shadow = true) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.castShadow = shadow;
+            mesh.receiveShadow = true;
+            return mesh;
+        }
+        
+        const houseGroup = new THREE.Group();
+        const furnitureGroup = new THREE.Group();
+        
+        // Build house
+        const ground = createBox(40, 0.1, 40, materials.grass);
+        ground.position.y = -0.05;
+        houseGroup.add(ground);
+        
+        const floor = createBox(10, 0.2, 12, materials.floor);
+        floor.position.y = 0.1;
+        houseGroup.add(floor);
+        
+        const wallHeight = 3;
+        const backWall = createBox(10, wallHeight, 0.2, materials.wall);
+        backWall.position.set(0, wallHeight/2, -6);
+        houseGroup.add(backWall);
+        
+        const frontWallLeft = createBox(2, wallHeight, 0.2, materials.wall);
+        frontWallLeft.position.set(-4, wallHeight/2, 6);
+        houseGroup.add(frontWallLeft);
+        
+        const frontWallRight = createBox(2, wallHeight, 0.2, materials.wall);
+        frontWallRight.position.set(4, wallHeight/2, 6);
+        houseGroup.add(frontWallRight);
+        
+        const frontWallTop = createBox(6, 0.8, 0.2, materials.wall);
+        frontWallTop.position.set(0, wallHeight - 0.4, 6);
+        houseGroup.add(frontWallTop);
+        
+        const door = createBox(1.8, 2.2, 0.15, materials.door);
+        door.position.set(0, 1.1, 6.1);
+        houseGroup.add(door);
+        
+        const leftWall = createBox(0.2, wallHeight, 12, materials.wall);
+        leftWall.position.set(-5, wallHeight/2, 0);
+        houseGroup.add(leftWall);
+        
+        const rightWallBottom = createBox(0.2, 1, 12, materials.wall);
+        rightWallBottom.position.set(5, 0.5, 0);
+        houseGroup.add(rightWallBottom);
+        
+        const rightWallTop = createBox(0.2, 0.8, 12, materials.wall);
+        rightWallTop.position.set(5, 2.6, 0);
+        houseGroup.add(rightWallTop);
+        
+        for (let z of [-3, 0, 3]) {
+            const win = createBox(0.05, 1.2, 1.8, materials.glass, false);
+            win.position.set(5, 1.6, z);
+            houseGroup.add(win);
+        }
+        
+        const ceiling = createBox(10, 0.15, 12, materials.ceiling);
+        ceiling.position.y = wallHeight;
+        houseGroup.add(ceiling);
+        
+        const roofGeom = new THREE.ConeGeometry(8.5, 2.5, 4);
+        const roof = new THREE.Mesh(roofGeom, materials.roof);
+        roof.position.set(0, wallHeight + 1.25, 0);
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        houseGroup.add(roof);
+        
+        // Build furniture (living room)
+        const sofaSeat = createBox(3.2, 0.45, 1.7, materials.fabric);
+        sofaSeat.position.set(-2, 0.45, -3);
+        sofaSeat.userData.id = 'sofa';
+        furnitureGroup.add(sofaSeat);
+        
+        const sofaBack = createBox(3.2, 0.85, 0.4, materials.fabric);
+        sofaBack.position.set(-2, 0.9, -3.65);
+        sofaBack.userData.id = 'sofa';
+        furnitureGroup.add(sofaBack);
+        
+        const sofaArmL = createBox(0.35, 0.85, 1.7, materials.fabric);
+        sofaArmL.position.set(-3.6, 0.7, -3);
+        sofaArmL.userData.id = 'sofa';
+        furnitureGroup.add(sofaArmL);
+        
+        const sofaArmR = createBox(0.35, 0.85, 1.7, materials.fabric);
+        sofaArmR.position.set(-0.4, 0.7, -3);
+        sofaArmR.userData.id = 'sofa';
+        furnitureGroup.add(sofaArmR);
+        
+        const tableTop = createBox(2.2, 0.12, 1.5, materials.wood);
+        tableTop.position.set(-1.5, 0.52, -1);
+        tableTop.userData.id = 'coffeeTable';
+        furnitureGroup.add(tableTop);
+        
+        for (let x of [-0.9, 0.9]) {
+            for (let z of [-0.6, 0.6]) {
+                const leg = createBox(0.12, 0.5, 0.12, materials.woodDark);
+                leg.position.set(-1.5 + x, 0.25, -1 + z);
+                leg.userData.id = 'coffeeTable';
+                furnitureGroup.add(leg);
+            }
+        }
+        
+        const tvStand = createBox(4.2, 0.45, 0.85, materials.wood);
+        tvStand.position.set(0, 0.45, -5.4);
+        tvStand.userData.id = 'tvStand';
+        furnitureGroup.add(tvStand);
+        
+        const tvScreen = createBox(2.6, 1.5, 0.12, materials.metal);
+        tvScreen.position.set(0, 1.6, -5.7);
+        tvScreen.userData.id = 'tvStand';
+        furnitureGroup.add(tvScreen);
+        
+        const diningTop = createBox(2.5, 0.12, 1.7, materials.wood);
+        diningTop.position.set(2, 0.78, 3);
+        diningTop.userData.id = 'diningTable';
+        furnitureGroup.add(diningTop);
+        
+        const lampStand = createBox(0.12, 1.7, 0.12, materials.metal);
+        lampStand.position.set(3.6, 0.85, -3.2);
+        lampStand.userData.id = 'lamp';
+        furnitureGroup.add(lampStand);
+        
+        const lampShadeGeom = new THREE.ConeGeometry(0.35, 0.5, 16);
+        const lampShade = new THREE.Mesh(lampShadeGeom, materials.fabric);
+        lampShade.position.set(3.6, 1.85, -3.2);
+        lampShade.castShadow = true;
+        lampShade.userData.id = 'lamp';
+        furnitureGroup.add(lampShade);
+        
+        const rug = createBox(3.2, 0.03, 2.5, materials.fabric);
+        rug.position.set(-1.8, 0.22, -2);
+        rug.userData.id = 'rug';
+        furnitureGroup.add(rug);
+        
+        scene.add(houseGroup);
+        scene.add(furnitureGroup);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const sunLight = new THREE.DirectionalLight(0xfff4e6, 1);
+        sunLight.position.set(15, 20, 15);
+        sunLight.castShadow = true;
+        sunLight.shadow.camera.left = -20;
+        sunLight.shadow.camera.right = 20;
+        sunLight.shadow.camera.top = 20;
+        sunLight.shadow.camera.bottom = -20;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        scene.add(sunLight);
+        
+        const ceilingLight = new THREE.PointLight(0xfff8dc, 0.6, 15);
+        ceilingLight.position.set(0, 2.8, 0);
+        scene.add(ceilingLight);
+        
+        // UI Functions
+        function initShopsBanner() {
+            const track = document.getElementById('shops-track');
+            const shopsArray = Object.values(shops);
+            const html = shopsArray.map(shop => `
+                <div class="shop-badge">
+                    <span class="shop-badge-icon">${shop.icon}</span>
+                    ${shop.name}
+                </div>
+            `).join('');
+            track.innerHTML = html + html;
+        }
+        
+        function populateFurnitureList() {
+            const list = document.getElementById('furniture-list');
+            const products = roomProducts[currentRoom] || [];
+            
+            list.innerHTML = products.map((product, index) => {
+                const shop = shops[product.shop];
+                return `
+                    <li class="furniture-item" onclick="selectFurniture(${index})">
+                        <div class="furniture-icon">${product.icon}</div>
+                        <div class="furniture-info">
+                            <div class="furniture-name">${product.name}</div>
+                            <div class="furniture-shop">
+                                <span>${shop.icon}</span>
+                                ${shop.name}
+                            </div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+        
+        function selectFurniture(index) {
+            const products = roomProducts[currentRoom];
+            if (index < 0 || index >= products.length) return;
+            
+            currentIndex = index;
+            const product = products[index];
+            const shop = shops[product.shop];
+            const camPos = product.cameraPos;
+            
+            // Start showcase rotation
+            isShowcasing = true;
+            showcaseRotation = 0;
+            targetShowcaseRotation = Math.PI * 2; // One full rotation
+            
+            targetCameraDistance = camPos.distance;
+            targetCameraHeight = camPos.height;
+            targetCameraTarget = new THREE.Vector3(camPos.target.x, camPos.target.y, camPos.target.z);
+            
+            document.querySelectorAll('.furniture-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+            
+            // Highlight shop in banner
+            document.querySelectorAll('.shop-badge').forEach(badge => {
+                badge.classList.remove('active');
+            });
+            const shopBadges = document.querySelectorAll('.shop-badge');
+            shopBadges.forEach(badge => {
+                if (badge.textContent.includes(shop.name)) {
+                    badge.classList.add('active');
+                }
+            });
+            
+            document.getElementById('canvas-title').textContent = product.name;
+            document.getElementById('product-name').textContent = product.name;
+            document.getElementById('product-category').textContent = product.category;
+            document.getElementById('product-price').textContent = product.price;
+            document.getElementById('product-description').textContent = product.description;
+            
+            // Show shop badge in header
+            document.getElementById('product-shop-badge').style.display = 'flex';
+            document.getElementById('product-shop-icon-header').textContent = shop.icon;
+            document.getElementById('product-shop-name-header').textContent = shop.name;
+            
+            const specsContainer = document.getElementById('product-specs');
+            specsContainer.innerHTML = Object.entries(product.specs).map(([key, val]) => `
+                <div class="spec-item">
+                    <span class="spec-label">${key}</span>
+                    <span class="spec-value">${val}</span>
+                </div>
+            `).join('');
+            
+            document.getElementById('shop-icon').textContent = shop.icon;
+            document.getElementById('shop-name').textContent = shop.name;
+            document.getElementById('shop-description').textContent = shop.description;
+            document.getElementById('shop-phone').textContent = shop.phone;
+            document.getElementById('shop-email').textContent = shop.email;
+            document.getElementById('shop-address').textContent = shop.address;
+            
+            const progress = ((index + 1) / products.length) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('progress-text').textContent = `Item ${index + 1} of ${products.length}`;
+            
+            document.getElementById('prev-btn').disabled = index === 0;
+            document.getElementById('next-btn').disabled = index === products.length - 1;
+        }
+        
+        // Room switching
+        document.querySelectorAll('.room-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentRoom = tab.dataset.room;
+                currentIndex = -1;
+                
+                document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                populateFurnitureList();
+                
+                document.getElementById('progress-fill').style.width = '0%';
+                document.getElementById('progress-text').textContent = 'Ready to start';
+                document.getElementById('prev-btn').disabled = true;
+                document.getElementById('next-btn').disabled = true;
+            });
+        });
+        
+        // Controls
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentIndex > 0) selectFurniture(currentIndex - 1);
+        });
+        
+        document.getElementById('next-btn').addEventListener('click', () => {
+            const products = roomProducts[currentRoom];
+            if (currentIndex < products.length - 1) selectFurniture(currentIndex + 1);
+        });
+        
+        document.getElementById('auto-play').addEventListener('click', function() {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+                this.innerHTML = '▶ Auto Tour';
+            } else {
+                if (currentIndex === -1) selectFurniture(0);
+                this.innerHTML = '⏸ Pause Tour';
+                autoPlayInterval = setInterval(() => {
+                    const products = roomProducts[currentRoom];
+                    if (currentIndex < products.length - 1) {
+                        selectFurniture(currentIndex + 1);
+                    } else {
+                        selectFurniture(0);
+                    }
+                }, 8000); // 8 seconds per item - enough time for showcase rotation + viewing
+            }
+        });
+        
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const lerpFactor = 0.05;
+            cameraDistance += (targetCameraDistance - cameraDistance) * lerpFactor;
+            cameraHeight += (targetCameraHeight - cameraHeight) * lerpFactor;
+            cameraTarget.lerp(targetCameraTarget, lerpFactor);
+            
+            // Slow showcase rotation - completes one 360° rotation then pauses
+            if (currentIndex >= 0 && isShowcasing) {
+                const rotationSpeed = 0.008; // Slower, more meaningful rotation
+                showcaseRotation += rotationSpeed;
+                
+                // Complete one full rotation then pause
+                if (showcaseRotation >= targetShowcaseRotation) {
+                    showcaseRotation = targetShowcaseRotation;
+                    isShowcasing = false; // Pause after showcase
+                }
+                
+                furnitureGroup.rotation.y = showcaseRotation;
+            }
+            
+            const angle = Date.now() * 0.0002; // Slower camera orbit
+            const x = cameraTarget.x + cameraDistance * Math.cos(angle);
+            const z = cameraTarget.z + cameraDistance * Math.sin(angle);
+            
+            camera.position.set(x, cameraHeight, z);
+            camera.lookAt(cameraTarget);
+            
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            const width = canvasContainer.clientWidth;
+            const height = canvasContainer.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+        
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 800);
+        
+        initShopsBanner();
+        populateFurnitureList();
+        camera.position.set(8, 6, 10);
+        camera.lookAt(0, 2, 0);
+        animate();
+    </script>
+</body>
+</html>
