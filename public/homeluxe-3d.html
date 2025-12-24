@@ -325,7 +325,8 @@
         #canvas-container {
             grid-row: 3 / 4;
             position: relative;
-            background: linear-gradient(180deg, #e8eef2 0%, #d4dce3 100%);
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
         }
         
         .canvas-overlay {
@@ -367,6 +368,35 @@
         @keyframes rotate {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        .camera-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        
+        .camera-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(26, 35, 50, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        .camera-btn:hover {
+            background: var(--accent);
+            transform: scale(1.1);
         }
         
         /* Right Panel - Product Details */
@@ -528,6 +558,11 @@
             border: 2px solid var(--border);
         }
         
+        .shop-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
         .shop-info h3 {
             font-size: 15px;
             font-weight: 700;
@@ -648,6 +683,10 @@
             font-weight: 600;
             color: var(--primary);
             z-index: 1000;
+            background: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         
         /* Mobile Responsive */
@@ -683,6 +722,17 @@
             
             .furniture-item {
                 min-width: 200px;
+            }
+            
+            .camera-controls {
+                bottom: 10px;
+                right: 10px;
+            }
+            
+            .camera-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
             }
         }
         
@@ -748,7 +798,7 @@
             
             <div class="tour-header">
                 <h3>Furniture Tour</h3>
-                <p>Select items to view in 360°</p>
+                <p>Click items to view in 360° & see details</p>
             </div>
             
             <div class="progress-section">
@@ -763,10 +813,16 @@
         
         <!-- Center - 3D Canvas -->
         <div id="canvas-container">
-            <div class="canvas-overlay" id="canvas-title">Select a room to begin</div>
+            <div class="canvas-overlay" id="canvas-title">Living Room - Click furniture to explore</div>
             <div class="rotation-indicator">
                 <span class="rotation-icon">↻</span>
-                <span>360° View Active</span>
+                <span id="rotation-text">360° View Active</span>
+            </div>
+            <div class="camera-controls">
+                <button class="camera-btn" id="camera-front" title="Front View">👁️</button>
+                <button class="camera-btn" id="camera-side" title="Side View">👈</button>
+                <button class="camera-btn" id="camera-top" title="Top View">⬇️</button>
+                <button class="camera-btn" id="camera-reset" title="Reset View">🔄</button>
             </div>
         </div>
         
@@ -841,7 +897,10 @@
     
     <div id="loading">Loading 3D Showroom...</div>
     
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Shop Database
         const shops = {
@@ -903,63 +962,169 @@
             }
         };
         
-        // Products by Room
+        // Enhanced Products by Room
         const roomProducts = {
             "living-room": [
                 {
                     id: "sofa",
-                    name: "Luxe Velvet Sectional",
+                    name: "Modern Luxury Sofa",
                     category: "Seating",
-                    price: "P 15,999",
+                    price: "P 18,999",
                     icon: "🛋️",
                     shop: "luxeHome",
-                    description: "Premium velvet upholstery with solid oak frame. High-density foam cushions with removable covers.",
-                    specs: { "Material": "Velvet & Oak", "Dimensions": "300cm × 180cm × 85cm", "Color": "Navy Blue", "Warranty": "5 Years" },
-                    cameraPos: { distance: 5, height: 1.5, target: { x: -2, y: 0.6, z: -3 } }
+                    description: "Premium modern sofa with luxury upholstery, high-density foam cushions, and solid oak frame. Perfect for contemporary living spaces with built-in USB charging ports.",
+                    specs: { 
+                        "Material": "Premium Velvet & Solid Oak", 
+                        "Dimensions": "220cm × 95cm × 85cm", 
+                        "Color": "Navy Blue", 
+                        "Weight Capacity": "500kg",
+                        "Features": "USB Charging, Removable Covers",
+                        "Warranty": "5 Years"
+                    },
+                    cameraPos: { distance: 3.5, height: 1, target: { x: 0, y: 0.8, z: 2 } },
+                    position: { x: 0, y: 0, z: 2 },
+                    scale: { x: 2.5, y: 2.5, z: 2.5 },
+                    rotation: { x: 0, y: 0, z: 0 }
+                },
+                {
+                    id: "tvUnit",
+                    name: "Smart TV Entertainment Unit",
+                    category: "Media",
+                    price: "P 8,499",
+                    icon: "📺",
+                    shop: "techHome",
+                    description: "Modern TV unit with integrated sound system, LED lighting, and smart home connectivity. Supports up to 75-inch TVs.",
+                    specs: { 
+                        "Material": "Tempered Glass & Aluminum", 
+                        "TV Support": "Up to 75\"", 
+                        "Storage": "4 Drawers, 2 Cabinets",
+                        "Features": "LED Lighting, Cable Management",
+                        "Color": "Black Matte"
+                    },
+                    cameraPos: { distance: 3, height: 1.2, target: { x: 0, y: 1, z: -3 } },
+                    position: { x: 0, y: 0, z: -3 },
+                    scale: { x: 1.5, y: 1.5, z: 1.5 },
+                    rotation: { x: 0, y: 0, z: 0 }
                 },
                 {
                     id: "coffeeTable",
-                    name: "Oak Coffee Table",
+                    name: "Designer Coffee Table",
                     category: "Tables",
-                    price: "P 3,499",
+                    price: "P 4,999",
                     icon: "☕",
                     shop: "artisan",
-                    description: "Handcrafted solid oak with natural oil finish and sturdy construction.",
-                    specs: { "Material": "Solid Oak", "Dimensions": "120cm × 70cm × 45cm", "Finish": "Natural Oil" },
-                    cameraPos: { distance: 3.5, height: 1, target: { x: -1.5, y: 0.5, z: -1 } }
+                    description: "Handcrafted solid walnut coffee table with unique geometric design and tempered glass top.",
+                    specs: { 
+                        "Material": "Solid Walnut & Glass", 
+                        "Dimensions": "120cm × 70cm × 45cm", 
+                        "Finish": "Natural Oil & Lacquer",
+                        "Weight": "35kg",
+                        "Design": "Geometric Legs"
+                    },
+                    cameraPos: { distance: 2.5, height: 0.8, target: { x: 0, y: 0.5, z: 0 } },
+                    position: { x: 0, y: 0, z: 0 },
+                    scale: { x: 1.2, y: 1.2, z: 1.2 },
+                    rotation: { x: 0, y: 0, z: 0 }
                 },
                 {
-                    id: "tvStand",
-                    name: "Entertainment Center",
-                    category: "Media",
-                    price: "P 5,499",
-                    icon: "📺",
-                    shop: "techHome",
-                    description: "Modern TV stand with cable management. Supports TVs up to 65 inches.",
-                    specs: { "Material": "MDF & Glass", "TV Support": "Up to 65\"", "Storage": "2 Drawers" },
-                    cameraPos: { distance: 4.5, height: 1.2, target: { x: 0, y: 0.6, z: -5.3 } }
+                    id: "bookshelf",
+                    name: "Modern Bookshelf",
+                    category: "Storage",
+                    price: "P 6,499",
+                    icon: "📚",
+                    shop: "homeEssentials",
+                    description: "Contemporary bookshelf with adjustable shelves and integrated LED lighting. Perfect for displaying books and decor items.",
+                    specs: { 
+                        "Material": "MDF & Steel", 
+                        "Dimensions": "180cm × 35cm × 200cm", 
+                        "Shelves": "6 Adjustable",
+                        "Features": "LED Lighting, Wine Rack",
+                        "Color": "White Oak Finish"
+                    },
+                    cameraPos: { distance: 3, height: 1.5, target: { x: -4, y: 1, z: 0 } },
+                    position: { x: -4, y: 0, z: 0 },
+                    scale: { x: 1.2, y: 1.2, z: 1.2 },
+                    rotation: { x: 0, y: 0, z: 0 }
                 },
                 {
-                    id: "lamp",
-                    name: "Designer Floor Lamp",
-                    category: "Lighting",
-                    price: "P 1,899",
-                    icon: "💡",
-                    shop: "illuminate",
-                    description: "Contemporary lamp with adjustable brightness and fabric shade.",
-                    specs: { "Height": "170cm", "Type": "LED Compatible", "Features": "Dimmable" },
-                    cameraPos: { distance: 3, height: 1.4, target: { x: 3.6, y: 1, z: -3.2 } }
+                    id: "plant",
+                    name: "Decorative Fiddle Leaf Fig",
+                    category: "Decor",
+                    price: "P 1,299",
+                    icon: "🌿",
+                    shop: "gardenLife",
+                    description: "Realistic artificial fiddle leaf fig tree in ceramic pot. Adds natural elegance to any living space.",
+                    specs: { 
+                        "Height": "180cm", 
+                        "Pot Diameter": "35cm", 
+                        "Material": "Silk & Plastic",
+                        "Maintenance": "No Watering Needed",
+                        "Realism": "UV Protected"
+                    },
+                    cameraPos: { distance: 2, height: 1, target: { x: 3, y: 1, z: 1 } },
+                    position: { x: 3, y: 0, z: 1 },
+                    scale: { x: 1, y: 1, z: 1 },
+                    rotation: { x: 0, y: 0, z: 0 }
                 },
                 {
                     id: "rug",
-                    name: "Premium Wool Rug",
-                    category: "Decor",
-                    price: "P 2,799",
-                    icon: "🎨",
+                    name: "Persian Style Area Rug",
+                    category: "Flooring",
+                    price: "P 3,799",
+                    icon: "🧶",
                     shop: "luxeHome",
-                    description: "Hand-woven wool rug with geometric pattern.",
-                    specs: { "Material": "100% Wool", "Size": "200cm × 150cm", "Pattern": "Geometric" },
-                    cameraPos: { distance: 4, height: 2.5, target: { x: -1.8, y: 0.2, z: -2 } }
+                    description: "Hand-knotted wool rug with traditional Persian patterns. Adds warmth and texture to living spaces.",
+                    specs: { 
+                        "Material": "100% New Zealand Wool", 
+                        "Size": "240cm × 170cm", 
+                        "Pattern": "Persian Medallion",
+                        "Thickness": "12mm",
+                        "Origin": "Handmade in Morocco"
+                    },
+                    cameraPos: { distance: 4, height: 2, target: { x: 0, y: 0.1, z: 0 } },
+                    position: { x: 0, y: 0, z: 0 },
+                    scale: { x: 2, y: 0.1, z: 1.5 },
+                    rotation: { x: 0, y: 0, z: 0 }
+                },
+                {
+                    id: "floorLamp",
+                    name: "Arc Floor Lamp",
+                    category: "Lighting",
+                    price: "P 2,499",
+                    icon: "💡",
+                    shop: "illuminate",
+                    description: "Modern arc floor lamp with dimmable LED light and adjustable arm. Perfect for reading corners.",
+                    specs: { 
+                        "Height": "210cm", 
+                        "Reach": "150cm", 
+                        "Light": "Dimmable LED 3000K",
+                        "Material": "Brushed Steel & Marble",
+                        "Features": "Remote Control"
+                    },
+                    cameraPos: { distance: 2, height: 1.5, target: { x: 2, y: 1.2, z: -1 } },
+                    position: { x: 2, y: 0, z: -1 },
+                    scale: { x: 1, y: 1, z: 1 },
+                    rotation: { x: 0, y: 0, z: 0 }
+                },
+                {
+                    id: "mirror",
+                    name: "Decorative Wall Mirror",
+                    category: "Decor",
+                    price: "P 2,999",
+                    icon: "🪞",
+                    shop: "artisan",
+                    description: "Ornate gold-leaf framed mirror with decorative details. Makes rooms appear larger and brighter.",
+                    specs: { 
+                        "Dimensions": "120cm × 80cm", 
+                        "Frame": "Gold Leaf Wood", 
+                        "Glass": "Anti-Distortion",
+                        "Weight": "15kg",
+                        "Installation": "Wall Mounted"
+                    },
+                    cameraPos: { distance: 2.5, height: 1.2, target: { x: 3.5, y: 1.5, z: -2 } },
+                    position: { x: 3.5, y: 1, z: -2 },
+                    scale: { x: 1, y: 1, z: 0.1 },
+                    rotation: { x: 0, y: Math.PI/2, z: 0 }
                 }
             ],
             "bedroom": [
@@ -1037,51 +1202,273 @@
         };
         
         let currentRoom = "living-room";
-        let currentIndex = -1;
+        let currentIndex = 0;
         let autoPlayInterval = null;
         let showcaseRotation = 0;
         let targetShowcaseRotation = 0;
         let isShowcasing = false;
+        let orbitControls = null;
         
         // 3D Scene Setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xe8eef2);
+        scene.background = new THREE.Color(0x2c3e50);
         
-        const camera = new THREE.PerspectiveCamera(60, 
-            document.getElementById('canvas-container').clientWidth / 
-            document.getElementById('canvas-container').clientHeight, 
-            0.1, 1000
-        );
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
         const canvasContainer = document.getElementById('canvas-container');
+        const camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
         canvasContainer.appendChild(renderer.domElement);
         
-        let targetCameraDistance = 15;
-        let targetCameraHeight = 2;
-        let targetCameraTarget = new THREE.Vector3(0, 1.5, 0);
-        let cameraDistance = 15;
-        let cameraHeight = 2;
-        let cameraTarget = new THREE.Vector3(0, 1.5, 0);
+        // Orbit Controls for better camera movement
+        orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+        orbitControls.enableDamping = true;
+        orbitControls.dampingFactor = 0.05;
+        orbitControls.screenSpacePanning = true;
+        orbitControls.minDistance = 1;
+        orbitControls.maxDistance = 10;
+        orbitControls.maxPolarAngle = Math.PI / 2;
+        orbitControls.enabled = true;
         
-        // Materials
+        let targetCameraDistance = 5;
+        let targetCameraHeight = 1.5;
+        let targetCameraTarget = new THREE.Vector3(0, 1, 0);
+        let cameraDistance = 5;
+        let cameraHeight = 1.5;
+        let cameraTarget = new THREE.Vector3(0, 1, 0);
+        
+        // GLTF Loader
+        const gltfLoader = new THREE.GLTFLoader();
+        let currentModel = null;
+        const gltfModels = new Map();
+        const gltfModelsGroup = new THREE.Group();
+        const furnitureGroup = new THREE.Group();
+        
+        // Materials for interior
         const materials = {
-            grass: new THREE.MeshStandardMaterial({ color: 0x5a7c65, roughness: 0.9 }),
-            floor: new THREE.MeshStandardMaterial({ color: 0xd4b89c, roughness: 0.6 }),
-            wall: new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness: 0.8 }),
-            ceiling: new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.9 }),
-            wood: new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.5 }),
-            woodDark: new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.4 }),
-            fabric: new THREE.MeshStandardMaterial({ color: 0x2c5f7a, roughness: 0.9 }),
-            metal: new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.2, metalness: 0.8 }),
-            glass: new THREE.MeshPhysicalMaterial({ color: 0xb8d4e8, transparent: true, opacity: 0.3, roughness: 0.05, transmission: 0.95 }),
-            roof: new THREE.MeshStandardMaterial({ color: 0x7a5c47, roughness: 0.8 }),
-            door: new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.4 }),
-            ceramic: new THREE.MeshStandardMaterial({ color: 0xe8d5c4, roughness: 0.3 }),
-            plant: new THREE.MeshStandardMaterial({ color: 0x3d6b3d, roughness: 0.8 })
+            floor: new THREE.MeshStandardMaterial({ 
+                color: 0x8b7355, 
+                roughness: 0.8,
+                map: createWoodTexture('#8b7355', '#6b5a45')
+            }),
+            wall: new THREE.MeshStandardMaterial({ 
+                color: 0xf5f5f5, 
+                roughness: 0.7,
+                map: createWallTexture()
+            }),
+            ceiling: new THREE.MeshStandardMaterial({ 
+                color: 0xffffff, 
+                roughness: 0.9,
+                emissive: 0x222222,
+                emissiveIntensity: 0.1
+            }),
+            sofaFabric: new THREE.MeshStandardMaterial({ 
+                color: 0x2c5f7a, 
+                roughness: 0.9,
+                map: createFabricTexture('#2c5f7a')
+            }),
+            woodDark: new THREE.MeshStandardMaterial({ 
+                color: 0x4a3728, 
+                roughness: 0.5,
+                map: createWoodTexture('#4a3728', '#3a2a1e')
+            }),
+            woodLight: new THREE.MeshStandardMaterial({ 
+                color: 0xd4b89c, 
+                roughness: 0.4,
+                map: createWoodTexture('#d4b89c', '#b89c7c')
+            }),
+            glass: new THREE.MeshPhysicalMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.2, 
+                roughness: 0.05,
+                transmission: 0.95,
+                thickness: 0.5
+            }),
+            metal: new THREE.MeshStandardMaterial({ 
+                color: 0xcccccc, 
+                roughness: 0.2, 
+                metalness: 0.9 
+            }),
+            fabricRug: new THREE.MeshStandardMaterial({ 
+                color: 0x8b4513, 
+                roughness: 0.9,
+                map: createRugTexture()
+            }),
+            plant: new THREE.MeshStandardMaterial({ 
+                color: 0x3d6b3d, 
+                roughness: 0.8,
+                map: createLeafTexture()
+            }),
+            mirror: new THREE.MeshStandardMaterial({ 
+                color: 0x888888, 
+                roughness: 0.05,
+                metalness: 0.95
+            }),
+            tvScreen: new THREE.MeshStandardMaterial({ 
+                color: 0x000000, 
+                roughness: 0.1,
+                emissive: 0x111111,
+                emissiveIntensity: 0.5
+            })
         };
+        
+        // Texture creation functions
+        function createWoodTexture(color1, color2) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Wood grain pattern
+            ctx.fillStyle = color1;
+            ctx.fillRect(0, 0, 256, 256);
+            
+            ctx.strokeStyle = color2;
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random() * 256, 0);
+                ctx.bezierCurveTo(
+                    Math.random() * 256, Math.random() * 256,
+                    Math.random() * 256, Math.random() * 256,
+                    Math.random() * 256, 256
+                );
+                ctx.stroke();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 4);
+            return texture;
+        }
+        
+        function createWallTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(0, 0, 256, 256);
+            
+            // Subtle texture
+            for (let i = 0; i < 500; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const size = Math.random() * 3;
+                const alpha = Math.random() * 0.1;
+                
+                ctx.fillStyle = `rgba(200, 200, 200, ${alpha})`;
+                ctx.fillRect(x, y, size, size);
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
+        
+        function createFabricTexture(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, 256, 256);
+            
+            // Fabric weave pattern
+            for (let i = 0; i < 256; i += 8) {
+                for (let j = 0; j < 256; j += 8) {
+                    ctx.fillStyle = i % 16 === 0 ? color : adjustColor(color, 20);
+                    ctx.fillRect(i, j, 4, 4);
+                }
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
+        
+        function createRugTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // Persian rug pattern
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Border
+            ctx.strokeStyle = '#d4a574';
+            ctx.lineWidth = 20;
+            ctx.strokeRect(50, 50, 412, 412);
+            
+            // Medallion pattern
+            ctx.fillStyle = '#d4a574';
+            ctx.beginPath();
+            ctx.arc(256, 256, 80, 0, Math.PI * 2);
+            ctx.fill();
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+        
+        function createLeafTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#3d6b3d';
+            ctx.fillRect(0, 0, 128, 128);
+            
+            // Leaf vein pattern
+            ctx.strokeStyle = '#2d4b2d';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < 5; i++) {
+                const x = Math.random() * 128;
+                const y = Math.random() * 128;
+                const size = Math.random() * 30 + 20;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                for (let j = 0; j < 5; j++) {
+                    ctx.lineTo(x + Math.random() * size - size/2, y + Math.random() * size - size/2);
+                }
+                ctx.stroke();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+        
+        function adjustColor(color, amount) {
+            const hex = color.replace('#', '');
+            let r = parseInt(hex.substr(0, 2), 16);
+            let g = parseInt(hex.substr(2, 2), 16);
+            let b = parseInt(hex.substr(4, 2), 16);
+            
+            r = Math.max(0, Math.min(255, r + amount));
+            g = Math.max(0, Math.min(255, g + amount));
+            b = Math.max(0, Math.min(255, b + amount));
+            
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
         
         function createBox(w, h, d, mat, shadow = true) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -1090,156 +1477,354 @@
             return mesh;
         }
         
-        const houseGroup = new THREE.Group();
-        const furnitureGroup = new THREE.Group();
-        
-        // Build house
-        const ground = createBox(40, 0.1, 40, materials.grass);
-        ground.position.y = -0.05;
-        houseGroup.add(ground);
-        
-        const floor = createBox(10, 0.2, 12, materials.floor);
-        floor.position.y = 0.1;
-        houseGroup.add(floor);
-        
-        const wallHeight = 3;
-        const backWall = createBox(10, wallHeight, 0.2, materials.wall);
-        backWall.position.set(0, wallHeight/2, -6);
-        houseGroup.add(backWall);
-        
-        const frontWallLeft = createBox(2, wallHeight, 0.2, materials.wall);
-        frontWallLeft.position.set(-4, wallHeight/2, 6);
-        houseGroup.add(frontWallLeft);
-        
-        const frontWallRight = createBox(2, wallHeight, 0.2, materials.wall);
-        frontWallRight.position.set(4, wallHeight/2, 6);
-        houseGroup.add(frontWallRight);
-        
-        const frontWallTop = createBox(6, 0.8, 0.2, materials.wall);
-        frontWallTop.position.set(0, wallHeight - 0.4, 6);
-        houseGroup.add(frontWallTop);
-        
-        const door = createBox(1.8, 2.2, 0.15, materials.door);
-        door.position.set(0, 1.1, 6.1);
-        houseGroup.add(door);
-        
-        const leftWall = createBox(0.2, wallHeight, 12, materials.wall);
-        leftWall.position.set(-5, wallHeight/2, 0);
-        houseGroup.add(leftWall);
-        
-        const rightWallBottom = createBox(0.2, 1, 12, materials.wall);
-        rightWallBottom.position.set(5, 0.5, 0);
-        houseGroup.add(rightWallBottom);
-        
-        const rightWallTop = createBox(0.2, 0.8, 12, materials.wall);
-        rightWallTop.position.set(5, 2.6, 0);
-        houseGroup.add(rightWallTop);
-        
-        for (let z of [-3, 0, 3]) {
-            const win = createBox(0.05, 1.2, 1.8, materials.glass, false);
-            win.position.set(5, 1.6, z);
-            houseGroup.add(win);
+        function createCylinder(r, h, mat, shadow = true) {
+            const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 16), mat);
+            mesh.castShadow = shadow;
+            mesh.receiveShadow = true;
+            return mesh;
         }
         
-        const ceiling = createBox(10, 0.15, 12, materials.ceiling);
-        ceiling.position.y = wallHeight;
-        houseGroup.add(ceiling);
+        function createSphere(r, mat, shadow = true) {
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 16), mat);
+            mesh.castShadow = shadow;
+            mesh.receiveShadow = true;
+            return mesh;
+        }
         
-        const roofGeom = new THREE.ConeGeometry(8.5, 2.5, 4);
-        const roof = new THREE.Mesh(roofGeom, materials.roof);
-        roof.position.set(0, wallHeight + 1.25, 0);
-        roof.rotation.y = Math.PI / 4;
-        roof.castShadow = true;
-        houseGroup.add(roof);
-        
-        // Build furniture (living room)
-        const sofaSeat = createBox(3.2, 0.45, 1.7, materials.fabric);
-        sofaSeat.position.set(-2, 0.45, -3);
-        sofaSeat.userData.id = 'sofa';
-        furnitureGroup.add(sofaSeat);
-        
-        const sofaBack = createBox(3.2, 0.85, 0.4, materials.fabric);
-        sofaBack.position.set(-2, 0.9, -3.65);
-        sofaBack.userData.id = 'sofa';
-        furnitureGroup.add(sofaBack);
-        
-        const sofaArmL = createBox(0.35, 0.85, 1.7, materials.fabric);
-        sofaArmL.position.set(-3.6, 0.7, -3);
-        sofaArmL.userData.id = 'sofa';
-        furnitureGroup.add(sofaArmL);
-        
-        const sofaArmR = createBox(0.35, 0.85, 1.7, materials.fabric);
-        sofaArmR.position.set(-0.4, 0.7, -3);
-        sofaArmR.userData.id = 'sofa';
-        furnitureGroup.add(sofaArmR);
-        
-        const tableTop = createBox(2.2, 0.12, 1.5, materials.wood);
-        tableTop.position.set(-1.5, 0.52, -1);
-        tableTop.userData.id = 'coffeeTable';
-        furnitureGroup.add(tableTop);
-        
-        for (let x of [-0.9, 0.9]) {
-            for (let z of [-0.6, 0.6]) {
-                const leg = createBox(0.12, 0.5, 0.12, materials.woodDark);
-                leg.position.set(-1.5 + x, 0.25, -1 + z);
-                leg.userData.id = 'coffeeTable';
-                furnitureGroup.add(leg);
+        // Create living room interior
+        function createLivingRoom() {
+            const roomGroup = new THREE.Group();
+            
+            // Floor (larger for interior view)
+            const floor = createBox(12, 0.1, 10, materials.floor);
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            roomGroup.add(floor);
+            
+            // Walls (only show interior sides)
+            const wallThickness = 0.2;
+            
+            // Back wall
+            const backWall = createBox(12, 4, wallThickness, materials.wall);
+            backWall.position.set(0, 2, -5);
+            backWall.receiveShadow = true;
+            roomGroup.add(backWall);
+            
+            // Front wall (with opening)
+            const frontWallLeft = createBox(4, 4, wallThickness, materials.wall);
+            frontWallLeft.position.set(-4, 2, 5);
+            frontWallLeft.receiveShadow = true;
+            roomGroup.add(frontWallLeft);
+            
+            const frontWallRight = createBox(4, 4, wallThickness, materials.wall);
+            frontWallRight.position.set(4, 2, 5);
+            frontWallRight.receiveShadow = true;
+            roomGroup.add(frontWallRight);
+            
+            // Left wall
+            const leftWall = createBox(wallThickness, 4, 10, materials.wall);
+            leftWall.position.set(-6, 2, 0);
+            leftWall.receiveShadow = true;
+            roomGroup.add(leftWall);
+            
+            // Right wall
+            const rightWall = createBox(wallThickness, 4, 10, materials.wall);
+            rightWall.position.set(6, 2, 0);
+            rightWall.receiveShadow = true;
+            roomGroup.add(rightWall);
+            
+            // Ceiling
+            const ceiling = createBox(12, 0.1, 10, materials.ceiling);
+            ceiling.position.y = 4;
+            ceiling.receiveShadow = true;
+            roomGroup.add(ceiling);
+            
+            // Windows on right wall
+            const windowWidth = 2;
+            const windowHeight = 2;
+            const windowY = 2;
+            
+            for (let i = 0; i < 2; i++) {
+                const windowFrame = createBox(0.1, windowHeight, windowWidth, materials.woodDark);
+                windowFrame.position.set(5.9, windowY, i * 4 - 2);
+                roomGroup.add(windowFrame);
+                
+                const windowGlass = createBox(0.05, windowHeight - 0.2, windowWidth - 0.2, materials.glass, false);
+                windowGlass.position.set(5.95, windowY, i * 4 - 2);
+                roomGroup.add(windowGlass);
             }
+            
+            return roomGroup;
         }
         
-        const tvStand = createBox(4.2, 0.45, 0.85, materials.wood);
-        tvStand.position.set(0, 0.45, -5.4);
-        tvStand.userData.id = 'tvStand';
-        furnitureGroup.add(tvStand);
+        // Create furniture
+        function createFurniture() {
+            const furniture = new THREE.Group();
+            
+            // Main Sofa
+            const sofaBase = createBox(2.2, 0.4, 1, materials.sofaFabric);
+            sofaBase.position.set(0, 0.2, 2);
+            sofaBase.userData = { id: 'sofa', name: 'Modern Luxury Sofa', clickable: true };
+            furniture.add(sofaBase);
+            
+            const sofaBack = createBox(2.2, 0.8, 0.3, materials.sofaFabric);
+            sofaBack.position.set(0, 0.8, 2.35);
+            sofaBack.userData = { id: 'sofa', clickable: true };
+            furniture.add(sofaBack);
+            
+            const sofaArmL = createBox(0.3, 0.6, 1, materials.sofaFabric);
+            sofaArmL.position.set(-1.1, 0.5, 2);
+            sofaArmL.userData = { id: 'sofa', clickable: true };
+            furniture.add(sofaArmL);
+            
+            const sofaArmR = createBox(0.3, 0.6, 1, materials.sofaFabric);
+            sofaArmR.position.set(1.1, 0.5, 2);
+            sofaArmR.userData = { id: 'sofa', clickable: true };
+            furniture.add(sofaArmR);
+            
+            // TV Unit
+            const tvUnitBase = createBox(2.5, 0.4, 0.6, materials.woodDark);
+            tvUnitBase.position.set(0, 0.2, -3);
+            tvUnitBase.userData = { id: 'tvUnit', name: 'Smart TV Entertainment Unit', clickable: true };
+            furniture.add(tvUnitBase);
+            
+            const tvScreen = createBox(1.8, 1, 0.05, materials.tvScreen);
+            tvScreen.position.set(0, 1.1, -3.3);
+            tvScreen.userData = { id: 'tvUnit', clickable: true };
+            furniture.add(tvScreen);
+            
+            // Coffee Table
+            const tableTop = createBox(1.2, 0.05, 0.7, materials.woodLight);
+            tableTop.position.set(0, 0.425, 0);
+            tableTop.userData = { id: 'coffeeTable', name: 'Designer Coffee Table', clickable: true };
+            furniture.add(tableTop);
+            
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 2; j++) {
+                    const leg = createCylinder(0.05, 0.4, materials.woodDark);
+                    leg.position.set(
+                        i * 0.8 - 0.4,
+                        0.2,
+                        j * 0.4 - 0.2
+                    );
+                    leg.userData = { id: 'coffeeTable', clickable: true };
+                    furniture.add(leg);
+                }
+            }
+            
+            // Bookshelf
+            const shelfBase = createBox(0.4, 2, 1, materials.woodLight);
+            shelfBase.position.set(-4, 1, 0);
+            shelfBase.userData = { id: 'bookshelf', name: 'Modern Bookshelf', clickable: true };
+            furniture.add(shelfBase);
+            
+            for (let i = 0; i < 4; i++) {
+                const shelf = createBox(0.35, 0.02, 0.9, materials.woodDark);
+                shelf.position.set(-4, 0.4 + i * 0.4, 0);
+                shelf.userData = { id: 'bookshelf', clickable: true };
+                furniture.add(shelf);
+            }
+            
+            // Plant
+            const pot = createCylinder(0.2, 0.4, materials.woodDark);
+            pot.position.set(3, 0.2, 1);
+            pot.userData = { id: 'plant', name: 'Decorative Fiddle Leaf Fig', clickable: true };
+            furniture.add(pot);
+            
+            const plantStem = createCylinder(0.05, 1.2, materials.plant);
+            plantStem.position.set(3, 1, 1);
+            plantStem.userData = { id: 'plant', clickable: true };
+            furniture.add(plantStem);
+            
+            const plantLeaves = createSphere(0.4, materials.plant);
+            plantLeaves.position.set(3, 1.6, 1);
+            plantLeaves.userData = { id: 'plant', clickable: true };
+            furniture.add(plantLeaves);
+            
+            // Rug
+            const rug = createBox(2.4, 0.02, 1.7, materials.fabricRug);
+            rug.position.set(0, 0.01, 0);
+            rug.userData = { id: 'rug', name: 'Persian Style Area Rug', clickable: true };
+            furniture.add(rug);
+            
+            // Floor Lamp
+            const lampBase = createCylinder(0.15, 0.1, materials.metal);
+            lampBase.position.set(2, 0.05, -1);
+            lampBase.userData = { id: 'floorLamp', name: 'Arc Floor Lamp', clickable: true };
+            furniture.add(lampBase);
+            
+            const lampPole = createCylinder(0.03, 1.8, materials.metal);
+            lampPole.position.set(2, 1, -1);
+            lampPole.userData = { id: 'floorLamp', clickable: true };
+            furniture.add(lampPole);
+            
+            const lampShade = createCylinder(0.2, 0.3, materials.metal);
+            lampShade.position.set(2, 1.9, -1);
+            lampShade.userData = { id: 'floorLamp', clickable: true };
+            furniture.add(lampShade);
+            
+            // Mirror on wall
+            const mirrorFrame = createBox(1.2, 0.8, 0.1, materials.woodDark);
+            mirrorFrame.position.set(3.5, 1.5, -2);
+            mirrorFrame.userData = { id: 'mirror', name: 'Decorative Wall Mirror', clickable: true };
+            furniture.add(mirrorFrame);
+            
+            const mirrorGlass = createBox(1, 0.6, 0.05, materials.mirror);
+            mirrorGlass.position.set(3.5, 1.5, -1.95);
+            mirrorGlass.userData = { id: 'mirror', clickable: true };
+            furniture.add(mirrorGlass);
+            
+            return furniture;
+        }
         
-        const tvScreen = createBox(2.6, 1.5, 0.12, materials.metal);
-        tvScreen.position.set(0, 1.6, -5.7);
-        tvScreen.userData.id = 'tvStand';
-        furnitureGroup.add(tvScreen);
+        // Create room
+        const roomGroup = createLivingRoom();
+        scene.add(roomGroup);
         
-        const diningTop = createBox(2.5, 0.12, 1.7, materials.wood);
-        diningTop.position.set(2, 0.78, 3);
-        diningTop.userData.id = 'diningTable';
-        furnitureGroup.add(diningTop);
+        // Create furniture
+        const furniture = createFurniture();
+        scene.add(furniture);
+        scene.add(gltfModelsGroup);
         
-        const lampStand = createBox(0.12, 1.7, 0.12, materials.metal);
-        lampStand.position.set(3.6, 0.85, -3.2);
-        lampStand.userData.id = 'lamp';
-        furnitureGroup.add(lampStand);
-        
-        const lampShadeGeom = new THREE.ConeGeometry(0.35, 0.5, 16);
-        const lampShade = new THREE.Mesh(lampShadeGeom, materials.fabric);
-        lampShade.position.set(3.6, 1.85, -3.2);
-        lampShade.castShadow = true;
-        lampShade.userData.id = 'lamp';
-        furnitureGroup.add(lampShade);
-        
-        const rug = createBox(3.2, 0.03, 2.5, materials.fabric);
-        rug.position.set(-1.8, 0.22, -2);
-        rug.userData.id = 'rug';
-        furnitureGroup.add(rug);
-        
-        scene.add(houseGroup);
-        scene.add(furnitureGroup);
-        
-        // Lighting
+        // Lighting setup for interior
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
         
-        const sunLight = new THREE.DirectionalLight(0xfff4e6, 1);
-        sunLight.position.set(15, 20, 15);
-        sunLight.castShadow = true;
-        sunLight.shadow.camera.left = -20;
-        sunLight.shadow.camera.right = 20;
-        sunLight.shadow.camera.top = 20;
-        sunLight.shadow.camera.bottom = -20;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
-        scene.add(sunLight);
+        const mainLight = new THREE.DirectionalLight(0xfff4e6, 0.8);
+        mainLight.position.set(0, 5, 5);
+        mainLight.castShadow = true;
+        mainLight.shadow.camera.left = -10;
+        mainLight.shadow.camera.right = 10;
+        mainLight.shadow.camera.top = 10;
+        mainLight.shadow.camera.bottom = -10;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        scene.add(mainLight);
         
-        const ceilingLight = new THREE.PointLight(0xfff8dc, 0.6, 15);
-        ceilingLight.position.set(0, 2.8, 0);
+        const fillLight = new THREE.DirectionalLight(0x87CEEB, 0.3);
+        fillLight.position.set(-5, 3, 5);
+        scene.add(fillLight);
+        
+        const ceilingLight = new THREE.PointLight(0xfff8dc, 0.6, 10);
+        ceilingLight.position.set(0, 3.8, 0);
         scene.add(ceilingLight);
+        
+        // Add some accent lighting
+        const tvLight = new THREE.PointLight(0x00aaff, 0.3, 5);
+        tvLight.position.set(0, 1.1, -3);
+        scene.add(tvLight);
+        
+        const lampLight = new THREE.PointLight(0xffd700, 0.4, 4);
+        lampLight.position.set(2, 1.9, -1);
+        scene.add(lampLight);
+        
+        // Load sofa model
+        function loadSofaModel() {
+            gltfLoader.load(
+                'sofa.glb',
+                function (gltf) {
+                    console.log('Sofa model loaded successfully');
+                    const sofaModel = gltf.scene;
+                    
+                    // Scale and position
+                    sofaModel.scale.set(2.5, 2.5, 2.5);
+                    sofaModel.position.set(0, 0.8, 2); // Lifted by 0.8
+                    sofaModel.rotation.y = Math.PI;
+                    
+                    // Apply materials and shadows
+                    sofaModel.traverse(function (child) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            if (child.material) {
+                                child.material.metalness = 0.1;
+                                child.material.roughness = 0.7;
+                            }
+                        }
+                    });
+                    
+                    sofaModel.userData = { 
+                        id: 'sofa', 
+                        name: 'Modern Luxury Sofa', 
+                        clickable: true 
+                    };
+                    
+                    gltfModelsGroup.add(sofaModel);
+                    gltfModels.set('sofa', sofaModel);
+                    
+                    console.log('Sofa model added to scene');
+                },
+                function (xhr) {
+                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                    document.getElementById('loading').textContent = 'Loading sofa model... ' + Math.round(xhr.loaded / xhr.total * 100) + '%';
+                },
+                function (error) {
+                    console.error('Error loading sofa.glb:', error);
+                    // We already have primitive sofa, so just continue
+                }
+            );
+        }
+        
+        // Raycaster for clicking furniture
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        function onMouseClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check intersections with furniture
+            const intersects = raycaster.intersectObjects(furniture.children, true);
+            
+            // Also check GLTF models
+            const gltfIntersects = raycaster.intersectObjects(gltfModelsGroup.children, true);
+            
+            if (intersects.length > 0 || gltfIntersects.length > 0) {
+                const intersect = intersects[0] || gltfIntersects[0];
+                let object = intersect.object;
+                
+                // Find parent with userData
+                while (object && !object.userData.clickable) {
+                    object = object.parent;
+                }
+                
+                if (object && object.userData.clickable) {
+                    const productId = object.userData.id;
+                    const products = roomProducts[currentRoom];
+                    const index = products.findIndex(p => p.id === productId);
+                    
+                    if (index !== -1) {
+                        selectFurniture(index);
+                    }
+                }
+            }
+        }
+        
+        // Add click listener to canvas
+        renderer.domElement.addEventListener('click', onMouseClick);
+        
+        // Camera controls
+        const cameraViews = {
+            front: { position: new THREE.Vector3(0, 1.5, 8), target: new THREE.Vector3(0, 1, 0) },
+            side: { position: new THREE.Vector3(8, 1.5, 0), target: new THREE.Vector3(0, 1, 0) },
+            top: { position: new THREE.Vector3(0, 8, 0), target: new THREE.Vector3(0, 1, 0) },
+            reset: { position: new THREE.Vector3(5, 3, 5), target: new THREE.Vector3(0, 1, 0) }
+        };
+        
+        function setCameraView(viewName) {
+            const view = cameraViews[viewName];
+            if (view) {
+                camera.position.copy(view.position);
+                camera.lookAt(view.target);
+                orbitControls.target.copy(view.target);
+                orbitControls.update();
+            }
+        }
         
         // UI Functions
         function initShopsBanner() {
@@ -1261,7 +1846,7 @@
             list.innerHTML = products.map((product, index) => {
                 const shop = shops[product.shop];
                 return `
-                    <li class="furniture-item" onclick="selectFurniture(${index})">
+                    <li class="furniture-item ${index === currentIndex ? 'active' : ''}" onclick="selectFurniture(${index})">
                         <div class="furniture-icon">${product.icon}</div>
                         <div class="furniture-info">
                             <div class="furniture-name">${product.name}</div>
@@ -1273,6 +1858,10 @@
                     </li>
                 `;
             }).join('');
+            
+            if (products.length > 0) {
+                selectFurniture(0);
+            }
         }
         
         function selectFurniture(index) {
@@ -1282,33 +1871,13 @@
             currentIndex = index;
             const product = products[index];
             const shop = shops[product.shop];
-            const camPos = product.cameraPos;
             
-            // Start showcase rotation
-            isShowcasing = true;
-            showcaseRotation = 0;
-            targetShowcaseRotation = Math.PI * 2; // One full rotation
-            
-            targetCameraDistance = camPos.distance;
-            targetCameraHeight = camPos.height;
-            targetCameraTarget = new THREE.Vector3(camPos.target.x, camPos.target.y, camPos.target.z);
-            
+            // Update UI
             document.querySelectorAll('.furniture-item').forEach((el, i) => {
                 el.classList.toggle('active', i === index);
             });
             
-            // Highlight shop in banner
-            document.querySelectorAll('.shop-badge').forEach(badge => {
-                badge.classList.remove('active');
-            });
-            const shopBadges = document.querySelectorAll('.shop-badge');
-            shopBadges.forEach(badge => {
-                if (badge.textContent.includes(shop.name)) {
-                    badge.classList.add('active');
-                }
-            });
-            
-            document.getElementById('canvas-title').textContent = product.name;
+            document.getElementById('canvas-title').textContent = product.name + ' - Click to rotate';
             document.getElementById('product-name').textContent = product.name;
             document.getElementById('product-category').textContent = product.category;
             document.getElementById('product-price').textContent = product.price;
@@ -1340,23 +1909,54 @@
             
             document.getElementById('prev-btn').disabled = index === 0;
             document.getElementById('next-btn').disabled = index === products.length - 1;
+            
+            // Start showcase rotation for the selected item
+            isShowcasing = true;
+            showcaseRotation = 0;
+            targetShowcaseRotation = Math.PI * 2;
+            
+            // Highlight the selected item
+            furniture.children.forEach(child => {
+                if (child.userData.id === product.id) {
+                    child.material.emissive = new THREE.Color(0x444444);
+                    child.material.emissiveIntensity = 0.5;
+                } else {
+                    child.material.emissive = new THREE.Color(0x000000);
+                    child.material.emissiveIntensity = 0;
+                }
+            });
+            
+            // Set camera to focus on selected item
+            if (product.cameraPos) {
+                targetCameraDistance = product.cameraPos.distance;
+                targetCameraHeight = product.cameraPos.height;
+                targetCameraTarget = new THREE.Vector3(
+                    product.cameraPos.target.x,
+                    product.cameraPos.target.y,
+                    product.cameraPos.target.z
+                );
+            }
         }
         
         // Room switching
         document.querySelectorAll('.room-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 currentRoom = tab.dataset.room;
-                currentIndex = -1;
+                currentIndex = 0;
                 
                 document.querySelectorAll('.room-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
                 populateFurnitureList();
                 
-                document.getElementById('progress-fill').style.width = '0%';
-                document.getElementById('progress-text').textContent = 'Ready to start';
-                document.getElementById('prev-btn').disabled = true;
-                document.getElementById('next-btn').disabled = true;
+                // For now, only living room has full 3D setup
+                if (currentRoom !== 'living-room') {
+                    document.getElementById('canvas-title').textContent = 'Coming soon - ' + tab.textContent.trim();
+                    document.getElementById('rotation-text').textContent = 'Feature in development';
+                } else {
+                    document.getElementById('canvas-title').textContent = 'Living Room - Click furniture to explore';
+                    document.getElementById('rotation-text').textContent = '360° View Active';
+                }
             });
         });
         
@@ -1375,9 +1975,11 @@
                 clearInterval(autoPlayInterval);
                 autoPlayInterval = null;
                 this.innerHTML = '▶ Auto Tour';
+                document.getElementById('rotation-text').textContent = '360° View Active';
             } else {
                 if (currentIndex === -1) selectFurniture(0);
                 this.innerHTML = '⏸ Pause Tour';
+                document.getElementById('rotation-text').textContent = 'Auto Tour Active';
                 autoPlayInterval = setInterval(() => {
                     const products = roomProducts[currentRoom];
                     if (currentIndex < products.length - 1) {
@@ -1385,43 +1987,55 @@
                     } else {
                         selectFurniture(0);
                     }
-                }, 8000); // 8 seconds per item - enough time for showcase rotation + viewing
+                }, 5000);
             }
         });
+        
+        // Camera control buttons
+        document.getElementById('camera-front').addEventListener('click', () => setCameraView('front'));
+        document.getElementById('camera-side').addEventListener('click', () => setCameraView('side'));
+        document.getElementById('camera-top').addEventListener('click', () => setCameraView('top'));
+        document.getElementById('camera-reset').addEventListener('click', () => setCameraView('reset'));
         
         // Animation
         function animate() {
             requestAnimationFrame(animate);
             
-            const lerpFactor = 0.05;
-            cameraDistance += (targetCameraDistance - cameraDistance) * lerpFactor;
-            cameraHeight += (targetCameraHeight - cameraHeight) * lerpFactor;
-            cameraTarget.lerp(targetCameraTarget, lerpFactor);
+            // Update orbit controls
+            orbitControls.update();
             
-            // Slow showcase rotation - completes one 360° rotation then pauses
-            if (currentIndex >= 0 && isShowcasing) {
-                const rotationSpeed = 0.008; // Slower, more meaningful rotation
+            // Slow showcase rotation for selected item
+            if (isShowcasing) {
+                const rotationSpeed = 0.01;
                 showcaseRotation += rotationSpeed;
                 
-                // Complete one full rotation then pause
                 if (showcaseRotation >= targetShowcaseRotation) {
-                    showcaseRotation = targetShowcaseRotation;
-                    isShowcasing = false; // Pause after showcase
+                    showcaseRotation = 0;
                 }
                 
-                furnitureGroup.rotation.y = showcaseRotation;
+                // Rotate only the selected furniture
+                const currentProduct = roomProducts[currentRoom][currentIndex];
+                if (currentProduct) {
+                    // Find and rotate the selected furniture
+                    furniture.children.forEach(child => {
+                        if (child.userData.id === currentProduct.id) {
+                            child.rotation.y = showcaseRotation;
+                        }
+                    });
+                    
+                    // Also rotate GLTF models
+                    gltfModelsGroup.children.forEach(child => {
+                        if (child.userData && child.userData.id === currentProduct.id) {
+                            child.rotation.y = showcaseRotation;
+                        }
+                    });
+                }
             }
-            
-            const angle = Date.now() * 0.0002; // Slower camera orbit
-            const x = cameraTarget.x + cameraDistance * Math.cos(angle);
-            const z = cameraTarget.z + cameraDistance * Math.sin(angle);
-            
-            camera.position.set(x, cameraHeight, z);
-            camera.lookAt(cameraTarget);
             
             renderer.render(scene, camera);
         }
         
+        // Handle window resize
         window.addEventListener('resize', () => {
             const width = canvasContainer.clientWidth;
             const height = canvasContainer.clientHeight;
@@ -1430,15 +2044,23 @@
             renderer.setSize(width, height);
         });
         
+        // Initialize
         setTimeout(() => {
             document.getElementById('loading').style.display = 'none';
-        }, 800);
+        }, 1500);
+        
+        // Set initial camera position inside the room
+        camera.position.set(5, 3, 5);
+        camera.lookAt(0, 1, 0);
+        orbitControls.target.set(0, 1, 0);
         
         initShopsBanner();
         populateFurnitureList();
-        camera.position.set(8, 6, 10);
-        camera.lookAt(0, 2, 0);
+        loadSofaModel();
         animate();
+        
+        // Make functions available globally
+        window.selectFurniture = selectFurniture;
     </script>
 </body>
 </html>
