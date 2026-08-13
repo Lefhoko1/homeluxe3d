@@ -1,0 +1,114 @@
+"""Build entrypoint.
+
+Run inside Blender:
+
+    blender --background --python blender/build.py
+
+or from a running Blender (this is what the MCP bridge does):
+
+    import sys; sys.path.append(r"<repo>/blender")
+    import build; build.main()
+
+The build is generative and idempotent -- it wipes the scene first, so running
+it twice gives the same result as running it once.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+
+# Allow `import houseluxe` when Blender runs this file directly.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+import bpy  # noqa: E402
+
+from houseluxe.components import default_components  # noqa: E402
+from houseluxe.components.site import site_components  # noqa: E402
+from houseluxe.config.plan_3bed import PLAN  # noqa: E402
+from houseluxe.config.site_3bed import SITE  # noqa: E402
+from houseluxe.core.scene import SceneBuilder, purge_scene  # noqa: E402
+from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
+from houseluxe.materials.library import MaterialLibrary  # noqa: E402
+
+REPO_ROOT = os.path.dirname(_HERE)
+MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "house")
+SITE_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "site")
+BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
+
+
+def main(export: bool = True, save: bool = True, site: bool = True) -> int:
+    plan = PLAN
+    site_spec = SITE if site else None
+
+    print(f"\nBuilding '{plan.name}'")
+    print("=" * 60)
+
+    problems = plan.validate()
+    if problems:
+        print("Plan validation FAILED:")
+        for problem in problems:
+            print(f"  ! {problem}")
+        return 1
+    print(f"  plan validated: {len(plan.walls)} walls, {len(plan.rooms)} rooms")
+    print(f"  declared living area: {plan.living_area():.1f} m2")
+
+    if site_spec is not None:
+        site_problems = site_spec.validate()
+        if site_problems:
+            print("Site validation FAILED:")
+            for problem in site_problems:
+                print(f"  ! {problem}")
+            return 1
+        print(
+            f"  site validated: {site_spec.width / 1000:.0f}m x "
+            f"{site_spec.depth / 1000:.0f}m = {site_spec.area:.0f} m2, "
+            f"{len(site_spec.plants)} plants"
+        )
+
+    purge_scene()
+
+    materials = MaterialLibrary()
+    builder = SceneBuilder(plan, materials, site=site_spec)
+
+    # Two passes into one scene. The house and the yard are separate concerns
+    # with separate output directories, but they share a coordinate system --
+    # the yard is built around the house where it already stands.
+    house_results = builder.build(default_components())
+    site_results = builder.build(site_components()) if site_spec else []
+
+    print(builder.report())
+
+    notes = list(plan.notes) + (list(site_spec.notes) if site_spec else [])
+    if notes:
+        print("\nPlan notes")
+        print("-" * 60)
+        for note in notes:
+            print(f"  * {note}")
+
+    if export:
+        batches = [("house", MODEL_DIR, house_results)]
+        if site_results:
+            batches.append(("site", SITE_MODEL_DIR, site_results))
+
+        for label, directory, results in batches:
+            exporter = GLBExporter(directory)
+            exports = exporter.export_all(results)
+            print(export_report(exports))
+            print(f"\n  {label} output: {directory}")
+            failures = [e for e in exports if not e.ok]
+            if failures:
+                print(f"  {len(failures)} export(s) failed")
+
+    if save:
+        bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
+        print(f"  saved:  {BLEND_PATH}")
+
+    print("\nDone.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -30,6 +30,23 @@ yarn-error.log*
 # vercel
 .vercel
 
+# python
+__pycache__/
+*.py[cod]
+
+# Blender working files.
+#
+# The .blend is a BUILD OUTPUT, not a source: blender/build.py wipes the scene
+# and regenerates it from the Python package every run. Committing it would add
+# ~0.4MB of binary to history on every rebuild for a file you can recreate with:
+#
+#     blender --background --python blender/build.py
+#
+# The exported .glb models in public/models/ ARE committed -- Vercel builds from
+# this repo and cannot run Blender, so they must be in git to be deployed.
+*.blend
+*.blend1
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
