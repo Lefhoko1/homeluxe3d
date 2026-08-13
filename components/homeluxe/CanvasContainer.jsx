@@ -176,23 +176,37 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
         // during render -- so the first ground probe would use stale ones.
         house.updateMatrixWorld(true);
 
-        // Ground = anything you can stand on. Walls = anything that stops
-        // you. Doors are in NEITHER: every door is treated as open, and
-        // doorways are real gaps in the wall geometry.
+        // Ground = anything you can stand on.
+        // Obstacles = everything solid you can walk into.
+        // Doors are in NEITHER: every door is treated as open, and doorways
+        // are real gaps in the wall geometry.
         const part = (id) => house.userData.parts?.[id];
         const groundObjects = [
           'slab', 'floors', 'porch', 'yard_ground', 'yard_paving', 'yard_beds',
         ].map(part).filter(Boolean);
-        const wallObjects = [
-          'walls_exterior', 'walls_interior', 'pool_fence', 'yard_fence',
+
+        // Structure first -- these also block the camera.
+        const structure = [
+          'walls_exterior', 'walls_interior', 'porch',
+          'pool_fence', 'yard_fence',
         ].map(part).filter(Boolean);
+
+        // Everything else solid. Planting is included for its tree trunks;
+        // the canopies sit above 2m so the walk rays never reach them.
+        // `group` is the furniture, so you cannot walk through a sofa.
+        const obstacles = [
+          ...structure,
+          ...['yard_hedges', 'yard_planting'].map(part).filter(Boolean),
+          group,
+        ];
 
         const tour = createTourController({
           character,
           camera,
           controls: orbitControls,
           groundObjects,
-          wallObjects,
+          obstacles,
+          cameraObstacles: structure,
           start: TOUR_START.position,
           startHeading: TOUR_START.heading,
         });

@@ -25,6 +25,10 @@
  *
  * Door leaves are deliberately NOT collided with: every door is treated as
  * open. A tour that requires you to work out which doors open is a worse tour.
+ *
+ * THE HOUSE NEVER MOVES. Turning rotates the CHARACTER on the spot and swings
+ * the CAMERA to stay behind it. Nothing in here touches the scene or the house
+ * group, so the building stays where it was built.
  */
 
 import * as THREE from "three";
@@ -35,22 +39,47 @@ export const WALK_SPEED = 2.4;
 /** Radians per second when turning on the spot. */
 export const TURN_SPEED = 2.2;
 
-/** How far ahead to check for walls. Roughly shoulder width. */
+/** How far ahead to check for obstacles. Roughly shoulder width. */
 const COLLIDE_DISTANCE = 0.42;
 
-/** Ray height for wall checks: chest height, clear of skirtings and steps. */
-const CHEST = 1.1;
+/**
+ * Heights at which the forward ray is fired.
+ *
+ * One ray at chest height walks straight through a coffee table and a sofa
+ * seat, because there is nothing at chest height to hit. Three heights --
+ * shin, waist, chest -- catch low furniture, seat backs and walls alike.
+ */
+const PROBE_HEIGHTS = [0.25, 0.75, 1.35];
 
 /** How far above the character to start the downward ground ray. */
 const PROBE_HEIGHT = 4.0;
+
+/**
+ * Biggest height change allowed in one step, up or down.
+ *
+ * This is what stops the character strolling off the pool terrace and
+ * standing on the bottom of the pool, or climbing a wall it happened not to
+ * hit. A porch step is ~150mm and the slab edge is ~150mm, so 450mm clears
+ * everything intended while blocking a 1.9m drop.
+ */
+const MAX_STEP = 0.45;
 
 /** Third-person camera rig. */
 const CAMERA_BACK = 4.2;
 const CAMERA_UP = 2.4;
 const CAMERA_LOOK_AT = 1.3;
 
-/** How quickly the camera catches up. 1 = instant, lower = smoother. */
-const CAMERA_LERP = 0.12;
+/** Closest the camera may sit to the character when pushed in by a wall. */
+const CAMERA_MIN = 0.9;
+
+/**
+ * How quickly the camera catches up. 1 = instant, lower = smoother.
+ *
+ * Deliberately high: the camera has to feel bolted behind the character. Too
+ * low and turning reads as the world swinging around a stationary viewer,
+ * which is the opposite of what a walk-through should feel like.
+ */
+const CAMERA_LERP = 0.35;
 
 /**
  * @param {object} options
@@ -68,7 +97,11 @@ export function createTourController(options = {}) {
     camera,
     controls,
     groundObjects = [],
-    wallObjects = [],
+    // Everything solid: walls, fences, hedges, tree trunks, furniture.
+    obstacles = [],
+    // What the CAMERA may not pass through. Structure only -- if the camera
+    // dodged every sofa it would jitter constantly in a furnished room.
+    cameraObstacles = [],
     start = [0, 0],
     startHeading = 0,
   } = options;
@@ -84,12 +117,16 @@ export function createTourController(options = {}) {
   const wallRay = new THREE.Raycaster();
   wallRay.far = COLLIDE_DISTANCE;
 
+  const camRay = new THREE.Raycaster();
+
   const DOWN = new THREE.Vector3(0, -1, 0);
   const probe = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const desired = new THREE.Vector3();
   const camTarget = new THREE.Vector3();
   const lookTarget = new THREE.Vector3();
+  const head = new THREE.Vector3();
+  const camDir = new THREE.Vector3();
 
   // Held input. Keyboard and on-screen buttons write into the same object so
   // they behave identically -- including both at once.
@@ -134,12 +171,33 @@ export function createTourController(options = {}) {
     return hits.length ? hits[0].point.y : null;
   }
 
-  /** True if something solid is within reach in this direction. */
+  /**
+   * True if something solid is within reach in this direction.
+   *
+   * Fires at three heights, because a single chest-height ray walks straight
+   * through a coffee table.
+   */
   function blocked(origin, direction) {
-    if (!wallObjects.length) return false;
-    probe.set(origin.x, lastGroundY + CHEST, origin.z);
-    wallRay.set(probe, direction);
-    return wallRay.intersectObjects(wallObjects, true).length > 0;
+    if (!obstacles.length) return false;
+    for (let i = 0; i < PROBE_HEIGHTS.length; i += 1) {
+      probe.set(origin.x, lastGroundY + PROBE_HEIGHTS[i], origin.z);
+      wallRay.set(probe, direction);
+      if (wallRay.intersectObjects(obstacles, true).length > 0) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Can the character stand at (x, z)?
+   *
+   * Rejects anything that would need too big a step up or down. Off the edge
+   * of the world -- no ground at all -- is allowed, so walking past the site
+   * boundary does not trap you; the height simply stops changing.
+   */
+  function standable(x, z) {
+    const y = groundAt(x, z);
+    if (y === null) return true;
+    return Math.abs(y - lastGroundY) <= MAX_STEP;
   }
 
   return {
@@ -241,18 +299,32 @@ export function createTourController(options = {}) {
         const distance = drive * WALK_SPEED * step;
         desired.copy(forward).multiplyScalar(Math.sign(distance));
 
-        if (!blocked(position, desired)) {
-          position.x += forward.x * distance;
-          position.z += forward.z * distance;
+        const nextX = position.x + forward.x * distance;
+        const nextZ = position.z + forward.z * distance;
+
+        if (!blocked(position, desired) && standable(nextX, nextZ)) {
+          position.x = nextX;
+          position.z = nextZ;
         } else {
-          // Slide along the wall rather than sticking to it: try each axis
-          // on its own, so walking into a wall at an angle still moves you.
-          const tryX = desired.clone().setZ(0).normalize();
-          const tryZ = desired.clone().setX(0).normalize();
-          if (tryX.lengthSq() && !blocked(position, tryX)) {
-            position.x += forward.x * distance;
-          } else if (tryZ.lengthSq() && !blocked(position, tryZ)) {
-            position.z += forward.z * distance;
+          // Slide along the obstacle rather than sticking to it: try each
+          // axis alone, so walking into a wall at an angle still moves you.
+          // Each candidate is checked for a standable landing too, or you
+          // could slide sideways off a ledge.
+          const tryX = desired.clone().setZ(0);
+          const tryZ = desired.clone().setX(0);
+
+          if (
+            tryX.lengthSq() > 1e-6 &&
+            !blocked(position, tryX.normalize()) &&
+            standable(nextX, position.z)
+          ) {
+            position.x = nextX;
+          } else if (
+            tryZ.lengthSq() > 1e-6 &&
+            !blocked(position, tryZ.normalize()) &&
+            standable(position.x, nextZ)
+          ) {
+            position.z = nextZ;
           }
         }
       }
@@ -261,21 +333,42 @@ export function createTourController(options = {}) {
       if (y !== null) lastGroundY = y;   // else keep the last known height
       position.y = lastGroundY;
 
+      // THE HOUSE NEVER MOVES. Only these two rotate -- the character turns
+      // on the spot and the camera swings to stay behind it. Nothing here
+      // touches the scene or the house group.
       character.position.copy(position);
       character.rotation.y = heading;
 
-      // Chase camera, eased so turning does not whip the view around.
+      // Chase camera: directly behind the character's heading.
       forward.set(Math.sin(heading), 0, -Math.cos(heading));
+      head.set(position.x, position.y + CAMERA_LOOK_AT, position.z);
       camTarget.set(
         position.x - forward.x * CAMERA_BACK,
         position.y + CAMERA_UP,
         position.z - forward.z * CAMERA_BACK
       );
 
-      // Keep the camera out of walls: if the ideal spot is behind one, pull
-      // it in until it is not.
+      // Keep the camera out of the building: cast from the character's head
+      // to where the camera wants to be and, if a wall is in the way, pull
+      // the camera in front of it. Without this the view ends up outside the
+      // room whenever you back up to a wall.
+      if (cameraObstacles.length) {
+        camDir.copy(camTarget).sub(head);
+        const reach = camDir.length();
+        if (reach > 1e-4) {
+          camDir.divideScalar(reach);
+          camRay.set(head, camDir);
+          camRay.far = reach;
+          const hits = camRay.intersectObjects(cameraObstacles, true);
+          if (hits.length) {
+            const pulled = Math.max(CAMERA_MIN, hits[0].distance - 0.25);
+            camTarget.copy(head).addScaledVector(camDir, pulled);
+          }
+        }
+      }
+
       camera.position.lerp(camTarget, CAMERA_LERP);
-      lookTarget.set(position.x, position.y + CAMERA_LOOK_AT, position.z);
+      lookTarget.copy(head);
       camera.lookAt(lookTarget);
     },
   };

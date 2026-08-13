@@ -135,11 +135,24 @@ Everything is raycasts, no physics engine:
 - **Ground** — a ray straight down finds whatever is underfoot, so the
   character walks up the 150mm slab edge and the porch step without either
   being described anywhere.
-- **Walls** — a short ray along the direction of travel. Because walls were
-  built as piers, sills and lintels rather than solid panels with holes cut
-  in them, **doorways are real gaps in the geometry** — walking through a
-  door needs no door logic at all.
+- **Obstacles** — rays along the direction of travel at **three heights**
+  (shin, waist, chest). One chest-height ray walks straight through a coffee
+  table, because there is nothing at chest height to hit. Walls, fences,
+  hedges, tree trunks and all furniture are included.
+- **Because walls were built as piers, sills and lintels** rather than solid
+  panels with holes cut in them, **doorways are real gaps in the geometry** —
+  walking through a door needs no door logic at all.
 - **Doors are never collided with.** Every door is treated as open.
+- **Step limit** — no move is allowed that changes height by more than 450mm.
+  That is what stops the character strolling off the pool terrace and standing
+  on the bottom of the pool. A porch step is ~150mm, so it clears everything
+  intended while blocking a 1.9m drop.
+
+**The house never rotates.** Turning rotates the character on the spot and
+swings the camera to stay behind it; nothing in the controller touches the
+scene or the house group. The camera also casts to the character's head and
+pulls in if a wall is between them, so backing into a corner does not put the
+view outside the room.
 
 The character lives in the **scene**, not the house group — unlike products.
 The controller drives the camera and raycasts, both world-space, so parenting
