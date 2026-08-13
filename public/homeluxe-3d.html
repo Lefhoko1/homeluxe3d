@@ -689,13 +689,94 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         
+        /* Login Modal */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .login-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-content h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text);
+        }
+
+        .form-group input {
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .login-btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .login-btn:hover {
+            background: var(--primary);
+        }
+
+        .login-error {
+            color: #dc3545;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
         /* Mobile Responsive */
         @media (max-width: 1024px) {
             .app-container {
                 grid-template-columns: 1fr;
                 grid-template-rows: 70px 45px auto 1fr 90px;
             }
-            
+
             #tour-panel {
                 grid-column: 1;
                 grid-row: 3;
@@ -703,32 +784,32 @@
                 border-right: none;
                 border-bottom: 1px solid var(--border);
             }
-            
+
             #canvas-container {
                 grid-column: 1;
                 grid-row: 4;
             }
-            
+
             #product-panel {
                 display: none;
             }
-            
+
             .furniture-list {
                 display: flex;
                 overflow-x: auto;
                 gap: 8px;
                 padding-bottom: 10px;
             }
-            
+
             .furniture-item {
                 min-width: 200px;
             }
-            
+
             .camera-controls {
                 bottom: 10px;
                 right: 10px;
             }
-            
+
             .camera-btn {
                 width: 35px;
                 height: 35px;
@@ -759,6 +840,9 @@
             <div>
                 <h1>🏡 HomeLuxe 3D</h1>
                 <div class="header-subtitle">Virtual Furniture Showroom</div>
+            </div>
+            <div id="admin-controls" style="display: none;">
+                <button id="logout-btn" class="control-btn">Logout</button>
             </div>
         </div>
         
@@ -819,6 +903,15 @@
                 <span id="rotation-text">360° View Active</span>
             </div>
             <div class="camera-controls">
+                <div class="edit-controls">
+                    <button class="edit-btn" id="drag-mode" title="Drag Mode - Click and drag furniture" style="display: none;">✋</button>
+                    <button class="edit-btn" id="transform-mode" title="Transform Mode - Edit position/rotation/scale" style="display: none;">🔧</button>
+                </div>
+                <div class="transform-sub-controls" id="transform-sub-controls" style="display: none;">
+                    <button class="transform-sub-btn" id="translate-mode" title="Move">↔️</button>
+                    <button class="transform-sub-btn" id="rotate-mode" title="Rotate">🔄</button>
+                    <button class="transform-sub-btn" id="scale-mode" title="Scale">📏</button>
+                </div>
                 <button class="camera-btn" id="camera-front" title="Front View">👁️</button>
                 <button class="camera-btn" id="camera-side" title="Side View">👈</button>
                 <button class="camera-btn" id="camera-top" title="Top View">⬇️</button>
@@ -894,13 +987,39 @@
             <button class="control-btn" id="next-btn" disabled>Next →</button>
         </div>
     </div>
-    
+
+    <!-- Hidden video element for TV -->
+    <video id="tv-video" loop muted autoplay style="display: none;" crossorigin="anonymous">
+        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+    </video>
+
     <div id="loading">Loading 3D Showroom...</div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="login-modal" style="display: none;">
+        <div class="login-content">
+            <h2>Admin Login</h2>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+                <div id="login-error" class="login-error"></div>
+            </form>
+        </div>
+    </div>
     
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
     <script>
         // Shop Database
         const shops = {
@@ -973,10 +1092,10 @@
                     icon: "🛋️",
                     shop: "luxeHome",
                     description: "Premium modern sofa with luxury upholstery, high-density foam cushions, and solid oak frame. Perfect for contemporary living spaces with built-in USB charging ports.",
-                    specs: { 
-                        "Material": "Premium Velvet & Solid Oak", 
-                        "Dimensions": "220cm × 95cm × 85cm", 
-                        "Color": "Navy Blue", 
+                    specs: {
+                        "Material": "Premium Velvet & Solid Oak",
+                        "Dimensions": "220cm × 95cm × 85cm",
+                        "Color": "Navy Blue",
                         "Weight Capacity": "500kg",
                         "Features": "USB Charging, Removable Covers",
                         "Warranty": "5 Years"
@@ -985,6 +1104,48 @@
                     position: { x: 0, y: 0, z: 2 },
                     scale: { x: 2.5, y: 2.5, z: 2.5 },
                     rotation: { x: 0, y: 0, z: 0 }
+                },
+                {
+                    id: "sofa2",
+                    name: "Modern Luxury Sofa (Left)",
+                    category: "Seating",
+                    price: "P 18,999",
+                    icon: "🛋️",
+                    shop: "luxeHome",
+                    description: "Premium modern sofa with luxury upholstery, high-density foam cushions, and solid oak frame. Perfect for contemporary living spaces with built-in USB charging ports.",
+                    specs: {
+                        "Material": "Premium Velvet & Solid Oak",
+                        "Dimensions": "220cm × 95cm × 85cm",
+                        "Color": "Navy Blue",
+                        "Weight Capacity": "500kg",
+                        "Features": "USB Charging, Removable Covers",
+                        "Warranty": "5 Years"
+                    },
+                    cameraPos: { distance: 3.5, height: 1, target: { x: -3, y: 0.8, z: 1 } },
+                    position: { x: -3, y: 0, z: 1 },
+                    scale: { x: 2.5, y: 2.5, z: 2.5 },
+                    rotation: { x: 0, y: Math.PI/4, z: 0 }
+                },
+                {
+                    id: "sofa3",
+                    name: "Modern Luxury Sofa (Right)",
+                    category: "Seating",
+                    price: "P 18,999",
+                    icon: "🛋️",
+                    shop: "luxeHome",
+                    description: "Premium modern sofa with luxury upholstery, high-density foam cushions, and solid oak frame. Perfect for contemporary living spaces with built-in USB charging ports.",
+                    specs: {
+                        "Material": "Premium Velvet & Solid Oak",
+                        "Dimensions": "220cm × 95cm × 85cm",
+                        "Color": "Navy Blue",
+                        "Weight Capacity": "500kg",
+                        "Features": "USB Charging, Removable Covers",
+                        "Warranty": "5 Years"
+                    },
+                    cameraPos: { distance: 3.5, height: 1, target: { x: 3, y: 0.8, z: 1 } },
+                    position: { x: 3, y: 0, z: 1 },
+                    scale: { x: 2.5, y: 2.5, z: 2.5 },
+                    rotation: { x: 0, y: -Math.PI/4, z: 0 }
                 },
                 {
                     id: "tvUnit",
@@ -1107,6 +1268,27 @@
                     rotation: { x: 0, y: 0, z: 0 }
                 },
                 {
+                    id: "sofa4",
+                    name: "Modern Luxury Sofa (Corner)",
+                    category: "Seating",
+                    price: "P 18,999",
+                    icon: "🛋️",
+                    shop: "luxeHome",
+                    description: "Premium modern sofa with luxury upholstery, high-density foam cushions, and solid oak frame. Perfect for contemporary living spaces with built-in USB charging ports.",
+                    specs: {
+                        "Material": "Premium Velvet & Solid Oak",
+                        "Dimensions": "220cm × 95cm × 85cm",
+                        "Color": "Navy Blue",
+                        "Weight Capacity": "500kg",
+                        "Features": "USB Charging, Removable Covers",
+                        "Warranty": "5 Years"
+                    },
+                    cameraPos: { distance: 3.5, height: 1, target: { x: -2, y: 0.8, z: 0 } },
+                    position: { x: -2, y: 0, z: 0 },
+                    scale: { x: 2.5, y: 2.5, z: 2.5 },
+                    rotation: { x: 0, y: Math.PI/2, z: 0 }
+                },
+                {
                     id: "mirror",
                     name: "Decorative Wall Mirror",
                     category: "Decor",
@@ -1114,9 +1296,9 @@
                     icon: "🪞",
                     shop: "artisan",
                     description: "Ornate gold-leaf framed mirror with decorative details. Makes rooms appear larger and brighter.",
-                    specs: { 
-                        "Dimensions": "120cm × 80cm", 
-                        "Frame": "Gold Leaf Wood", 
+                    specs: {
+                        "Dimensions": "120cm × 80cm",
+                        "Frame": "Gold Leaf Wood",
                         "Glass": "Anti-Distortion",
                         "Weight": "15kg",
                         "Installation": "Wall Mounted"
@@ -1203,11 +1385,17 @@
         
         let currentRoom = "living-room";
         let currentIndex = 0;
+        let isAdmin = false;
         let autoPlayInterval = null;
         let showcaseRotation = 0;
         let targetShowcaseRotation = 0;
         let isShowcasing = false;
         let orbitControls = null;
+        let dragControls = null;
+        let transformControls = null;
+        let isDragMode = false;
+        let isTransformMode = false;
+        let selectedObject = null;
         
         // 3D Scene Setup
         const scene = new THREE.Scene();
@@ -1233,6 +1421,24 @@
         orbitControls.maxDistance = 10;
         orbitControls.maxPolarAngle = Math.PI / 2;
         orbitControls.enabled = true;
+
+        // Drag Controls for dragging furniture
+        dragControls = new THREE.DragControls([], camera, renderer.domElement);
+        dragControls.enabled = false;
+
+        // Transform Controls for editing transforms (admin only)
+        transformControls = new THREE.TransformControls(camera, renderer.domElement);
+        transformControls.setMode('translate');
+        transformControls.setSize(0.8);
+        transformControls.addEventListener('dragging-changed', function (event) {
+            orbitControls.enabled = !event.value;
+        });
+        scene.add(transformControls);
+
+        // Hide transform controls for non-admin users
+        if (!isAdmin) {
+            transformControls.visible = false;
+        }
         
         let targetCameraDistance = 5;
         let targetCameraHeight = 1.5;
@@ -1247,13 +1453,54 @@
         const gltfModels = new Map();
         const gltfModelsGroup = new THREE.Group();
         const furnitureGroup = new THREE.Group();
-        
+
+        // Load floor tile texture
+        const floorTileTexture = new THREE.TextureLoader().load('pyc61001.jpg');
+        floorTileTexture.wrapS = THREE.RepeatWrapping;
+        floorTileTexture.wrapT = THREE.RepeatWrapping;
+        floorTileTexture.repeat.set(8, 8); // Adjust for tiling - 64 tiles total
+        floorTileTexture.needsUpdate = true;
+
+        // Create grout texture for tile lines
+        function createGroutTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Fill with transparent
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Draw grout lines (dark gray)
+            ctx.fillStyle = 'rgba(64,64,64,0.8)';
+            // Vertical lines
+            for (let i = 0; i <= 256; i += 32) {
+                ctx.fillRect(i-1, 0, 2, 256);
+            }
+            // Horizontal lines
+            for (let i = 0; i <= 256; i += 32) {
+                ctx.fillRect(0, i-1, 256, 2);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(8, 8);
+            return texture;
+        }
+
+        const groutTexture = createGroutTexture();
+
         // Materials for interior
         const materials = {
-            floor: new THREE.MeshStandardMaterial({ 
-                color: 0x8b7355, 
-                roughness: 0.8,
-                map: createWoodTexture('#8b7355', '#6b5a45')
+            floor: new THREE.MeshStandardMaterial({
+                color: 0xf8f8f8,
+                roughness: 0.3,
+                metalness: 0.1,
+                map: floorTileTexture,
+                aoMap: groutTexture,
+                aoMapIntensity: 0.3
             }),
             wall: new THREE.MeshStandardMaterial({ 
                 color: 0xf5f5f5, 
@@ -1309,14 +1556,140 @@
                 roughness: 0.05,
                 metalness: 0.95
             }),
-            tvScreen: new THREE.MeshStandardMaterial({ 
-                color: 0x000000, 
+            tvScreen: new THREE.MeshStandardMaterial({
+                color: 0xffffff,
                 roughness: 0.1,
-                emissive: 0x111111,
-                emissiveIntensity: 0.5
+                emissive: 0x222222,
+                emissiveIntensity: 0.3
             })
         };
-        
+
+        // Create animated TV texture (16:9 aspect ratio)
+        const tvCanvas = document.createElement('canvas');
+        tvCanvas.width = 512;
+        tvCanvas.height = 288; // 16:9 aspect ratio
+        const tvCtx = tvCanvas.getContext('2d');
+
+        // Create animated TV display
+        function updateTVDisplay() {
+            // Clear canvas
+            tvCtx.fillStyle = '#000011';
+            tvCtx.fillRect(0, 0, 512, 288);
+
+            // Add animated background pattern
+            const time = Date.now() * 0.001;
+            for (let x = 0; x < 512; x += 4) {
+                for (let y = 0; y < 288; y += 4) {
+                    const noise = Math.sin(x * 0.01 + time) * Math.cos(y * 0.01 + time * 0.7);
+                    const brightness = Math.abs(noise) * 50;
+                    tvCtx.fillStyle = `rgb(${brightness}, ${brightness * 0.5}, ${brightness * 2})`;
+                    tvCtx.fillRect(x, y, 4, 4);
+                }
+            }
+
+            // Add TV snow effect
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 288;
+                const brightness = Math.random() * 255;
+                tvCtx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                tvCtx.fillRect(x, y, 1, 1);
+            }
+
+            // Add channel display
+            tvCtx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+            tvCtx.font = 'bold 16px monospace';
+            tvCtx.fillText('CH 7 - NEWS', 20, 30);
+
+            // Add moving colored bars at bottom
+            const barY = 250;
+            const barHeight = 20;
+            const barSpeed = time * 50;
+
+            // Red bar
+            tvCtx.fillStyle = `hsl(${(barSpeed) % 360}, 100%, 50%)`;
+            tvCtx.fillRect(0, barY, 512, barHeight);
+
+            // Green bar
+            tvCtx.fillStyle = `hsl(${(barSpeed + 120) % 360}, 100%, 50%)`;
+            tvCtx.fillRect(0, barY + barHeight, 512, barHeight);
+
+            // Blue bar
+            tvCtx.fillStyle = `hsl(${(barSpeed + 240) % 360}, 100%, 50%)`;
+            tvCtx.fillRect(0, barY + barHeight * 2, 512, barHeight);
+
+            // Update texture
+            if (tvTexture) {
+                tvTexture.needsUpdate = true;
+            }
+        }
+
+        const tvTexture = new THREE.CanvasTexture(tvCanvas);
+        tvTexture.minFilter = THREE.LinearFilter;
+        tvTexture.magFilter = THREE.LinearFilter;
+
+        // Get video element
+        const tvVideo = document.getElementById('tv-video');
+        let tvDisplayTexture = tvTexture; // Default to animated texture
+        let videoTexture = null;
+        let isUsingVideo = false;
+
+        // Function to switch to video texture
+        function switchToVideoTexture() {
+            if (tvVideo && tvVideo.readyState >= 2 && !isUsingVideo) {
+                try {
+                    videoTexture = new THREE.VideoTexture(tvVideo);
+                    videoTexture.minFilter = THREE.LinearFilter;
+                    videoTexture.magFilter = THREE.LinearFilter;
+                    tvDisplayTexture = videoTexture;
+                    materials.tvScreen.map = tvDisplayTexture;
+                    materials.tvScreen.needsUpdate = true;
+                    isUsingVideo = true;
+                    console.log('Switched to video texture for TV');
+                } catch (e) {
+                    console.log('Video texture failed, keeping animated texture:', e);
+                }
+            }
+        }
+
+        // Function to switch back to animated texture
+        function switchToAnimatedTexture() {
+            if (isUsingVideo) {
+                tvDisplayTexture = tvTexture;
+                materials.tvScreen.map = tvDisplayTexture;
+                materials.tvScreen.needsUpdate = true;
+                isUsingVideo = false;
+                console.log('Switched back to animated texture for TV');
+            }
+        }
+
+        // Set up video event listeners
+        if (tvVideo) {
+            tvVideo.addEventListener('loadeddata', switchToVideoTexture);
+            tvVideo.addEventListener('canplay', switchToVideoTexture);
+            tvVideo.addEventListener('play', switchToVideoTexture);
+            tvVideo.addEventListener('pause', switchToAnimatedTexture);
+            tvVideo.addEventListener('ended', switchToAnimatedTexture);
+
+            // Try to switch immediately if video is already ready
+            switchToVideoTexture();
+        }
+
+        // Apply initial texture to screen
+        materials.tvScreen.map = tvDisplayTexture;
+        materials.tvScreen.needsUpdate = true;
+
+        // Start animation loop for TV display (only when not using video)
+        let tvAnimationId = null;
+        function animateTV() {
+            if (!isUsingVideo) {
+                updateTVDisplay();
+                materials.tvScreen.needsUpdate = true;
+            }
+            tvAnimationId = requestAnimationFrame(animateTV);
+        }
+        animateTV();
+
         // Texture creation functions
         function createWoodTexture(color1, color2) {
             const canvas = document.createElement('canvas');
@@ -1538,6 +1911,41 @@
             ceiling.position.y = 4;
             ceiling.receiveShadow = true;
             roomGroup.add(ceiling);
+
+            // Baseboards (skirting boards) - brown strips at bottom of walls
+            const baseboardMaterial = new THREE.MeshStandardMaterial({
+                color: 0x8B4513,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+
+            // Baseboard dimensions: height 0.1, thickness 0.05
+            const baseboardHeight = 0.1;
+            const baseboardThickness = 0.05;
+
+            // Back wall baseboard
+            const backBaseboard = createBox(12, baseboardHeight, baseboardThickness, baseboardMaterial);
+            backBaseboard.position.set(0, baseboardHeight/2, -5 + baseboardThickness/2);
+            roomGroup.add(backBaseboard);
+
+            // Front wall baseboards (left and right sections)
+            const frontBaseboardLeft = createBox(4, baseboardHeight, baseboardThickness, baseboardMaterial);
+            frontBaseboardLeft.position.set(-4, baseboardHeight/2, 5 - baseboardThickness/2);
+            roomGroup.add(frontBaseboardLeft);
+
+            const frontBaseboardRight = createBox(4, baseboardHeight, baseboardThickness, baseboardMaterial);
+            frontBaseboardRight.position.set(4, baseboardHeight/2, 5 - baseboardThickness/2);
+            roomGroup.add(frontBaseboardRight);
+
+            // Left wall baseboard
+            const leftBaseboard = createBox(baseboardThickness, baseboardHeight, 10, baseboardMaterial);
+            leftBaseboard.position.set(-6 + baseboardThickness/2, baseboardHeight/2, 0);
+            roomGroup.add(leftBaseboard);
+
+            // Right wall baseboard
+            const rightBaseboard = createBox(baseboardThickness, baseboardHeight, 10, baseboardMaterial);
+            rightBaseboard.position.set(6 - baseboardThickness/2, baseboardHeight/2, 0);
+            roomGroup.add(rightBaseboard);
             
             // Windows on right wall
             const windowWidth = 2;
@@ -1560,34 +1968,53 @@
         // Create furniture
         function createFurniture() {
             const furniture = new THREE.Group();
-            
-            // Main Sofa
-            const sofaBase = createBox(2.2, 0.4, 1, materials.sofaFabric);
-            sofaBase.position.set(0, 0.2, 2);
-            sofaBase.userData = { id: 'sofa', name: 'Modern Luxury Sofa', clickable: true };
-            furniture.add(sofaBase);
-            
-            const sofaBack = createBox(2.2, 0.8, 0.3, materials.sofaFabric);
-            sofaBack.position.set(0, 0.8, 2.35);
-            sofaBack.userData = { id: 'sofa', clickable: true };
-            furniture.add(sofaBack);
-            
-            const sofaArmL = createBox(0.3, 0.6, 1, materials.sofaFabric);
-            sofaArmL.position.set(-1.1, 0.5, 2);
-            sofaArmL.userData = { id: 'sofa', clickable: true };
-            furniture.add(sofaArmL);
-            
-            const sofaArmR = createBox(0.3, 0.6, 1, materials.sofaFabric);
-            sofaArmR.position.set(1.1, 0.5, 2);
-            sofaArmR.userData = { id: 'sofa', clickable: true };
-            furniture.add(sofaArmR);
+
+            // Sofa positions and rotations from products array
+            const sofaConfigs = [
+                { id: 'sofa', position: { x: 0, y: 0, z: 2 }, rotation: { y: 0 } },
+                { id: 'sofa2', position: { x: -3, y: 0, z: 1 }, rotation: { y: Math.PI/4 } },
+                { id: 'sofa3', position: { x: 3, y: 0, z: 1 }, rotation: { y: -Math.PI/4 } }
+            ];
+
+            sofaConfigs.forEach(config => {
+                // Sofa Base
+                const sofaBase = createBox(2.2, 0.4, 1, materials.sofaFabric);
+                sofaBase.position.set(config.position.x, config.position.y + 0.2, config.position.z);
+                sofaBase.rotation.y = config.rotation.y;
+                sofaBase.userData = { id: config.id, name: 'Modern Luxury Sofa', clickable: true };
+                furniture.add(sofaBase);
+
+                // Sofa Back
+                const sofaBack = createBox(2.2, 0.8, 0.3, materials.sofaFabric);
+                sofaBack.position.set(config.position.x, config.position.y + 0.8, config.position.z + 0.35);
+                sofaBack.rotation.y = config.rotation.y;
+                sofaBack.userData = { id: config.id, clickable: true };
+                furniture.add(sofaBack);
+
+                // Sofa Arms
+                const sofaArmL = createBox(0.3, 0.6, 1, materials.sofaFabric);
+                const armOffsetX = Math.cos(config.rotation.y) * -1.1 - Math.sin(config.rotation.y) * 0;
+                const armOffsetZ = Math.sin(config.rotation.y) * -1.1 + Math.cos(config.rotation.y) * 0;
+                sofaArmL.position.set(config.position.x + armOffsetX, config.position.y + 0.5, config.position.z + armOffsetZ);
+                sofaArmL.rotation.y = config.rotation.y;
+                sofaArmL.userData = { id: config.id, clickable: true };
+                furniture.add(sofaArmL);
+
+                const sofaArmR = createBox(0.3, 0.6, 1, materials.sofaFabric);
+                const armOffsetXR = Math.cos(config.rotation.y) * 1.1 - Math.sin(config.rotation.y) * 0;
+                const armOffsetZR = Math.sin(config.rotation.y) * 1.1 + Math.cos(config.rotation.y) * 0;
+                sofaArmR.position.set(config.position.x + armOffsetXR, config.position.y + 0.5, config.position.z + armOffsetZR);
+                sofaArmR.rotation.y = config.rotation.y;
+                sofaArmR.userData = { id: config.id, clickable: true };
+                furniture.add(sofaArmR);
+            });
             
             // TV Unit
             const tvUnitBase = createBox(2.5, 0.4, 0.6, materials.woodDark);
             tvUnitBase.position.set(0, 0.2, -3);
             tvUnitBase.userData = { id: 'tvUnit', name: 'Smart TV Entertainment Unit', clickable: true };
             furniture.add(tvUnitBase);
-            
+
             const tvScreen = createBox(1.8, 1, 0.05, materials.tvScreen);
             tvScreen.position.set(0, 1.1, -3.3);
             tvScreen.userData = { id: 'tvUnit', clickable: true };
@@ -1718,51 +2145,67 @@
         lampLight.position.set(2, 1.9, -1);
         scene.add(lampLight);
         
-        // Load sofa model
-        function loadSofaModel() {
-            gltfLoader.load(
-                'sofa.glb',
-                function (gltf) {
-                    console.log('Sofa model loaded successfully');
-                    const sofaModel = gltf.scene;
-                    
-                    // Scale and position
-                    sofaModel.scale.set(2.5, 2.5, 2.5);
-                    sofaModel.position.set(0, 0.8, 2); // Lifted by 0.8
-                    sofaModel.rotation.y = Math.PI;
-                    
-                    // Apply materials and shadows
-                    sofaModel.traverse(function (child) {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                            if (child.material) {
-                                child.material.metalness = 0.1;
-                                child.material.roughness = 0.7;
+        // Load sofa models for all sofas
+        function loadSofaModels() {
+            const sofaConfigs = [
+                { id: 'sofa', position: { x: 0, y: 0.65, z: 2 }, rotation: Math.PI },
+                { id: 'sofa2', position: { x: -3, y: 0.65, z: 1 }, rotation: Math.PI + Math.PI/4 },
+                { id: 'sofa3', position: { x: 3, y: 0.65, z: 1 }, rotation: Math.PI - Math.PI/4 },
+                { id: 'sofa4', position: { x: -2, y: 0.65, z: 0 }, rotation: Math.PI + Math.PI/2 }
+            ];
+
+            sofaConfigs.forEach(config => {
+                gltfLoader.load(
+                    'sofa.glb',
+                    function (gltf) {
+                        console.log(`Sofa model loaded successfully for ${config.id}`);
+                        const sofaModel = gltf.scene.clone(); // Clone the model for each sofa
+
+                        // Scale and position
+                        sofaModel.scale.set(2.5, 2.5, 2.5);
+                        sofaModel.position.set(config.position.x, config.position.y, config.position.z);
+                        sofaModel.rotation.y = config.rotation;
+
+                        // Apply materials and shadows
+                        sofaModel.traverse(function (child) {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                                if (child.material) {
+                                    child.material.metalness = 0.1;
+                                    child.material.roughness = 0.7;
+                                }
                             }
-                        }
-                    });
-                    
-                    sofaModel.userData = { 
-                        id: 'sofa', 
-                        name: 'Modern Luxury Sofa', 
-                        clickable: true 
-                    };
-                    
-                    gltfModelsGroup.add(sofaModel);
-                    gltfModels.set('sofa', sofaModel);
-                    
-                    console.log('Sofa model added to scene');
-                },
-                function (xhr) {
-                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-                    document.getElementById('loading').textContent = 'Loading sofa model... ' + Math.round(xhr.loaded / xhr.total * 100) + '%';
-                },
-                function (error) {
-                    console.error('Error loading sofa.glb:', error);
-                    // We already have primitive sofa, so just continue
-                }
-            );
+                        });
+
+                        sofaModel.userData = {
+                            id: config.id,
+                            name: 'Modern Luxury Sofa',
+                            clickable: true
+                        };
+
+                        gltfModelsGroup.add(sofaModel);
+                        gltfModels.set(config.id, sofaModel);
+
+                        // Hide primitive sofa parts to prevent merging
+                        furniture.children.forEach(child => {
+                            if (child.userData.id === config.id) {
+                                child.visible = false;
+                            }
+                        });
+
+                        console.log(`Sofa model added to scene for ${config.id}`);
+                    },
+                    function (xhr) {
+                        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                        document.getElementById('loading').textContent = 'Loading sofa models... ' + Math.round(xhr.loaded / xhr.total * 100) + '%';
+                    },
+                    function (error) {
+                        console.error(`Error loading sofa.glb for ${config.id}:`, error);
+                        // We already have primitive sofa, so just continue
+                    }
+                );
+            });
         }
         
         // Raycaster for clicking furniture
@@ -1770,34 +2213,37 @@
         const mouse = new THREE.Vector2();
         
         function onMouseClick(event) {
+            // Don't handle clicks in drag mode (drag controls handle them)
+            if (isDragMode) return;
+
             // Calculate mouse position in normalized device coordinates
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            
+
             // Update the raycaster
             raycaster.setFromCamera(mouse, camera);
-            
+
             // Check intersections with furniture
             const intersects = raycaster.intersectObjects(furniture.children, true);
-            
+
             // Also check GLTF models
             const gltfIntersects = raycaster.intersectObjects(gltfModelsGroup.children, true);
-            
+
             if (intersects.length > 0 || gltfIntersects.length > 0) {
                 const intersect = intersects[0] || gltfIntersects[0];
                 let object = intersect.object;
-                
+
                 // Find parent with userData
                 while (object && !object.userData.clickable) {
                     object = object.parent;
                 }
-                
+
                 if (object && object.userData.clickable) {
                     const productId = object.userData.id;
                     const products = roomProducts[currentRoom];
                     const index = products.findIndex(p => p.id === productId);
-                    
+
                     if (index !== -1) {
                         selectFurniture(index);
                     }
@@ -1823,6 +2269,76 @@
                 camera.lookAt(view.target);
                 orbitControls.target.copy(view.target);
                 orbitControls.update();
+            }
+        }
+
+        function enableDragMode() {
+            if (isDragMode) {
+                disableDragMode();
+                return;
+            }
+
+            isDragMode = true;
+            isTransformMode = false;
+            dragControls.enabled = true;
+            transformControls.detach();
+            orbitControls.enabled = false;
+
+            // Get all draggable objects
+            const draggableObjects = [];
+            furniture.children.forEach(child => {
+                if (child.userData.clickable) {
+                    draggableObjects.push(child);
+                }
+            });
+            gltfModelsGroup.children.forEach(child => {
+                if (child.userData && child.userData.clickable) {
+                    draggableObjects.push(child);
+                }
+            });
+
+            dragControls.objects = draggableObjects;
+
+            document.getElementById('rotation-text').textContent = 'Drag Mode Active - Click and drag furniture';
+        }
+
+        function disableDragMode() {
+            isDragMode = false;
+            dragControls.enabled = false;
+            orbitControls.enabled = true;
+            document.getElementById('rotation-text').textContent = '360° View Active';
+        }
+
+        function enableTransformMode() {
+            if (!isAdmin) return; // Only allow for admins
+
+            if (isTransformMode) {
+                disableTransformMode();
+                return;
+            }
+
+            isTransformMode = true;
+            isDragMode = false;
+            dragControls.enabled = false;
+            orbitControls.enabled = true;
+
+            if (selectedObject && transformControls) {
+                transformControls.attach(selectedObject);
+                transformControls.visible = true;
+            }
+
+            document.getElementById('rotation-text').textContent = 'Transform Mode Active - Use gizmos to edit';
+        }
+
+        function disableTransformMode() {
+            isTransformMode = false;
+            transformControls.detach();
+            document.getElementById('rotation-text').textContent = '360° View Active';
+        }
+
+        function setTransformMode(mode) {
+            if (transformControls) {
+                transformControls.setMode(mode);
             }
         }
         
@@ -1867,27 +2383,34 @@
         function selectFurniture(index) {
             const products = roomProducts[currentRoom];
             if (index < 0 || index >= products.length) return;
-            
+
             currentIndex = index;
             const product = products[index];
             const shop = shops[product.shop];
-            
+
+            // Handle TV video playback
+            if (product.id === 'tvUnit') {
+                tvVideo.play().catch(e => console.log('Video play failed:', e));
+            } else {
+                tvVideo.pause();
+            }
+
             // Update UI
             document.querySelectorAll('.furniture-item').forEach((el, i) => {
                 el.classList.toggle('active', i === index);
             });
-            
-            document.getElementById('canvas-title').textContent = product.name + ' - Click to rotate';
+
+            document.getElementById('canvas-title').textContent = product.name + ' - Drag to reposition';
             document.getElementById('product-name').textContent = product.name;
             document.getElementById('product-category').textContent = product.category;
             document.getElementById('product-price').textContent = product.price;
             document.getElementById('product-description').textContent = product.description;
-            
+
             // Show shop badge in header
             document.getElementById('product-shop-badge').style.display = 'flex';
             document.getElementById('product-shop-icon-header').textContent = shop.icon;
             document.getElementById('product-shop-name-header').textContent = shop.name;
-            
+
             const specsContainer = document.getElementById('product-specs');
             specsContainer.innerHTML = Object.entries(product.specs).map(([key, val]) => `
                 <div class="spec-item">
@@ -1895,26 +2418,66 @@
                     <span class="spec-value">${val}</span>
                 </div>
             `).join('');
-            
+
             document.getElementById('shop-icon').textContent = shop.icon;
             document.getElementById('shop-name').textContent = shop.name;
             document.getElementById('shop-description').textContent = shop.description;
             document.getElementById('shop-phone').textContent = shop.phone;
             document.getElementById('shop-email').textContent = shop.email;
             document.getElementById('shop-address').textContent = shop.address;
-            
+
             const progress = ((index + 1) / products.length) * 100;
             document.getElementById('progress-fill').style.width = progress + '%';
             document.getElementById('progress-text').textContent = `Item ${index + 1} of ${products.length}`;
-            
+
             document.getElementById('prev-btn').disabled = index === 0;
             document.getElementById('next-btn').disabled = index === products.length - 1;
-            
+
             // Start showcase rotation for the selected item
-            isShowcasing = true;
+            isShowcasing = false;
             showcaseRotation = 0;
             targetShowcaseRotation = Math.PI * 2;
-            
+
+            // Find and select the actual 3D object for dragging/transforming
+            selectedObject = null;
+
+            // Check GLTF models first (higher priority)
+            gltfModelsGroup.children.forEach(child => {
+                if (child.userData && child.userData.id === product.id) {
+                    selectedObject = child;
+                }
+            });
+
+            // If no GLTF model found, check primitive furniture
+            if (!selectedObject) {
+                furniture.children.forEach(child => {
+                    if (child.userData.id === product.id) {
+                        selectedObject = child;
+                    }
+                });
+            }
+
+            // Enable transform controls for the selected object (admin only)
+            if (selectedObject && isAdmin && transformControls) {
+                transformControls.attach(selectedObject);
+                isTransformMode = true;
+                transformControls.setMode('translate'); // Default to translate mode
+                document.getElementById('transform-mode').classList.add('active');
+                document.getElementById('drag-mode').classList.remove('active');
+                document.getElementById('transform-sub-controls').style.display = 'flex';
+                document.getElementById('rotation-text').textContent = 'Transform Mode Active - Use gizmos to move, rotate, or scale';
+            } else {
+                // For non-admin users, detach transform controls if they exist
+                if (transformControls) {
+                    transformControls.detach();
+                    transformControls.visible = false;
+                }
+                isTransformMode = false;
+                document.getElementById('transform-mode').classList.remove('active');
+                document.getElementById('transform-sub-controls').style.display = 'none';
+                document.getElementById('rotation-text').textContent = '360° View Active';
+            }
+
             // Highlight the selected item
             furniture.children.forEach(child => {
                 if (child.userData.id === product.id) {
@@ -1925,7 +2488,26 @@
                     child.material.emissiveIntensity = 0;
                 }
             });
-            
+
+            // Also highlight GLTF models
+            gltfModelsGroup.children.forEach(child => {
+                if (child.userData && child.userData.id === product.id) {
+                    child.traverse(function(node) {
+                        if (node.isMesh && node.material) {
+                            node.material.emissive = new THREE.Color(0x444444);
+                            node.material.emissiveIntensity = 0.5;
+                        }
+                    });
+                } else {
+                    child.traverse(function(node) {
+                        if (node.isMesh && node.material) {
+                            node.material.emissive = new THREE.Color(0x000000);
+                            node.material.emissiveIntensity = 0;
+                        }
+                    });
+                }
+            });
+
             // Set camera to focus on selected item
             if (product.cameraPos) {
                 targetCameraDistance = product.cameraPos.distance;
@@ -1996,6 +2578,25 @@
         document.getElementById('camera-side').addEventListener('click', () => setCameraView('side'));
         document.getElementById('camera-top').addEventListener('click', () => setCameraView('top'));
         document.getElementById('camera-reset').addEventListener('click', () => setCameraView('reset'));
+
+        // Edit control buttons
+        document.getElementById('drag-mode').addEventListener('click', () => {
+            enableDragMode();
+            document.getElementById('drag-mode').classList.toggle('active', isDragMode);
+            document.getElementById('transform-mode').classList.remove('active');
+            document.getElementById('transform-sub-controls').style.display = 'none';
+        });
+
+        document.getElementById('transform-mode').addEventListener('click', () => {
+            enableTransformMode();
+            document.getElementById('transform-mode').classList.toggle('active', isTransformMode);
+            document.getElementById('drag-mode').classList.remove('active');
+            document.getElementById('transform-sub-controls').style.display = isTransformMode ? 'flex' : 'none';
+        });
+
+        document.getElementById('translate-mode').addEventListener('click', () => setTransformMode('translate'));
+        document.getElementById('rotate-mode').addEventListener('click', () => setTransformMode('rotate'));
+        document.getElementById('scale-mode').addEventListener('click', () => setTransformMode('scale'));
         
         // Animation
         function animate() {
@@ -2044,19 +2645,48 @@
             renderer.setSize(width, height);
         });
         
+        // Check for admin cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function setCookie(name, value, days) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+
+        // Check URL parameters for admin access
+        const urlParams = new URLSearchParams(window.location.search);
+        isAdmin = urlParams.get('admin') === 'true' || urlParams.get('isAdmin') === 'true';
+
         // Initialize
         setTimeout(() => {
             document.getElementById('loading').style.display = 'none';
         }, 1500);
-        
+
+        // Show transform controls only for admins
+        if (isAdmin) {
+            document.getElementById('transform-mode').style.display = 'block';
+        } else {
+            document.getElementById('transform-mode').style.display = 'none';
+        }
+
         // Set initial camera position inside the room
         camera.position.set(5, 3, 5);
         camera.lookAt(0, 1, 0);
         orbitControls.target.set(0, 1, 0);
-        
+
         initShopsBanner();
         populateFurnitureList();
-        loadSofaModel();
+        loadSofaModels();
         animate();
         
         // Make functions available globally

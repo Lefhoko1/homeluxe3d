@@ -1,8 +1,10 @@
 import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
-import { Providers } from "./providers";
-import { fontSans } from "@/config/fonts";
 import clsx from "clsx";
+
+import { Providers } from "./providers";
+
+import { fontSans } from "@/config/fonts";
 
 export const metadata: Metadata = {
   title: "HomeLuxe 3D - Virtual Furniture Showroom",
@@ -27,7 +29,20 @@ export default function RootLayout({
     <html suppressHydrationWarning lang="en">
       <head>
         {/* Load Google Fonts for HomeLuxe */}
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+          rel="stylesheet"
+        />
+        {/*
+          Three.js is NOT loaded from a CDN here.
+
+          It comes from npm (`three` + `three-stdlib`) and is imported by the
+          components that need it. The r128 CDN tags that used to sit here
+          were left over from the standalone public/homeluxe-3d.html page.
+          They loaded a second, older copy of the library into every page,
+          which produced "THREE.WARNING: Multiple instances of Three.js being
+          imported" and blocked first render on five synchronous scripts.
+        */}
       </head>
       <body
         className={clsx(
@@ -42,9 +57,7 @@ export default function RootLayout({
       >
         <Providers>
           {/* Fullscreen container with no padding or margins */}
-          <div className="w-screen h-screen">
-            {children}
-          </div>
+          <div className="w-screen h-screen">{children}</div>
         </Providers>
       </body>
     </html>
