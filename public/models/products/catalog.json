@@ -95,6 +95,33 @@
           "model": "/models/products/bradlows/woven-jute-rug.glb"
         }
       ]
+    },
+    {
+      "id": "tubod",
+      "name": "Tubod Enterprises",
+      "tagline": "Tiles, sanitaryware and building supplies",
+      "currency": "BWP",
+      "website": "",
+      "products": [
+        {
+          "id": "tubod.pyc61001",
+          "shop": "tubod",
+          "category": "tile",
+          "name": "PYC61001 Carrara Polished Porcelain 600x600",
+          "description": "White marble-effect polished porcelain floor tile with soft grey veining. Rectified edges, suitable for living areas and bedrooms.",
+          "colour": "Carrara White",
+          "sku": "TUBOD-PYC61001",
+          "price": 189.0,
+          "currency": "BWP",
+          "dimensions": {
+            "width": 600.0,
+            "depth": 600.0,
+            "height": 9.0
+          },
+          "material": "tile_pyc61001",
+          "texture": "/textures/floor/pyc61001.jpg"
+        }
+      ]
     }
   ],
   "houses": {

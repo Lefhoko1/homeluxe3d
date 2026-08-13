@@ -491,4 +491,57 @@ export function createJuteTexture(options = {}) {
   return canvas;
 }
 
+/**
+ * A real tile photograph, laid out as tiles with grout joints.
+ *
+ * The supplied images are a single tile FACE with no joint, so repeating one
+ * across a floor gives a continuous slab. This draws the photo at its true
+ * module with a grout line around it, which is what turns a picture of a tile
+ * into a tiled floor.
+ *
+ * Returns a texture immediately, filled with the grout colour, and paints the
+ * photo in when it loads — so the material library can stay synchronous and
+ * nothing has to await an image.
+ *
+ * SCALE: one canvas is one tile, so `repeat` must be set to
+ * 1000 / tileMm per metre by the caller. It does NOT follow the
+ * one-canvas-is-one-square-metre rule the procedural textures use.
+ */
+export function createTilePhotoTexture(url, options = {}) {
+  const {
+    tileMm = 600,
+    groutMm = 3,
+    grout = "#c9c7c2",
+    anisotropy = 4,
+    pixels = 512,
+  } = options;
+
+  const canvas = createCanvas(pixels);
+  const ctx = canvas.getContext("2d");
+
+  // Grout fills the canvas; the tile is drawn inset over it.
+  ctx.fillStyle = grout;
+  ctx.fillRect(0, 0, pixels, pixels);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = anisotropy;
+
+  const inset = Math.max(1, Math.round((groutMm / tileMm) * pixels * 0.5));
+
+  const image = new Image();
+  image.onload = () => {
+    ctx.drawImage(image, inset, inset, pixels - inset * 2, pixels - inset * 2);
+    texture.needsUpdate = true;
+  };
+  image.onerror = () => {
+    console.warn(`[textures] could not load tile image ${url}`);
+  };
+  image.src = url;
+
+  return texture;
+}
+
 export { toTexture, PX_PER_M };

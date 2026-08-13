@@ -55,6 +55,10 @@ FINISHES: dict[str, Finish] = {
 
     # -- Floor finishes ----------------------------------------------------
     "tile":           Finish("tile",           (0.812, 0.804, 0.788), roughness=0.25),
+    # Tubod Enterprises PYC61001 Carrara polished porcelain. The real texture
+    # is applied in three.js; this is the flat fallback colour, kept close to
+    # the photograph so an untextured render still reads correctly.
+    "tile_pyc61001":  Finish("tile_pyc61001",  (0.878, 0.882, 0.894), roughness=0.14),
     "carpet":         Finish("carpet",         (0.451, 0.427, 0.396), roughness=0.95),
     "timber":         Finish("timber",         (0.478, 0.318, 0.180), roughness=0.40),
 

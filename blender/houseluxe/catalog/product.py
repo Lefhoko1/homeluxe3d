@@ -129,6 +129,18 @@ class Product:
     materials: tuple[str, ...] = ()
     sku: str = ""
 
+    #: For FINISHES only: the Blender material name this product supplies.
+    #:
+    #: This is what makes "which shop supplied the floor tiles?" answerable.
+    #: A finish has no geometry of its own -- it dresses a surface someone
+    #: else built -- so instead of a model it names the material, and the app
+    #: can trace any surface in the house back to the product on sale.
+    material: str = ""
+
+    #: Optional image for the finish, used both as the three.js texture and
+    #: as the swatch a shop panel would show.
+    texture: str = ""
+
     @property
     def qualified_id(self) -> str:
         return self.shop.qualify(self.id)
@@ -154,6 +166,10 @@ class Product:
             data["dimensions"] = self.dimensions.as_dict()
         if model_url:
             data["model"] = model_url
+        if self.material:
+            data["material"] = self.material
+        if self.texture:
+            data["texture"] = self.texture
         return data
 
 

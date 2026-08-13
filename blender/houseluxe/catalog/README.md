@@ -68,13 +68,32 @@ shows a furnished house. Exported models are unaffected.
 A product placed more than once is duplicated with **linked mesh data**, so
 ten dining chairs cost one mesh.
 
-## Categories
+## Finishes
 
 `ProductCategory` covers more than furniture, because a house advertises its
-finishes too — `TILE`, `PAINT`, `BRICK`, `FLOORING`, `ROOFING`. Those are
-flagged `is_finish`: they dress a surface rather than being placed, so they
-carry no geometry and no placement. Wiring a finish to the material it drives
-is not built yet — see the gap below.
+finishes too — `TILE`, `PAINT`, `BRICK`, `FLOORING`, `ROOFING`.
+
+A finish has **no geometry**. Nobody places a tile: the floor already exists,
+built by `components/floors.py`, and the tile decides what it looks like. So
+instead of a `build` function a finish carries a **`material`** — the Blender
+material name it supplies:
+
+```
+Tubod PYC61001  ──material──▶  "tile_pyc61001"  ──▶  Room(..., LIVING_FLOOR)
+                └─texture────▶  /textures/floor/pyc61001.jpg
+```
+
+That one identifier is shared by the product on sale, the material in the
+`.glb`, and the texture the app paints — which is what makes *"which shop
+supplied this floor?"* answerable for any surface in the house.
+
+`build=None` means `exportable` is False, so nothing goes to
+`public/models/products/`, but the product still appears in the manifest with
+its price, SKU and swatch.
+
+Photographic finishes are scaled to their real module in
+`house/textures/materialLibrary.js` → `TILE_FINISHES`, so a 600mm tile
+measures 600mm on the floor.
 
 ## Known gaps
 

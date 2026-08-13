@@ -9,6 +9,14 @@ is welded to anything else, and nothing has to be re-modelled by hand.
 
 ## Running a build
 
+Headless is the reliable way — no GUI, no MCP bridge:
+
+```
+"/c/Program Files/Blender Foundation/Blender 5.0/blender.exe" \
+    --background --python blender/build.py
+```
+
+
 Blender open, BlenderMCP addon connected (port 9876):
 
 ```bash

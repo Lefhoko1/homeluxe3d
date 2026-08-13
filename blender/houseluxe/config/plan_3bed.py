@@ -198,19 +198,27 @@ INTERIOR_WALLS = [
 # --------------------------------------------------------------------------
 # Rooms -- clear internal extents, used for floor finishes and three.js zones.
 # --------------------------------------------------------------------------
+#: Tubod Enterprises PYC61001 Carrara porcelain -- the specified floor tile
+#: for the living areas and all three bedrooms. Named here rather than
+#: repeated, so re-specifying the floor is one edit.
+#: See catalog/shops/tubod.
+LIVING_FLOOR = "tile_pyc61001"
+
 ROOMS = [
-    Room("master",   "Master Bedroom", 1940.0, 1230.0, 5540.0, 4830.0, "carpet"),
+    Room("master",   "Master Bedroom", 1940.0, 1230.0, 5540.0, 4830.0, LIVING_FLOOR),
     Room("ensuite",  "Ensuite",         230.0, 1230.0, 1830.0, 3530.0, "tile"),
     Room("wir",      "Walk-in Robe",    230.0, 3640.0, 1830.0, 5440.0, "carpet"),
-    Room("bed3",     "Bedroom 3",       230.0, 8200.0, 3400.0, 11170.0, "carpet"),
+    Room("bed3",     "Bedroom 3",       230.0, 8200.0, 3400.0, 11170.0, LIVING_FLOOR),
     Room("bathroom", "Bathroom",       3510.0, 9455.0, 5600.0, 11170.0, "tile"),
     Room("wc",       "WC",             5710.0, 9455.0, 6800.0, 11170.0, "tile"),
-    Room("bed2",     "Bedroom 2",      8010.0, 8200.0, 10970.0, 11170.0, "carpet"),
+    Room("bed2",     "Bedroom 2",      8010.0, 8200.0, 10970.0, 11170.0, LIVING_FLOOR),
     Room("kitchen",  "Kitchen",        5650.0, 5550.0, 9140.0, 8090.0, "tile"),
     Room("laundry",  "Laundry",       11140.0, 5770.0, 12970.0, 7660.0, "tile"),
-    Room("living",   "Living",         5650.0,  230.0, 10150.0, 4230.0, "timber"),
-    Room("dining",   "Dining",        10150.0,  230.0, 12970.0, 4230.0, "timber"),
-    Room("hall",     "Hallway",        1940.0, 4940.0, 5540.0, 8090.0, "timber"),
+    Room("living",   "Living",         5650.0,  230.0, 10150.0, 4230.0, LIVING_FLOOR),
+    # Dining is open to the living room -- one space, so one floor. Splitting
+    # the finish down the middle of an open plan would look like a mistake.
+    Room("dining",   "Dining",        10150.0,  230.0, 12970.0, 4230.0, LIVING_FLOOR),
+    Room("hall",     "Hallway",        1940.0, 4940.0, 5540.0, 8090.0, LIVING_FLOOR),
 ]
 
 PLAN = HousePlan(

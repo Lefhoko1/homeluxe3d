@@ -31,10 +31,33 @@ import {
   createMulchTexture,
   createPavingTexture,
   createPlasterTexture,
+  createTilePhotoTexture,
   createTileTexture,
   createTimberTexture,
   toTexture,
 } from "./proceduralTextures";
+
+/**
+ * Photographic finishes supplied by a shop.
+ *
+ * Keyed by the Blender material name, matching `Product.material` in the
+ * catalogue — so the surface you see, the material in the .glb and the
+ * product on sale all share one identifier.
+ *
+ * `tileMm` is the real tile module and sets the repeat, so the floor is to
+ * scale rather than to taste.
+ */
+export const TILE_FINISHES = {
+  // Tubod Enterprises PYC61001 Carrara polished porcelain, 600x600.
+  tile_pyc61001: {
+    url: "/textures/floor/pyc61001.jpg",
+    tileMm: 600,
+    groutMm: 3,
+    grout: "#cfcdc8",
+    roughness: 0.12,   // polished
+    metalness: 0.0,
+  },
+};
 
 /**
  * Build every house material.
@@ -336,6 +359,32 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
       roughness: 0.85,
     })
   );
+
+  // -- Shop-supplied photographic finishes --------------------------------
+  // Built from real product images rather than drawn, and scaled to the tile's
+  // true module so a 600mm tile measures 600mm on the floor.
+  Object.entries(TILE_FINISHES).forEach(([name, spec]) => {
+    const map = createTilePhotoTexture(spec.url, {
+      tileMm: spec.tileMm,
+      groutMm: spec.groutMm,
+      grout: spec.grout,
+      anisotropy,
+    });
+    // One canvas is one tile, so repeat is tiles-per-metre — unlike the
+    // procedural textures, where one canvas is one square metre.
+    const perMetre = 1000 / spec.tileMm;
+    map.repeat.set(perMetre, perMetre);
+
+    materials.set(
+      name,
+      new THREE.MeshStandardMaterial({
+        name,
+        map,
+        roughness: spec.roughness ?? 0.2,
+        metalness: spec.metalness ?? 0.0,
+      })
+    );
+  });
 
   // -- Retail products ----------------------------------------------------
   materials.set(
