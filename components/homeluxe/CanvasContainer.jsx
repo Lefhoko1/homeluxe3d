@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, DragControls, TransformControls } from 'three-stdlib';
 
@@ -13,6 +13,13 @@ import {
 } from './house';
 import { loadProducts, disposeProducts } from './products';
 import { createAtmosphere } from './atmosphere/Atmosphere';
+import {
+  createTourController,
+  loadCharacter,
+  disposeCharacter,
+  TourPad,
+  TOUR_START,
+} from './tour';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
   const canvasRef = useRef(null);
@@ -24,6 +31,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
   const houseRef = useRef(null);
   const houseMaterialsRef = useRef(null);
   const atmosphereRef = useRef(null);
+  const tourRef = useRef(null);
+  const characterRef = useRef(null);
+  const [touring, setTouring] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -143,6 +153,58 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
           );
         }
         console.log(`[products] placed ${placed.length} item(s)`);
+
+        // ---- Walk-through tour ------------------------------------------
+        // The character goes in the SCENE, not the house group -- unlike the
+        // products. The controller drives the camera and fires raycasts, and
+        // both work in world space; parenting the character to the recentred
+        // house would leave it offset from its own camera by ~7 metres.
+        // TOUR_START is therefore given in world coordinates.
+        const character = await loadCharacter({
+          materials: houseMaterials,
+          dracoLoader: getDracoLoader(),
+        });
+        if (disposed) {
+          disposeCharacter(character);
+          return;
+        }
+
+        scene.add(character);
+        characterRef.current = character;
+
+        // Raycasts read world matrices, which are otherwise only refreshed
+        // during render -- so the first ground probe would use stale ones.
+        house.updateMatrixWorld(true);
+
+        // Ground = anything you can stand on. Walls = anything that stops
+        // you. Doors are in NEITHER: every door is treated as open, and
+        // doorways are real gaps in the wall geometry.
+        const part = (id) => house.userData.parts?.[id];
+        const groundObjects = [
+          'slab', 'floors', 'porch', 'yard_ground', 'yard_paving', 'yard_beds',
+        ].map(part).filter(Boolean);
+        const wallObjects = [
+          'walls_exterior', 'walls_interior', 'pool_fence', 'yard_fence',
+        ].map(part).filter(Boolean);
+
+        const tour = createTourController({
+          character,
+          camera,
+          controls: orbitControls,
+          groundObjects,
+          wallObjects,
+          start: TOUR_START.position,
+          startHeading: TOUR_START.heading,
+        });
+        tour.attach(window);
+        tourRef.current = tour;
+
+        // Deep link: /#tour drops the visitor straight onto the driveway.
+        // Handy for "take the tour" links in an advert.
+        if (window.location.hash === '#tour') {
+          tour.enter();
+          setTouring(true);
+        }
       } catch (error) {
         console.error('[scene] failed to load:', error);
       }
@@ -163,7 +225,14 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      orbitControls.update();
+      // The tour takes the camera over when active; OrbitControls is
+      // disabled then, so only one of these ever moves it.
+      if (tourRef.current?.active) {
+        tourRef.current.update(delta);
+      } else {
+        orbitControls.update();
+      }
+
       atmosphere.update(delta);
 
       // Keep the sky centred on the viewer so it can never be reached.
@@ -189,6 +258,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
       disposed = true;
       window.removeEventListener('resize', handleResize);
 
+      tourRef.current?.detach(window);
+      tourRef.current = null;
+      disposeCharacter(characterRef.current);
+      characterRef.current = null;
       disposeProducts(productsRef.current);
       disposeHouse(houseRef.current);
       disposeHouseMaterials(houseMaterialsRef.current);
@@ -218,6 +291,20 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
     }
   }, [currentRoom, currentIndex]);
 
+  // The tour only exists once the scene has finished loading, so both of
+  // these no-op until then rather than throwing.
+  const startTour = () => {
+    const tour = tourRef.current;
+    if (!tour) return;
+    tour.toggle();
+    setTouring(tour.active);
+  };
+
+  const exitTour = () => {
+    tourRef.current?.exit();
+    setTouring(false);
+  };
+
   return (
     <div id="canvas-container">
       <div className="canvas-overlay" id="canvas-title">Living Room - Click furniture to explore</div>
@@ -239,7 +326,25 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
         <button className="camera-btn" id="camera-side" title="Side View">👈</button>
         <button className="camera-btn" id="camera-top" title="Top View">⬇️</button>
         <button className="camera-btn" id="camera-reset" title="Reset View">🔄</button>
+        <button
+          className="camera-btn"
+          id="tour-mode"
+          title={touring ? 'Exit walk-through' : 'Walk through the property'}
+          onClick={startTour}
+          style={{ background: touring ? '#1f6feb' : undefined }}
+        >
+          🚶
+        </button>
       </div>
+
+      {touring && (
+        <TourPad
+          onPress={(dir) => tourRef.current?.setButton(dir, true)}
+          onRelease={(dir) => tourRef.current?.setButton(dir, false)}
+          onExit={exitTour}
+        />
+      )}
+
       <div ref={canvasRef} style={{ width: '100%', height: '100%' }}></div>
     </div>
   );

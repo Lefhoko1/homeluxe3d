@@ -28,6 +28,7 @@ import bpy  # noqa: E402
 from houseluxe.catalog import CATALOG  # noqa: E402
 from houseluxe.catalog.staging import stage_house  # noqa: E402
 from houseluxe.components import default_components  # noqa: E402
+from houseluxe.components.character import CharacterComponent  # noqa: E402
 from houseluxe.components.products import product_components  # noqa: E402
 from houseluxe.components.site import site_components  # noqa: E402
 from houseluxe.config.plan_3bed import PLAN  # noqa: E402
@@ -44,6 +45,7 @@ REPO_ROOT = os.path.dirname(_HERE)
 MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "house")
 SITE_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "site")
 PRODUCT_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "products")
+TOUR_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "tour")
 CATALOG_PATH = os.path.join(PRODUCT_MODEL_DIR, "catalog.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
@@ -113,6 +115,10 @@ def main(
         builder.build(product_components(CATALOG.products)) if products else []
     )
 
+    # The tour character. Built at the origin like a product; the app drives
+    # it around from there.
+    tour_results = builder.build([CharacterComponent()])
+
     print(builder.report())
 
     notes = list(plan.notes) + (list(site_spec.notes) if site_spec else [])
@@ -128,6 +134,8 @@ def main(
             batches.append(("site", SITE_MODEL_DIR, site_results))
         if product_results:
             batches.append(("products", PRODUCT_MODEL_DIR, product_results))
+        if tour_results:
+            batches.append(("tour", TOUR_MODEL_DIR, tour_results))
 
         for label, directory, results in batches:
             exporter = GLBExporter(directory)

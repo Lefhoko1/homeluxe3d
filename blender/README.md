@@ -113,6 +113,18 @@ mesh — moving a sofa is a number in the placement file, not a re-export.
 `build.py` stages products into their placements *after* export, so the saved
 `.blend` shows a furnished house while the exported models stay reusable.
 
+## The tour character
+
+`components/character.py` builds the figure a visitor drives around the
+property, exported to `public/models/tour/character.glb`. It is not a product
+and not part of the building — it is a viewer affordance, like the camera —
+but it is modelled here so it can be restyled without touching app code.
+
+It follows the product convention (footprint centred, feet at z=0, **facing
++Y**), and roughly 1.7m tall so it reads at true scale against 2.4m ceilings
+and a 900mm sill. The walk controller assumes that heading; a character
+modelled facing another way will walk backwards.
+
 ## The two rules that keep it editable
 
 **One component owns one category of part.** A component builds its own geometry

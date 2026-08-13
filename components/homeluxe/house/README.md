@@ -123,6 +123,31 @@ Each product is fetched once and cloned per placement, and every mesh carries
 `userData` naming its shop, product, price and SKU — so a raycast hit anywhere
 on a sofa can name the thing being advertised.
 
+## Walk-through tour
+
+`../tour/` drives a character around the property in third person, so a
+visitor can arrive at the gate, walk up the drive and stand in front of the
+furniture at eye level. Orbiting tells you the layout; walking tells you the
+scale.
+
+Everything is raycasts, no physics engine:
+
+- **Ground** — a ray straight down finds whatever is underfoot, so the
+  character walks up the 150mm slab edge and the porch step without either
+  being described anywhere.
+- **Walls** — a short ray along the direction of travel. Because walls were
+  built as piers, sills and lintels rather than solid panels with holes cut
+  in them, **doorways are real gaps in the geometry** — walking through a
+  door needs no door logic at all.
+- **Doors are never collided with.** Every door is treated as open.
+
+The character lives in the **scene**, not the house group — unlike products.
+The controller drives the camera and raycasts, both world-space, so parenting
+it to the recentred house would offset it from its own camera by ~7 metres.
+`TOUR_START` is therefore in world coordinates.
+
+`/#tour` starts the walk-through straight away, for "take the tour" links.
+
 ## Coordinates
 
 GLBs are exported Y-up, so Blender's +Z becomes three's +Y and Blender's +Y

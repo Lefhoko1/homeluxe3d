@@ -86,6 +86,12 @@ FINISHES: dict[str, Finish] = {
     "cushion_teal":    Finish("cushion_teal",    (0.102, 0.267, 0.259), roughness=0.85),
     "cushion_sage":    Finish("cushion_sage",    (0.353, 0.412, 0.310), roughness=0.85),
     "jute":            Finish("jute",            (0.706, 0.588, 0.404), roughness=0.95),
+
+    # -- Tour character ----------------------------------------------------
+    "character_skin":     Finish("character_skin",     (0.769, 0.573, 0.435), roughness=0.70),
+    "character_shirt":    Finish("character_shirt",    (0.153, 0.353, 0.514), roughness=0.80),
+    "character_trousers": Finish("character_trousers", (0.196, 0.212, 0.259), roughness=0.85),
+    "character_shoes":    Finish("character_shoes",    (0.098, 0.090, 0.086), roughness=0.60),
 }
 
 
