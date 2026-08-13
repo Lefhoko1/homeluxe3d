@@ -100,6 +100,8 @@ class GLBExporter:
         self, category: str, objects: list[bpy.types.Object]
     ) -> ExportResult:
         path = os.path.join(self.output_dir, f"{category}.glb")
+        # A category may carry a subdirectory (products use "<shop>/<id>").
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
         if not objects:
             return ExportResult(category, path, False, error="no objects")

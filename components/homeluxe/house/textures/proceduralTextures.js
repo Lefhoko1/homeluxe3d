@@ -434,4 +434,61 @@ export function createCloudTexture(options = {}) {
   return canvas;
 }
 
+/**
+ * Bonded leather: fine pebble grain.
+ *
+ * Upholstery at this scale is read almost entirely from how it catches light,
+ * so the grain is deliberately subtle — enough to break a flat fill, not
+ * enough to look like orange peel.
+ */
+export function createLeatherTexture(options = {}) {
+  const { base = "#877a6b", seed = 131 } = options;
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  const random = makeRandom(seed);
+
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  // Pebbles: overlapping soft blobs, alternately lighter and darker.
+  for (let i = 0; i < 9000; i += 1) {
+    const shade = Math.floor(random() * 30 - 15);
+    ctx.fillStyle = `rgba(${135 + shade},${122 + shade},${107 + shade},0.35)`;
+    ctx.beginPath();
+    ctx.arc(random() * size, random() * size, 1.5 + random() * 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  addGrain(ctx, size, { count: 14000, alpha: 0.05, spread: 16, seed: seed + 1 });
+  return canvas;
+}
+
+/** Woven jute: coarse basket weave. */
+export function createJuteTexture(options = {}) {
+  const { base = "#b4956a", seed = 137, strandMm = 12 } = options;
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  const random = makeRandom(seed);
+
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  const strand = Math.max(4, (strandMm / 1000) * size);
+
+  // Alternating over/under blocks read as a weave from a metre away.
+  for (let y = 0; y < size; y += strand) {
+    for (let x = 0; x < size; x += strand) {
+      const over = ((x / strand | 0) + (y / strand | 0)) % 2 === 0;
+      const shade = Math.floor(random() * 26 - 13) + (over ? 12 : -12);
+      ctx.fillStyle = `rgb(${180 + shade},${149 + shade},${106 + shade})`;
+      ctx.fillRect(x, y, strand - 1, strand - 1);
+    }
+  }
+
+  addGrain(ctx, size, { count: 20000, alpha: 0.08, spread: 22, seed: seed + 1 });
+  return canvas;
+}
+
 export { toTexture, PX_PER_M };

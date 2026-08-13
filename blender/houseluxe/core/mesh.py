@@ -95,6 +95,55 @@ def prism(
     return mesh_from_pydata(name, verts, faces)
 
 
+def rounded_box(
+    name: str,
+    x0: float,
+    y0: float,
+    z0: float,
+    x1: float,
+    y1: float,
+    z1: float,
+    radius: float = 40.0,
+    segments: int = 3,
+) -> bpy.types.Object:
+    """Box with bevelled edges, in MILLIMETRES.
+
+    Upholstery is the reason this exists. A sofa built from hard-edged boxes
+    reads as cardboard however good the material is, because real cushions
+    catch a highlight along every edge. Three bevel segments is enough to
+    produce that highlight and cheap enough to use on every cushion.
+
+    The bevel is clamped to just under half the smallest dimension, so a thin
+    cushion cannot collapse into itself.
+    """
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    z0, z1 = sorted((z0, z1))
+
+    smallest = min(x1 - x0, y1 - y0, z1 - z0)
+    radius = max(0.0, min(radius, smallest * 0.49))
+
+    obj = box(name, x0, y0, z0, x1, y1, z1)
+    if radius <= 0.0:
+        return obj
+
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.bevel(
+        bm,
+        geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
+        offset=m(radius),
+        segments=segments,
+        profile=0.5,
+        affect="EDGES",
+    )
+    bm.to_mesh(obj.data)
+    bm.free()
+
+    obj.data.update()
+    return obj
+
+
 def cylinder(
     name: str,
     x_mm: float,

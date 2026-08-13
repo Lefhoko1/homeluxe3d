@@ -105,6 +105,24 @@ loads rather than created per file; `disposeDracoLoader()` tears it down.
 A Draco GLB cannot be read by a loader without the decoder wired up, so the
 exporter setting and `HouseLoader.setDRACOLoader()` must change together.
 
+## Products
+
+`../products/ProductLoader.js` reads `/models/products/catalog.json` — written
+by the Blender catalogue — and places shop products in the house.
+
+Products are loaded **after** the house and parented **to it**, not to the
+scene. The house group carries the recentring offset; a product added to the
+scene instead would sit at raw Blender coordinates, metres away from the
+building. Chaining the two loads also stops them racing.
+
+Positions arrive already converted to three.js space, so nothing here does
+coordinate maths — move a sofa in `blender/houseluxe/catalog/placements/`,
+rebuild, and it moves in the app with no code change.
+
+Each product is fetched once and cloned per placement, and every mesh carries
+`userData` naming its shop, product, price and SKU — so a raycast hit anywhere
+on a sofa can name the thing being advertised.
+
 ## Coordinates
 
 GLBs are exported Y-up, so Blender's +Z becomes three's +Y and Blender's +Y

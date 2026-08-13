@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "generated_by": "blender/houseluxe",
+  "shops": [
+    {
+      "id": "bradlows",
+      "name": "Bradlows",
+      "tagline": "Furniture, appliances and home",
+      "currency": "BWP",
+      "website": "",
+      "products": [
+        {
+          "id": "bradlows.sandton-sofa-3",
+          "shop": "bradlows",
+          "category": "sofa",
+          "name": "Sandton 3-Seater Recliner Sofa",
+          "description": "Deep-seated three-seater in taupe bonded leather, with rolled arms and twin back cushions.",
+          "colour": "Taupe",
+          "sku": "BRD-SAND-3S",
+          "price": 18999.0,
+          "currency": "BWP",
+          "dimensions": {
+            "width": 2400.0,
+            "depth": 950.0,
+            "height": 1020.0
+          },
+          "model": "/models/products/bradlows/sandton-sofa-3.glb"
+        },
+        {
+          "id": "bradlows.sandton-sofa-2",
+          "shop": "bradlows",
+          "category": "sofa",
+          "name": "Sandton 2-Seater Recliner Sofa",
+          "description": "Matching two-seater from the Sandton lounge suite.",
+          "colour": "Taupe",
+          "sku": "BRD-SAND-2S",
+          "price": 14499.0,
+          "currency": "BWP",
+          "dimensions": {
+            "width": 1780.0,
+            "depth": 950.0,
+            "height": 1020.0
+          },
+          "model": "/models/products/bradlows/sandton-sofa-2.glb"
+        },
+        {
+          "id": "bradlows.sandton-recliner",
+          "shop": "bradlows",
+          "category": "chair",
+          "name": "Sandton Recliner Armchair",
+          "description": "Single-seat recliner with extending footrest, shown reclined.",
+          "colour": "Taupe",
+          "sku": "BRD-SAND-1R",
+          "price": 8999.0,
+          "currency": "BWP",
+          "dimensions": {
+            "width": 1160.0,
+            "depth": 1470.0,
+            "height": 1020.0
+          },
+          "model": "/models/products/bradlows/sandton-recliner.glb"
+        },
+        {
+          "id": "bradlows.oakwood-coffee-table",
+          "shop": "bradlows",
+          "category": "table",
+          "name": "Oakwood Coffee Table",
+          "description": "Dark timber coffee table with glass inset and lower shelf.",
+          "colour": "Dark walnut",
+          "sku": "BRD-OAK-CT",
+          "price": 4299.0,
+          "currency": "BWP",
+          "dimensions": {
+            "width": 1200.0,
+            "depth": 700.0,
+            "height": 450.0
+          },
+          "model": "/models/products/bradlows/oakwood-coffee-table.glb"
+        },
+        {
+          "id": "bradlows.woven-jute-rug",
+          "shop": "bradlows",
+          "category": "rug",
+          "name": "Woven Jute Rug 3.0 x 2.2m",
+          "description": "Hand-woven natural jute rug.",
+          "colour": "Natural",
+          "sku": "BRD-JUTE-32",
+          "price": 2799.0,
+          "currency": "BWP",
+          "dimensions": {
+            "width": 3000.0,
+            "depth": 2200.0,
+            "height": 16.0
+          },
+          "model": "/models/products/bradlows/woven-jute-rug.glb"
+        }
+      ]
+    }
+  ],
+  "houses": {
+    "3bed": [
+      {
+        "product": "bradlows.woven-jute-rug",
+        "room": "living",
+        "position": [
+          7.8,
+          0.0,
+          -2.3
+        ],
+        "rotationY": 0.0,
+        "note": "Anchors the seating arrangement."
+      },
+      {
+        "product": "bradlows.sandton-sofa-3",
+        "room": "living",
+        "position": [
+          7.9,
+          0.0,
+          -0.83
+        ],
+        "rotationY": 0.0,
+        "note": "Backs onto the south wall, 125mm clear of it."
+      },
+      {
+        "product": "bradlows.sandton-sofa-2",
+        "room": "living",
+        "position": [
+          6.3,
+          0.0,
+          -2.5
+        ],
+        "rotationY": -90.0,
+        "note": "Faces east toward the recliner."
+      },
+      {
+        "product": "bradlows.sandton-recliner",
+        "room": "living",
+        "position": [
+          9.4,
+          0.0,
+          -2.5
+        ],
+        "rotationY": 90.0,
+        "note": "Footrest extends west into the open floor."
+      },
+      {
+        "product": "bradlows.oakwood-coffee-table",
+        "room": "living",
+        "position": [
+          7.7,
+          0.0,
+          -2.35
+        ],
+        "rotationY": 0.0,
+        "note": "Off-centre west, clearing the recliner footrest by ~100mm."
+      }
+    ]
+  }
+}

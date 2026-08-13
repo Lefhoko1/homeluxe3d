@@ -10,6 +10,7 @@ export {
   setPartVisible,
   getPartVisibility,
   disposeHouse,
+  getDracoLoader,
   disposeDracoLoader,
 } from "./HouseLoader";
 

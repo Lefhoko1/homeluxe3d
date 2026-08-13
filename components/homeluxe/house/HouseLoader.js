@@ -41,7 +41,7 @@ const DRACO_DECODER_PATH = "/draco/";
  */
 let sharedDraco = null;
 
-function getDracoLoader() {
+export function getDracoLoader() {
   if (!sharedDraco) {
     sharedDraco = new DRACOLoader();
     sharedDraco.setDecoderPath(DRACO_DECODER_PATH);

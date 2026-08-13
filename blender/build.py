@@ -25,21 +25,35 @@ if _HERE not in sys.path:
 
 import bpy  # noqa: E402
 
+from houseluxe.catalog import CATALOG  # noqa: E402
+from houseluxe.catalog.staging import stage_house  # noqa: E402
 from houseluxe.components import default_components  # noqa: E402
+from houseluxe.components.products import product_components  # noqa: E402
 from houseluxe.components.site import site_components  # noqa: E402
 from houseluxe.config.plan_3bed import PLAN  # noqa: E402
 from houseluxe.config.site_3bed import SITE  # noqa: E402
 from houseluxe.core.scene import SceneBuilder, purge_scene  # noqa: E402
+from houseluxe.export.catalog_json import (  # noqa: E402
+    report as catalog_report,
+    write_manifest,
+)
 from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
 from houseluxe.materials.library import MaterialLibrary  # noqa: E402
 
 REPO_ROOT = os.path.dirname(_HERE)
 MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "house")
 SITE_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "site")
+PRODUCT_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "products")
+CATALOG_PATH = os.path.join(PRODUCT_MODEL_DIR, "catalog.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
-def main(export: bool = True, save: bool = True, site: bool = True) -> int:
+def main(
+    export: bool = True,
+    save: bool = True,
+    site: bool = True,
+    products: bool = True,
+) -> int:
     plan = PLAN
     site_spec = SITE if site else None
 
@@ -68,6 +82,19 @@ def main(export: bool = True, save: bool = True, site: bool = True) -> int:
             f"{len(site_spec.plants)} plants"
         )
 
+    if products:
+        catalog_problems = CATALOG.validate()
+        if catalog_problems:
+            print("Catalogue validation FAILED:")
+            for problem in catalog_problems:
+                print(f"  ! {problem}")
+            return 1
+        print(
+            f"  catalog validated: {len(CATALOG.shops)} shop(s), "
+            f"{len(CATALOG.products)} product(s), "
+            f"{len(CATALOG.placements)} placement(s)"
+        )
+
     purge_scene()
 
     materials = MaterialLibrary()
@@ -78,6 +105,13 @@ def main(export: bool = True, save: bool = True, site: bool = True) -> int:
     # the yard is built around the house where it already stands.
     house_results = builder.build(default_components())
     site_results = builder.build(site_components()) if site_spec else []
+
+    # Products build at the origin, on top of each other. That is fine --
+    # each is exported to its own file, and the app positions them from the
+    # catalogue manifest.
+    product_results = (
+        builder.build(product_components(CATALOG.products)) if products else []
+    )
 
     print(builder.report())
 
@@ -92,6 +126,8 @@ def main(export: bool = True, save: bool = True, site: bool = True) -> int:
         batches = [("house", MODEL_DIR, house_results)]
         if site_results:
             batches.append(("site", SITE_MODEL_DIR, site_results))
+        if product_results:
+            batches.append(("products", PRODUCT_MODEL_DIR, product_results))
 
         for label, directory, results in batches:
             exporter = GLBExporter(directory)
@@ -101,6 +137,21 @@ def main(export: bool = True, save: bool = True, site: bool = True) -> int:
             failures = [e for e in exports if not e.ok]
             if failures:
                 print(f"  {len(failures)} export(s) failed")
+
+        if products:
+            manifest = write_manifest(CATALOG, CATALOG_PATH)
+            print(catalog_report(manifest, CATALOG_PATH))
+
+    # Stage the furniture into the scene AFTER exporting, so the saved .blend
+    # shows a furnished house while the exported models stay at the origin.
+    if product_results:
+        built = {
+            f"{r.category.replace('/', '.')}": r.objects for r in product_results
+        }
+        staged, staging_warnings = stage_house(CATALOG, plan.name, built)
+        print(f"\n  staged {staged} product(s) into '{plan.name}'")
+        for warning in staging_warnings:
+            print(f"  ! {warning}")
 
     if save:
         bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)

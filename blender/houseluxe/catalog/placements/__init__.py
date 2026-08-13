@@ -1,0 +1,1 @@
+"""Per-house placement data."""

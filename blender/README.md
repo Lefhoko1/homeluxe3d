@@ -94,6 +94,25 @@ side vendors it into `public/draco/` and wires it in `HouseLoader.js`; those two
 have to change together. Turning this off here without unwiring the loader is
 harmless, but turning it on without wiring it up will produce a blank scene.
 
+## The catalogue
+
+Everything in a house is an advert for something a shop sells. `houseluxe/catalog`
+holds shops, their products, and where each product stands in each house — see
+[catalog/README.md](houseluxe/catalog/README.md).
+
+```
+shops/bradlows/       the range (5 products)
+placements/house_3bed.py   what stands where
+```
+
+Products build at the ORIGIN and export one model each to
+`public/models/products/<shop>/<product>.glb`, alongside a `catalog.json`
+carrying prices, SKUs and placements. Position is data, never baked into the
+mesh — moving a sofa is a number in the placement file, not a re-export.
+
+`build.py` stages products into their placements *after* export, so the saved
+`.blend` shows a furnished house while the exported models stay reusable.
+
 ## The two rules that keep it editable
 
 **One component owns one category of part.** A component builds its own geometry

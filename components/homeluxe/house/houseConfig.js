@@ -29,9 +29,9 @@ export const HOUSE_PARTS = [
   { id: "walls_interior", file: "walls_interior.glb", label: "Interior walls", visible: true,  castShadow: true,  receiveShadow: true },
   { id: "windows",        file: "windows.glb",        label: "Windows",        visible: true,  castShadow: false, receiveShadow: false },
   { id: "doors",          file: "doors.glb",          label: "Doors",          visible: true,  castShadow: true,  receiveShadow: true },
-  { id: "ceiling",        file: "ceiling.glb",        label: "Ceiling",        visible: true,  castShadow: false, receiveShadow: true },
+  { id: "ceiling",        file: "ceiling.glb",        label: "Ceiling",        visible: true,   castShadow: false, receiveShadow: true },
   { id: "porch",          file: "porch.glb",          label: "Porch",          visible: true,  castShadow: true,  receiveShadow: true },
-  { id: "roof",           file: "roof.glb",           label: "Roof",           visible: true,  castShadow: true,  receiveShadow: false },
+  { id: "roof",           file: "roof.glb",           label: "Roof",           visible: true,   castShadow: true,  receiveShadow: false },
 ];
 
 export const SITE_BASE_PATH = "/models/site/";

@@ -78,6 +78,14 @@ FINISHES: dict[str, Finish] = {
     "hedge":           Finish("hedge",           (0.129, 0.278, 0.106), roughness=0.95),
     "trunk":           Finish("trunk",           (0.243, 0.169, 0.106), roughness=0.90),
     "fence_timber":    Finish("fence_timber",    (0.400, 0.286, 0.180), roughness=0.85),
+
+    # -- Retail products ---------------------------------------------------
+    "leather_taupe":   Finish("leather_taupe",   (0.529, 0.478, 0.420), roughness=0.55),
+    "furniture_foot":  Finish("furniture_foot",  (0.106, 0.078, 0.055), roughness=0.45),
+    "timber_dark":     Finish("timber_dark",     (0.204, 0.114, 0.063), roughness=0.40),
+    "cushion_teal":    Finish("cushion_teal",    (0.102, 0.267, 0.259), roughness=0.85),
+    "cushion_sage":    Finish("cushion_sage",    (0.353, 0.412, 0.310), roughness=0.85),
+    "jute":            Finish("jute",            (0.706, 0.588, 0.404), roughness=0.95),
 }
 
 

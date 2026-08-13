@@ -5,12 +5,13 @@ import { OrbitControls, DragControls, TransformControls } from 'three-stdlib';
 import {
   loadHouse,
   disposeHouse,
+  getDracoLoader,
   disposeDracoLoader,
   createHouseMaterials,
   disposeHouseMaterials,
   HOUSE_VIEWS,
-  LIVING_ZONE_CENTRE,
 } from './house';
+import { loadProducts, disposeProducts } from './products';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
@@ -19,8 +20,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
   const rendererRef = useRef(null);
   const cameraRef = useRef(null);
   const controlsRef = useRef(null);
-  const furnitureRef = useRef(null);
-  const gltfModelsGroupRef = useRef(null);
+  const productsRef = useRef(null);
   const houseRef = useRef(null);
   const houseMaterialsRef = useRef(null);
   const atmosphereRef = useRef(null);
@@ -70,20 +70,6 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
     cameraRef.current = camera;
     controlsRef.current = orbitControls;
 
-    // Materials for the placeholder furniture. The house brings its own --
-    // see house/textures/materialLibrary.js.
-    const materials = {
-      sofaFabric: createSofaFabricMaterial(),
-      woodDark: createWoodDarkMaterial(),
-      woodLight: createWoodLightMaterial(),
-      glass: createGlassMaterial(),
-      metal: createMetalMaterial(),
-      fabricRug: createRugMaterial(),
-      plant: createPlantMaterial(),
-      mirror: createMirrorMaterial(),
-      tvScreen: createTVScreenMaterial()
-    };
-
     // ---- Sky, clouds, fog ------------------------------------------------
     const atmosphere = createAtmosphere();
     atmosphere.applyTo(scene);
@@ -97,8 +83,16 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
     });
     houseMaterialsRef.current = houseMaterials;
 
-    loadHouse({ materials: houseMaterials })
-      .then(({ house, errors, stats }) => {
+    // Products are loaded AFTER the house and parented to it, not to the
+    // scene. The house group carries the recentring offset; a product added
+    // to the scene instead would sit at raw Blender coordinates, metres away.
+    // Chaining also avoids racing the two loads against each other.
+    (async () => {
+      try {
+        const { house, errors, stats } = await loadHouse({
+          materials: houseMaterials,
+        });
+
         // The component can unmount while the GLBs are still in flight.
         if (disposed) {
           disposeHouse(house);
@@ -121,35 +115,41 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
             [...stats.untextured].join(', ')
           );
         }
-      })
-      .catch((error) => console.error('[house] failed to load:', error));
 
-    // ---- Placeholder furniture -------------------------------------------
-    // Primitive furniture, kept until the Blender-authored TVs and sofas
-    // arrive. It was modelled for the old 12x10 room, so it is scaled and
-    // parked in the open living/dining zone rather than left at the origin.
-    const furniture = createFurniture(materials);
-    furnitureRef.current = furniture;
+        // ---- Shop products ---------------------------------------------
+        // Real retail furniture from the Blender catalogue, positioned by
+        // the manifest. The old primitive sofas and sofa.glb are gone.
+        const { group, placed, errors: productErrors } = await loadProducts({
+          house: '3bed',
+          materials: houseMaterials,
+          dracoLoader: getDracoLoader(),
+        });
 
-    const gltfModelsGroup = new THREE.Group();
-    gltfModelsGroupRef.current = gltfModelsGroup;
+        if (disposed) {
+          disposeProducts(group);
+          return;
+        }
 
-    const staging = new THREE.Group();
-    staging.name = 'placeholder-furniture';
-    staging.position.set(...LIVING_ZONE_CENTRE);
-    staging.scale.setScalar(0.75);
-    staging.add(furniture);
-    staging.add(gltfModelsGroup);
-    scene.add(staging);
+        house.add(group);
+        productsRef.current = group;
+
+        if (productErrors.length) {
+          console.error(
+            '[products] %d problem(s):',
+            productErrors.length,
+            productErrors.map(
+              (e) => `${e.stage}:${e.productId ?? ''} ${e.error?.message}`
+            )
+          );
+        }
+        console.log(`[products] placed ${placed.length} item(s)`);
+      } catch (error) {
+        console.error('[scene] failed to load:', error);
+      }
+    })();
 
     // Lighting setup
     setupLighting(scene, atmosphere.sunDirection);
-
-    // Load GLTF models
-    loadGLTFModels(gltfModelsGroup, furniture);
-
-    // Setup TV video playback
-    setupTVVideo(furniture);
 
     // Set initial camera position
     const view = HOUSE_VIEWS.overview;
@@ -189,10 +189,12 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
       disposed = true;
       window.removeEventListener('resize', handleResize);
 
+      disposeProducts(productsRef.current);
       disposeHouse(houseRef.current);
       disposeHouseMaterials(houseMaterialsRef.current);
       disposeDracoLoader();   // shuts down the decoder's Web Workers
       atmosphereRef.current?.dispose();
+      productsRef.current = null;
       houseRef.current = null;
       houseMaterialsRef.current = null;
       atmosphereRef.current = null;
@@ -242,282 +244,6 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
     </div>
   );
 };
-
-// Material creation functions
-function createSofaFabricMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0x2c5f7a,
-    roughness: 0.9
-  });
-}
-
-function createWoodDarkMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0x4a3728,
-    roughness: 0.5
-  });
-}
-
-function createWoodLightMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0xd4b89c,
-    roughness: 0.4
-  });
-}
-
-function createGlassMaterial() {
-  return new THREE.MeshPhysicalMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.2,
-    roughness: 0.05,
-    transmission: 0.95,
-    thickness: 0.5
-  });
-}
-
-function createMetalMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0xcccccc,
-    roughness: 0.2,
-    metalness: 0.9
-  });
-}
-
-function createRugMaterial() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#8b4513';
-  ctx.fillRect(0, 0, 512, 512);
-
-  ctx.strokeStyle = '#d4a574';
-  ctx.lineWidth = 20;
-  ctx.strokeRect(50, 50, 412, 412);
-
-  ctx.fillStyle = '#d4a574';
-  ctx.beginPath();
-  ctx.arc(256, 256, 80, 0, Math.PI * 2);
-  ctx.fill();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  return new THREE.MeshStandardMaterial({
-    color: 0x8b4513,
-    roughness: 0.9,
-    map: texture
-  });
-}
-
-function createPlantMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0x3d6b3d,
-    roughness: 0.8
-  });
-}
-
-function createMirrorMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0x888888,
-    roughness: 0.05,
-    metalness: 0.95
-  });
-}
-
-function createTVScreenMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.1,
-    emissive: 0x222222,
-    emissiveIntensity: 0.3
-  });
-}
-
-// Furniture creation function
-function createFurniture(materials) {
-  const furniture = new THREE.Group();
-
-  // Sofa configurations
-  const sofaConfigs = [
-    { id: 'sofa', position: { x: 0, y: 0, z: 2 }, rotation: 0 },
-    { id: 'sofa2', position: { x: -3, y: 0, z: 1 }, rotation: Math.PI/4 },
-    { id: 'sofa3', position: { x: 3, y: 0, z: 1 }, rotation: -Math.PI/4 }
-  ];
-
-  sofaConfigs.forEach(config => {
-    // Sofa Base
-    const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 1), materials.sofaFabric);
-    sofaBase.position.set(config.position.x, config.position.y + 0.2, config.position.z);
-    sofaBase.rotation.y = config.rotation;
-    sofaBase.castShadow = true;
-    sofaBase.receiveShadow = true;
-    sofaBase.userData = { id: config.id, name: 'Modern Luxury Sofa', clickable: true };
-    furniture.add(sofaBase);
-
-    // Sofa Back
-    const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.3), materials.sofaFabric);
-    sofaBack.position.set(config.position.x, config.position.y + 0.8, config.position.z + 0.35);
-    sofaBack.rotation.y = config.rotation;
-    sofaBack.castShadow = true;
-    sofaBack.receiveShadow = true;
-    sofaBack.userData = { id: config.id, clickable: true };
-    furniture.add(sofaBack);
-
-    // Sofa Arms
-    const sofaArmL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 1), materials.sofaFabric);
-    const armOffsetX = Math.cos(config.rotation) * -1.1 - Math.sin(config.rotation) * 0;
-    const armOffsetZ = Math.sin(config.rotation) * -1.1 + Math.cos(config.rotation) * 0;
-    sofaArmL.position.set(config.position.x + armOffsetX, config.position.y + 0.5, config.position.z + armOffsetZ);
-    sofaArmL.rotation.y = config.rotation;
-    sofaArmL.castShadow = true;
-    sofaArmL.receiveShadow = true;
-    sofaArmL.userData = { id: config.id, clickable: true };
-    furniture.add(sofaArmL);
-
-    const sofaArmR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 1), materials.sofaFabric);
-    const armOffsetXR = Math.cos(config.rotation) * 1.1 - Math.sin(config.rotation) * 0;
-    const armOffsetZR = Math.sin(config.rotation) * 1.1 + Math.cos(config.rotation) * 0;
-    sofaArmR.position.set(config.position.x + armOffsetXR, config.position.y + 0.5, config.position.z + armOffsetZR);
-    sofaArmR.rotation.y = config.rotation;
-    sofaArmR.castShadow = true;
-    sofaArmR.receiveShadow = true;
-    sofaArmR.userData = { id: config.id, clickable: true };
-    furniture.add(sofaArmR);
-  });
-
-  // TV Unit
-  const tvUnitBase = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 0.6), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.5 }));
-  tvUnitBase.position.set(0, 0.2, -3);
-  tvUnitBase.castShadow = true;
-  tvUnitBase.receiveShadow = true;
-  tvUnitBase.userData = { id: 'tvUnit', name: 'Smart TV Entertainment Unit', clickable: true };
-  furniture.add(tvUnitBase);
-
-  // TV Frame
-  const tvFrame = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.45, 0.1), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.3 }));
-  tvFrame.position.set(0, 1.1, -3.25);
-  tvFrame.castShadow = true;
-  tvFrame.receiveShadow = true;
-  tvFrame.userData = { id: 'tvScreen', clickable: true };
-  furniture.add(tvFrame);
-
-  const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.35, 0.05), materials.tvScreen);
-  tvScreen.position.set(0, 1.1, -3.3);
-  tvScreen.castShadow = true;
-  tvScreen.receiveShadow = true;
-  tvScreen.userData = { id: 'tvScreen', clickable: true };
-  furniture.add(tvScreen);
-
-  // Coffee Table
-  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.7), materials.woodLight);
-  tableTop.position.set(0, 0.425, 0);
-  tableTop.castShadow = true;
-  tableTop.receiveShadow = true;
-  tableTop.userData = { id: 'coffeeTable', name: 'Designer Coffee Table', clickable: true };
-  furniture.add(tableTop);
-
-  for (let i = 0; i < 2; i++) {
-    for (let j = 0; j < 2; j++) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4, 16), materials.woodDark);
-      leg.position.set(
-        i * 0.8 - 0.4,
-        0.2,
-        j * 0.4 - 0.2
-      );
-      leg.castShadow = true;
-      leg.receiveShadow = true;
-      leg.userData = { id: 'coffeeTable', clickable: true };
-      furniture.add(leg);
-    }
-  }
-
-  // Bookshelf
-  const shelfBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2, 1), materials.woodLight);
-  shelfBase.position.set(-4, 1, 0);
-  shelfBase.castShadow = true;
-  shelfBase.receiveShadow = true;
-  shelfBase.userData = { id: 'bookshelf', name: 'Modern Bookshelf', clickable: true };
-  furniture.add(shelfBase);
-
-  for (let i = 0; i < 4; i++) {
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.02, 0.9), materials.woodDark);
-    shelf.position.set(-4, 0.4 + i * 0.4, 0);
-    shelf.castShadow = true;
-    shelf.receiveShadow = true;
-    shelf.userData = { id: 'bookshelf', clickable: true };
-    furniture.add(shelf);
-  }
-
-  // Plant
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 16), materials.woodDark);
-  pot.position.set(3, 0.2, 1);
-  pot.castShadow = true;
-  pot.receiveShadow = true;
-  pot.userData = { id: 'plant', name: 'Decorative Fiddle Leaf Fig', clickable: true };
-  furniture.add(pot);
-
-  const plantStem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 16), materials.plant);
-  plantStem.position.set(3, 1, 1);
-  plantStem.castShadow = true;
-  plantStem.receiveShadow = true;
-  plantStem.userData = { id: 'plant', clickable: true };
-  furniture.add(plantStem);
-
-  const plantLeaves = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), materials.plant);
-  plantLeaves.position.set(3, 1.6, 1);
-  plantLeaves.castShadow = true;
-  plantLeaves.receiveShadow = true;
-  plantLeaves.userData = { id: 'plant', clickable: true };
-  furniture.add(plantLeaves);
-
-  // Rug
-  const rug = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.02, 1.7), materials.fabricRug);
-  rug.position.set(0, 0.01, 0);
-  rug.receiveShadow = true;
-  rug.userData = { id: 'rug', name: 'Persian Style Area Rug', clickable: true };
-  furniture.add(rug);
-
-  // Floor Lamp
-  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16), materials.metal);
-  lampBase.position.set(2, 0.05, -1);
-  lampBase.castShadow = true;
-  lampBase.receiveShadow = true;
-  lampBase.userData = { id: 'floorLamp', name: 'Arc Floor Lamp', clickable: true };
-  furniture.add(lampBase);
-
-  const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 16), materials.metal);
-  lampPole.position.set(2, 1, -1);
-  lampPole.castShadow = true;
-  lampPole.receiveShadow = true;
-  lampPole.userData = { id: 'floorLamp', clickable: true };
-  furniture.add(lampPole);
-
-  const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 16), materials.metal);
-  lampShade.position.set(2, 1.9, -1);
-  lampShade.castShadow = true;
-  lampShade.receiveShadow = true;
-  lampShade.userData = { id: 'floorLamp', clickable: true };
-  furniture.add(lampShade);
-
-  // Mirror on wall
-  const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), materials.woodDark);
-  mirrorFrame.position.set(3.5, 1.5, -2);
-  mirrorFrame.castShadow = true;
-  mirrorFrame.receiveShadow = true;
-  mirrorFrame.userData = { id: 'mirror', name: 'Decorative Wall Mirror', clickable: true };
-  furniture.add(mirrorFrame);
-
-  const mirrorGlass = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 0.05), materials.mirror);
-  mirrorGlass.position.set(3.5, 1.5, -1.95);
-  mirrorGlass.receiveShadow = true;
-  mirrorGlass.userData = { id: 'mirror', clickable: true };
-  furniture.add(mirrorGlass);
-
-  return furniture;
-}
 
 // Lighting setup function.
 //
@@ -572,111 +298,5 @@ function setupLighting(scene, sunDirection) {
 }
 
 // GLTF loading function
-function loadGLTFModels(gltfModelsGroup, furniture) {
-  // Use dynamic import for GLTFLoader
-  import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-    const gltfLoader = new GLTFLoader();
-
-    const sofaConfigs = [
-      { id: 'sofa', position: { x: 0, y: 0.65, z: 2 }, rotation: Math.PI },
-      { id: 'sofa2', position: { x: -3, y: 0.65, z: 1 }, rotation: Math.PI + Math.PI/4 },
-      { id: 'sofa3', position: { x: 3, y: 0.65, z: 1 }, rotation: Math.PI - Math.PI/4 },
-      { id: 'sofa4', position: { x: -2, y: 0.65, z: 0 }, rotation: Math.PI + Math.PI/2 }
-    ];
-
-    sofaConfigs.forEach(config => {
-      gltfLoader.load(
-        '/sofa.glb',
-        function (gltf) {
-          console.log(`Sofa model loaded successfully for ${config.id}`);
-          const sofaModel = gltf.scene.clone();
-
-          sofaModel.scale.set(2.5, 2.5, 2.5);
-          sofaModel.position.set(config.position.x, config.position.y, config.position.z);
-          sofaModel.rotation.y = config.rotation;
-
-          sofaModel.traverse(function (child) {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              // Leave the original materials from the GLTF file unchanged
-            }
-          });
-
-          sofaModel.userData = {
-            id: config.id,
-            name: 'Modern Luxury Sofa',
-            clickable: true
-          };
-
-          gltfModelsGroup.add(sofaModel);
-
-          // Hide primitive sofa parts
-          furniture.children.forEach(child => {
-            if (child.userData.id === config.id) {
-              child.visible = false;
-            }
-          });
-
-          console.log(`Sofa model added to scene for ${config.id}`);
-        },
-        function (xhr) {
-          // xhr.total is 0 when the response has no Content-Length, which
-          // made this log "Infinity% loaded" on every progress event.
-          if (xhr.total > 0) {
-            console.log(`${Math.round((xhr.loaded / xhr.total) * 100)}% loaded`);
-          }
-        },
-        function (error) {
-          console.error(`Error loading sofa.glb for ${config.id}:`, error);
-        }
-      );
-    });
-  }).catch(error => {
-    console.error('Error loading GLTFLoader:', error);
-  });
-}
-
-// TV video setup function
-function setupTVVideo(furniture) {
-  // Find the TV screen mesh
-  const tvScreen = furniture.children.find(child => child.userData.id === 'tvScreen');
-  if (!tvScreen) {
-    console.error('TV screen not found');
-    return;
-  }
-
-  // Create a video element
-  const video = document.createElement('video');
-  video.src = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'; // Sample video URL
-  video.crossOrigin = 'anonymous';
-  video.loop = true;
-  video.muted = true; // Muted to allow autoplay
-  video.playsInline = true;
-
-  // Create video texture
-  const videoTexture = new THREE.VideoTexture(video);
-  videoTexture.minFilter = THREE.LinearFilter;
-  videoTexture.magFilter = THREE.LinearFilter;
-  videoTexture.format = THREE.RGBFormat;
-
-  // Update the TV screen material to use the video texture
-  tvScreen.material = new THREE.MeshStandardMaterial({
-    map: videoTexture,
-    roughness: 0.1
-  });
-
-  // Start playing the video when it's loaded
-  video.addEventListener('loadeddata', () => {
-    video.play().catch(error => {
-      console.error('Error playing video:', error);
-    });
-  });
-
-  // Handle video loading errors
-  video.addEventListener('error', (error) => {
-    console.error('Error loading video:', error);
-  });
-}
 
 export default CanvasContainer;

@@ -26,6 +26,8 @@ import {
   createCorrugatedTexture,
   createFoliageTexture,
   createGrassTexture,
+  createJuteTexture,
+  createLeatherTexture,
   createMulchTexture,
   createPavingTexture,
   createPlasterTexture,
@@ -332,6 +334,62 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
       name: "fence_timber",
       map: color(createTimberTexture({ base: "#6b4a2c", boardMm: 150, seed: 17 })),
       roughness: 0.85,
+    })
+  );
+
+  // -- Retail products ----------------------------------------------------
+  materials.set(
+    "leather_taupe",
+    new THREE.MeshStandardMaterial({
+      name: "leather_taupe",
+      map: color(createLeatherTexture()),
+      roughness: 0.55,
+      metalness: 0.0,
+    })
+  );
+
+  materials.set(
+    "furniture_foot",
+    new THREE.MeshStandardMaterial({
+      name: "furniture_foot",
+      color: 0x1b140e,
+      roughness: 0.45,
+    })
+  );
+
+  materials.set(
+    "timber_dark",
+    new THREE.MeshStandardMaterial({
+      name: "timber_dark",
+      map: color(createTimberTexture({ base: "#3a1f11", boardMm: 220, seed: 29 })),
+      roughness: 0.35,
+    })
+  );
+
+  materials.set(
+    "cushion_teal",
+    new THREE.MeshStandardMaterial({
+      name: "cushion_teal",
+      map: color(createCarpetTexture({ base: "#1a443f", seed: 51 })),
+      roughness: 0.85,
+    })
+  );
+
+  materials.set(
+    "cushion_sage",
+    new THREE.MeshStandardMaterial({
+      name: "cushion_sage",
+      map: color(createCarpetTexture({ base: "#5a6950", seed: 53 })),
+      roughness: 0.85,
+    })
+  );
+
+  materials.set(
+    "jute",
+    new THREE.MeshStandardMaterial({
+      name: "jute",
+      map: color(createJuteTexture()),
+      roughness: 0.95,
     })
   );
 
