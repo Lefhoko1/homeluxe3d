@@ -399,6 +399,32 @@ def main() -> int:
     w("on conflict (scene_id, code) do update set material_name = excluded.material_name;")
     w("")
 
+    # -- Finish placements -------------------------------------------------
+    # A finish slot names a MATERIAL; a finish product SUPPLIES one. Matching
+    # them is what makes "which shop supplied this floor?" answerable from the
+    # database rather than only from the baked .glb.
+    #
+    # Slots whose material nobody sells (the robe's carpet) stay empty, which
+    # is correct: that floor is not advertising anything.
+    w("-- Fill finish slots by matching the slot's material to the product")
+    w("-- that supplies it. Unsold materials leave their slot empty.")
+    w("insert into placements (scene_id, slot_id, variant_id, shop_id, status, note)")
+    w("select sl.scene_id, sl.id, v.id, p.shop_id, 'live',")
+    w("       'Floor finish supplied by ' || sh.name")
+    w("from placement_slots sl")
+    w("join scenes sc on sc.id = sl.scene_id")
+    w("join product_variants v on v.material_name = sl.material_name")
+    w("join products p on p.id = v.product_id")
+    w("join shops sh on sh.id = p.shop_id")
+    w("where sl.kind = 'finish'")
+    w("  and sl.material_name is not null")
+    w("  and p.status = 'published'")
+    w(f"  and sc.slug = {q(SCENE_SLUG)}")
+    w("  and not exists (")
+    w("    select 1 from placements x where x.slot_id = sl.id and x.status = 'live'")
+    w("  );")
+    w("")
+
     w("commit;")
     w("")
 
