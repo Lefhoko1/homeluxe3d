@@ -7,7 +7,14 @@ one.
 
 from __future__ import annotations
 
-from ...product import Dimensions, Product, ProductCategory, Shop
+from ...product import (
+    Dimensions,
+    Product,
+    ProductCategory,
+    Promotion,
+    RoomType,
+    Shop,
+)
 from .lounge import (
     DEPTH,
     SofaSpec,
@@ -27,6 +34,19 @@ SOFA_3 = SofaSpec(seats=3, accent_cushions=1)
 SOFA_2 = SofaSpec(seats=2, accent_cushions=1)
 RECLINER = SofaSpec(seats=1, footrest=True, accent_cushions=0)
 
+#: Lounge pieces suit living and dining rooms, and nothing else -- a sofa is
+#: not offered for the bathroom.
+LOUNGE_ROOMS = (RoomType.LIVING, RoomType.DINING)
+
+#: A dated special on the suite. When it ends the products stop being
+#: advertised on their own; nobody has to remember to take them down.
+WINTER_SALE = Promotion(
+    label="Winter Lounge Sale -- 20% off the Sandton suite",
+    starts_on="2026-06-01",
+    ends_on="2026-12-31",
+    terms="While stocks last. In-store collection or delivery within Gaborone.",
+)
+
 PRODUCTS = [
     Product(
         id="sandton-sofa-3",
@@ -42,6 +62,8 @@ PRODUCTS = [
         price=18999.0,
         sku="BRD-SAND-3S",
         dimensions=Dimensions(SOFA_3.width, DEPTH, 1020.0),
+        room_types=LOUNGE_ROOMS,
+        promotion=WINTER_SALE,
         build=build_sofa(SOFA_3),
     ),
     Product(
@@ -55,6 +77,8 @@ PRODUCTS = [
         price=14499.0,
         sku="BRD-SAND-2S",
         dimensions=Dimensions(SOFA_2.width, DEPTH, 1020.0),
+        room_types=LOUNGE_ROOMS,
+        promotion=WINTER_SALE,
         build=build_sofa(SOFA_2),
     ),
     Product(
@@ -70,6 +94,8 @@ PRODUCTS = [
         price=8999.0,
         sku="BRD-SAND-1R",
         dimensions=Dimensions(RECLINER.width, RECLINER.depth, 1020.0),
+        room_types=LOUNGE_ROOMS,
+        promotion=WINTER_SALE,
         build=build_sofa(RECLINER),
     ),
     Product(
@@ -83,6 +109,7 @@ PRODUCTS = [
         price=4299.0,
         sku="BRD-OAK-CT",
         dimensions=Dimensions(1200.0, 700.0, 450.0),
+        room_types=LOUNGE_ROOMS,
         build=build_coffee_table,
     ),
     Product(
@@ -96,6 +123,7 @@ PRODUCTS = [
         price=2799.0,
         sku="BRD-JUTE-32",
         dimensions=Dimensions(3000.0, 2200.0, 16.0),
+        # Deliberately unscoped: a rug suits any room.
         build=build_rug,
     ),
 ]

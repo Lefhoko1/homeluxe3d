@@ -18,7 +18,26 @@
           "colour": "Taupe",
           "sku": "BRD-SAND-3S",
           "price": 18999.0,
+          "effectivePrice": 18999.0,
           "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "promotion": {
+            "label": "Winter Lounge Sale -- 20% off the Sandton suite",
+            "startsOn": "2026-06-01",
+            "endsOn": "2026-12-31",
+            "promoPrice": null,
+            "terms": "While stocks last. In-store collection or delivery within Gaborone.",
+            "isLive": true
+          },
+          "madeOf": [
+            "Bonded leather",
+            "Hardwood frame"
+          ],
           "dimensions": {
             "width": 2400.0,
             "depth": 950.0,
@@ -35,7 +54,26 @@
           "colour": "Taupe",
           "sku": "BRD-SAND-2S",
           "price": 14499.0,
+          "effectivePrice": 14499.0,
           "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "promotion": {
+            "label": "Winter Lounge Sale -- 20% off the Sandton suite",
+            "startsOn": "2026-06-01",
+            "endsOn": "2026-12-31",
+            "promoPrice": null,
+            "terms": "While stocks last. In-store collection or delivery within Gaborone.",
+            "isLive": true
+          },
+          "madeOf": [
+            "Bonded leather",
+            "Hardwood frame"
+          ],
           "dimensions": {
             "width": 1780.0,
             "depth": 950.0,
@@ -52,7 +90,26 @@
           "colour": "Taupe",
           "sku": "BRD-SAND-1R",
           "price": 8999.0,
+          "effectivePrice": 8999.0,
           "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "promotion": {
+            "label": "Winter Lounge Sale -- 20% off the Sandton suite",
+            "startsOn": "2026-06-01",
+            "endsOn": "2026-12-31",
+            "promoPrice": null,
+            "terms": "While stocks last. In-store collection or delivery within Gaborone.",
+            "isLive": true
+          },
+          "madeOf": [
+            "Bonded leather",
+            "Hardwood frame"
+          ],
           "dimensions": {
             "width": 1160.0,
             "depth": 1470.0,
@@ -69,7 +126,18 @@
           "colour": "Dark walnut",
           "sku": "BRD-OAK-CT",
           "price": 4299.0,
+          "effectivePrice": 4299.0,
           "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Solid timber",
+            "Tempered glass"
+          ],
           "dimensions": {
             "width": 1200.0,
             "depth": 700.0,
@@ -86,7 +154,14 @@
           "colour": "Natural",
           "sku": "BRD-JUTE-32",
           "price": 2799.0,
+          "effectivePrice": 2799.0,
           "currency": "BWP",
+          "roomTypes": [],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Jute"
+          ],
           "dimensions": {
             "width": 3000.0,
             "depth": 2200.0,
@@ -112,7 +187,20 @@
           "colour": "Carrara White",
           "sku": "TUBOD-PYC61001",
           "price": 189.0,
+          "effectivePrice": 189.0,
           "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining",
+            "bedroom",
+            "hallway",
+            "kitchen"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Polished porcelain"
+          ],
           "dimensions": {
             "width": 600.0,
             "depth": 600.0,

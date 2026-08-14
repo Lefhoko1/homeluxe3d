@@ -25,10 +25,77 @@ times if it appears three times.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from enum import Enum
 from typing import Callable
 
 import bpy
+
+
+class RoomType(str, Enum):
+    """What kind of room a product belongs in.
+
+    Scoping is what stops a bath being offered for the living room. A product
+    declares the room types it suits; a slot declares the room type it is in;
+    the two must agree before a product can be placed.
+
+    Deliberately a TYPE, not a room. "bedroom" covers the master, bedroom 2
+    and bedroom 3 -- a shop advertises for bedrooms, not for bedroom 3.
+    """
+
+    LIVING = "living"
+    DINING = "dining"
+    KITCHEN = "kitchen"
+    BEDROOM = "bedroom"
+    BATHROOM = "bathroom"
+    ENSUITE = "ensuite"
+    LAUNDRY = "laundry"
+    HALLWAY = "hallway"
+    STORAGE = "storage"
+    OUTDOOR = "outdoor"
+
+    @classmethod
+    def wet_areas(cls) -> tuple["RoomType", ...]:
+        return (cls.BATHROOM, cls.ENSUITE, cls.LAUNDRY, cls.KITCHEN)
+
+
+@dataclass(frozen=True)
+class Promotion:
+    """A dated special on a product.
+
+    The point of the end date is that it EXPIRES ON ITS OWN. A shop should not
+    have to remember to pull a special down -- when `ends_on` passes the
+    product stops being advertised, which is what `Product.is_active` checks.
+
+    Dates are ISO strings so the whole catalogue stays plain, diffable data.
+    """
+
+    label: str
+    ends_on: str                    # "2026-09-30"
+    starts_on: str | None = None
+    promo_price: float | None = None
+    terms: str = ""
+
+    def _as_date(self, value: str | None) -> date | None:
+        return date.fromisoformat(value) if value else None
+
+    def is_live(self, today: date | None = None) -> bool:
+        today = today or date.today()
+        start = self._as_date(self.starts_on)
+        end = self._as_date(self.ends_on)
+        if start and today < start:
+            return False
+        return end is None or today <= end
+
+    def as_dict(self) -> dict:
+        return {
+            "label": self.label,
+            "startsOn": self.starts_on,
+            "endsOn": self.ends_on,
+            "promoPrice": self.promo_price,
+            "terms": self.terms,
+            "isLive": self.is_live(),
+        }
 
 
 class ProductCategory(str, Enum):
@@ -141,6 +208,17 @@ class Product:
     #: as the swatch a shop panel would show.
     texture: str = ""
 
+    #: Room types this may be placed in. EMPTY MEANS ANY -- a rug goes
+    #: anywhere, a bath does not. Scoping is what stops a shop advertising a
+    #: bath in the living room.
+    room_types: tuple[RoomType, ...] = ()
+
+    #: A dated special. When it ends the product stops being advertised.
+    promotion: Promotion | None = None
+
+    #: The shop's own on/off switch, independent of any promotion.
+    enabled: bool = True
+
     @property
     def qualified_id(self) -> str:
         return self.shop.qualify(self.id)
@@ -149,6 +227,37 @@ class Product:
     def exportable(self) -> bool:
         """Finishes have no geometry of their own -- they dress a surface."""
         return self.build is not None
+
+    @property
+    def is_active(self) -> bool:
+        """Should this be advertised right now?
+
+        Two independent gates: the shop's switch, and the promotion's dates.
+        A product tied to an expired special goes dark by itself, which is the
+        whole point of putting an end date on it -- nobody has to remember to
+        take the advert down.
+        """
+        if not self.enabled:
+            return False
+        if self.promotion is not None and not self.promotion.is_live():
+            return False
+        return True
+
+    @property
+    def effective_price(self) -> float | None:
+        """Promo price while the special runs, list price otherwise."""
+        if self.promotion and self.promotion.is_live() and self.promotion.promo_price:
+            return self.promotion.promo_price
+        return self.price
+
+    def fits_room(self, room_type: RoomType | str | None) -> bool:
+        """True if this product may be placed in that kind of room."""
+        if not self.room_types:
+            return True                    # unscoped: anywhere
+        if room_type is None:
+            return False
+        value = room_type.value if isinstance(room_type, RoomType) else str(room_type)
+        return any(rt.value == value for rt in self.room_types)
 
     def as_dict(self, model_url: str | None = None) -> dict:
         data = {
@@ -160,8 +269,16 @@ class Product:
             "colour": self.colour,
             "sku": self.sku,
             "price": self.price,
+            "effectivePrice": self.effective_price,
             "currency": self.shop.currency,
+            "roomTypes": [rt.value for rt in self.room_types],
+            "isActive": self.is_active,
+            "enabled": self.enabled,
         }
+        if self.promotion:
+            data["promotion"] = self.promotion.as_dict()
+        if self.materials:
+            data["madeOf"] = list(self.materials)
         if self.dimensions:
             data["dimensions"] = self.dimensions.as_dict()
         if model_url:
@@ -238,8 +355,13 @@ class Catalog:
                 seen.append(placement.house)
         return seen
 
-    def validate(self) -> list[str]:
-        """Catch the mistakes that only show up as an empty room."""
+    def validate(self, room_types: dict[str, str] | None = None) -> list[str]:
+        """Catch the mistakes that only show up as an empty room.
+
+        `room_types` maps room code -> room type, so scoping can be checked:
+        a bath placed in the living room is a build failure, not something to
+        discover in a screenshot.
+        """
         problems: list[str] = []
 
         ids = [p.qualified_id for p in self.products]
@@ -260,4 +382,32 @@ class Catalog:
             if shop_ids.count(shop_id) > 1:
                 problems.append(f"duplicate shop id {shop_id!r}")
 
+        # Room scoping. Only checkable when the caller supplies the plan's
+        # room types, so a house-less catalogue still validates.
+        if room_types:
+            for placement in self.placements:
+                if placement.product_id not in known:
+                    continue                      # already reported above
+                product = self.product(placement.product_id)
+                room_type = room_types.get(placement.room)
+                if room_type is None:
+                    problems.append(
+                        f"placement of {placement.product_id!r} names room "
+                        f"{placement.room!r}, which is not in the plan"
+                    )
+                elif not product.fits_room(room_type):
+                    allowed = ", ".join(rt.value for rt in product.room_types)
+                    problems.append(
+                        f"{placement.product_id!r} is scoped to [{allowed}] but "
+                        f"is placed in {placement.room!r} (a {room_type})"
+                    )
+
         return problems
+
+    def active_products(self) -> list[Product]:
+        """Products that should be advertised right now."""
+        return [p for p in self.products if p.is_active]
+
+    def for_room_type(self, room_type: str) -> list[Product]:
+        """Active products that may be placed in that kind of room."""
+        return [p for p in self.active_products() if p.fits_room(room_type)]

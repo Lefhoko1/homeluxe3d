@@ -16,7 +16,7 @@ manifest with its price, SKU and swatch.
 
 from __future__ import annotations
 
-from ...product import Dimensions, Product, ProductCategory, Shop
+from ...product import Dimensions, Product, ProductCategory, RoomType, Shop
 
 SHOP = Shop(
     id="tubod",
@@ -45,6 +45,10 @@ PRODUCTS = [
         price=189.0,           # per square metre
         sku="TUBOD-PYC61001",
         dimensions=Dimensions(600.0, 600.0, 9.0),
+        room_types=(
+            RoomType.LIVING, RoomType.DINING, RoomType.BEDROOM,
+            RoomType.HALLWAY, RoomType.KITCHEN,
+        ),
         build=None,            # a finish, not an object
         material=PYC61001_MATERIAL,
         texture="/textures/floor/pyc61001.jpg",

@@ -63,19 +63,39 @@ function loadGltf(loader, url) {
  * geometry can name the product, its price and its shop without a lookup
  * table on the side.
  */
-function tag(root, product, placement) {
-  const info = {
+/**
+ * Everything the advert panel shows, carried on the mesh itself -- so a
+ * raycast hit needs no lookup to become an advert.
+ *
+ * Exported because this mapping is the contract between the catalogue and the
+ * advert, and is worth testing without a browser.
+ */
+export function advertFor(product, placement) {
+  return {
     productId: product.id,
     name: product.name,
     shop: product.shop,
     shopName: product.shopName,
     category: product.category,
+    description: product.description,
     price: product.price,
+    effectivePrice: product.effectivePrice ?? product.price,
     currency: product.currency,
     sku: product.sku,
+    colour: product.colour,
+    madeOf: product.madeOf,
+    dimensions: product.dimensions,
+    promotion: product.promotion ?? null,
+    roomTypes: product.roomTypes ?? [],
+    isActive: product.isActive !== false,
     room: placement.room,
+    placementId: placement.placementId,
     clickable: true,
   };
+}
+
+function tag(root, product, placement) {
+  const info = advertFor(product, placement);
 
   root.userData = { ...root.userData, ...info };
   root.traverse((child) => {
@@ -105,6 +125,7 @@ export async function loadProducts(options = {}) {
 
   const errors = [];
   const placed = [];
+  const inactive = [];
 
   let catalog;
   try {
@@ -116,7 +137,20 @@ export async function loadProducts(options = {}) {
   console.info(`[catalog] source: ${catalog.source ?? "static"}`);
 
   const products = indexProducts(catalog);
-  const placements = catalog.houses?.[house] ?? [];
+
+  // Skip anything that is not being advertised right now. A product whose
+  // promotion has ended simply stops appearing in the house -- that is the
+  // point of dating a special, and it must be enforced here as well as in
+  // the database, because the static fallback has no policies.
+  const allPlacements = catalog.houses?.[house] ?? [];
+  const placements = allPlacements.filter((p) => {
+    const product = products.get(p.product);
+    if (product && product.isActive === false) {
+      inactive.push(p.product);
+      return false;
+    }
+    return true;
+  });
 
   if (!placements.length) {
     errors.push({
@@ -173,7 +207,14 @@ export async function loadProducts(options = {}) {
     placed.push({ ...placement, product });
   });
 
-  return { group, placed, errors, catalog, products };
+  if (inactive.length) {
+    console.info(
+      `[products] ${inactive.length} not advertised (inactive or promotion ended):`,
+      [...new Set(inactive)].join(', ')
+    );
+  }
+
+  return { group, placed, errors, catalog, products, inactive };
 }
 
 /**

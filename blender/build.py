@@ -85,7 +85,10 @@ def main(
         )
 
     if products:
-        catalog_problems = CATALOG.validate()
+        # Pass the plan's room types so scoping is checked: a product
+        # placed in a room it is not scoped for fails the build.
+        room_types = {r.name: r.room_type for r in plan.rooms}
+        catalog_problems = CATALOG.validate(room_types)
         if catalog_problems:
             print("Catalogue validation FAILED:")
             for problem in catalog_problems:
@@ -96,6 +99,11 @@ def main(
             f"{len(CATALOG.products)} product(s), "
             f"{len(CATALOG.placements)} placement(s)"
         )
+        inactive = [p for p in CATALOG.products if not p.is_active]
+        if inactive:
+            print(f"  {len(inactive)} product(s) inactive "
+                  f"(disabled or promotion ended): "
+                  f"{', '.join(p.qualified_id for p in inactive)}")
 
     purge_scene()
 

@@ -11,7 +11,8 @@ import {
   disposeHouseMaterials,
   HOUSE_VIEWS,
 } from './house';
-import { loadProducts, disposeProducts } from './products';
+import { loadProducts, disposeProducts, AdvertPanel } from './products';
+import { recordEvent } from '../../lib/catalog/repository';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import {
   createTourController,
@@ -34,12 +35,14 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
   const tourRef = useRef(null);
   const characterRef = useRef(null);
   const [touring, setTouring] = useState(false);
+  const [advert, setAdvert] = useState(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
 
     // Initialize Three.js scene
     let disposed = false;
+    let cleanupPointer = null;   // set once the products group exists
 
     const scene = new THREE.Scene();
     // Background and fog are set by the atmosphere below, so the sky, the
@@ -142,6 +145,63 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
 
         house.add(group);
         productsRef.current = group;
+
+        // ---- Click an advert --------------------------------------------
+        // Raycast only against the products group, never the whole scene:
+        // clicking a wall should do nothing, and testing 160 house meshes on
+        // every click would be wasted work.
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let downAt = null;
+
+        const onPointerDown = (event) => {
+          downAt = { x: event.clientX, y: event.clientY };
+        };
+
+        const onPointerUp = (event) => {
+          // A drag is an orbit, not a click. Without this, every time you
+          // rotate the view over a sofa the advert would open.
+          if (!downAt) return;
+          const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+          downAt = null;
+          if (moved > 6) return;
+
+          const rect = renderer.domElement.getBoundingClientRect();
+          pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+          raycaster.setFromCamera(pointer, camera);
+          const hits = raycaster.intersectObject(group, true);
+
+          if (!hits.length) {
+            setAdvert(null);
+            return;
+          }
+
+          // Walk up until we find the tagged object: the hit is a mesh deep
+          // inside the product, but the advert data sits on every level.
+          let node = hits[0].object;
+          while (node && !node.userData?.productId) node = node.parent;
+          if (!node) return;
+
+          setAdvert({ ...node.userData });
+          recordEvent('product_click', {
+            placementId: node.userData.placementId ?? null,
+            metadata: {
+              product: node.userData.productId,
+              shop: node.userData.shop,
+              room: node.userData.room,
+            },
+          });
+        };
+
+        const dom = renderer.domElement;
+        dom.addEventListener('pointerdown', onPointerDown);
+        dom.addEventListener('pointerup', onPointerUp);
+        cleanupPointer = () => {
+          dom.removeEventListener('pointerdown', onPointerDown);
+          dom.removeEventListener('pointerup', onPointerUp);
+        };
 
         if (productErrors.length) {
           console.error(
@@ -271,6 +331,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
     return () => {
       disposed = true;
       window.removeEventListener('resize', handleResize);
+      cleanupPointer?.();
 
       tourRef.current?.detach(window);
       tourRef.current = null;
@@ -350,6 +411,17 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
           🚶
         </button>
       </div>
+
+      <AdvertPanel
+        advert={advert}
+        onClose={() => setAdvert(null)}
+        onEnquire={(a) =>
+          recordEvent('enquiry_open', {
+            placementId: a.placementId ?? null,
+            metadata: { product: a.productId, shop: a.shop },
+          })
+        }
+      />
 
       {touring && (
         <TourPad

@@ -120,6 +120,10 @@ class Wall:
 class Room:
     """A named internal space. Geometry-free: used for labels and floor finish.
 
+    `room_type` is the SCOPING key, and is deliberately a type rather than an
+    identity: master, bed2 and bed3 are all "bedroom". A shop advertises for
+    bedrooms, not for bedroom 3, so products and slots match on the type.
+
     Rooms are derived from walls in a real CAD package. Here they are declared
     explicitly because the plan gives us the clear dimensions directly, and
     because the three.js side wants named zones to attach behaviour to.
@@ -132,6 +136,7 @@ class Room:
     x1: float
     y1: float
     finish: str = "tile"
+    room_type: str = "living"
 
     @property
     def width(self) -> float:
