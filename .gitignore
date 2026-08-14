@@ -25,7 +25,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
+# .env.example IS tracked; everything else holding real keys is not. A
+# service-role key bypasses row-level security entirely, so this must stay
+# broad.
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel

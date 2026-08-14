@@ -52,6 +52,7 @@
     "@heroui/user": "2.2.24",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.29",
+    "@supabase/supabase-js": "^2.112.3",
     "@types/three": "^0.182.0",
     "clsx": "2.1.1",
     "framer-motion": "11.18.2",

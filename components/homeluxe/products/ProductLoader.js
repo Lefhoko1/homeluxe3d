@@ -20,15 +20,23 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
 
-export const CATALOG_URL = "/models/products/catalog.json";
+import {
+  fetchSceneCatalog,
+  STATIC_CATALOG_URL,
+} from "../../../lib/catalog/repository";
 
-/** Fetch and parse the catalogue manifest. */
-export async function fetchCatalog(url = CATALOG_URL) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`catalog ${url} -> HTTP ${response.status}`);
-  }
-  return response.json();
+export const CATALOG_URL = STATIC_CATALOG_URL;
+
+/**
+ * Fetch the catalogue.
+ *
+ * Goes through the repository, so this reads from Supabase when a database is
+ * configured and from the Blender-generated catalog.json when it is not. The
+ * shape is identical either way, which is the whole point -- nothing below
+ * this line knows or cares where the data came from.
+ */
+export async function fetchCatalog(scene = "3bed") {
+  return fetchSceneCatalog({ scene });
 }
 
 /** Flatten the manifest's shops into a product lookup keyed by product id. */
@@ -88,7 +96,6 @@ function tag(root, product, placement) {
 export async function loadProducts(options = {}) {
   const {
     house = "3bed",
-    catalogUrl = CATALOG_URL,
     materials = null,
     dracoLoader = null,
   } = options;
@@ -101,11 +108,12 @@ export async function loadProducts(options = {}) {
 
   let catalog;
   try {
-    catalog = await fetchCatalog(catalogUrl);
+    catalog = await fetchCatalog(house);
   } catch (error) {
     errors.push({ stage: "catalog", error });
     return { group, placed, errors, catalog: null, products: new Map() };
   }
+  console.info(`[catalog] source: ${catalog.source ?? "static"}`);
 
   const products = indexProducts(catalog);
   const placements = catalog.houses?.[house] ?? [];
@@ -153,6 +161,9 @@ export async function loadProducts(options = {}) {
 
     instance.position.fromArray(placement.position);
     instance.rotation.y = THREE.MathUtils.degToRad(placement.rotationY ?? 0);
+    if (placement.scale && placement.scale !== 1) {
+      instance.scale.setScalar(placement.scale);
+    }
     instance.name = `${placement.product}@${placement.room}`;
 
     if (materials) applyMaterials(instance, materials);
