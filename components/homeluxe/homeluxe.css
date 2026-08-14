@@ -847,3 +847,236 @@
   background: var(--secondary);
   border-radius: 3px;
 }
+
+/* =========================================================================
+   Catalogue-driven panels
+   =========================================================================
+   Styles for the rebuilt TourPanel, ShopsBanner and ProductPanel, which now
+   render real shops and products from the catalogue rather than a hardcoded
+   list. Uses the existing tokens so it sits inside the current design.
+   ========================================================================= */
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a97a3;
+  margin-bottom: 10px;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: #8a97a3;
+  margin: -4px 0 12px;
+}
+
+.panel-empty {
+  padding: 18px;
+  font-size: 13px;
+  color: #8a97a3;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* -- Room list ----------------------------------------------------------- */
+.room-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.room-btn:hover { border-color: var(--secondary); transform: translateX(2px); }
+.room-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  color: white;
+}
+.room-icon { font-size: 18px; line-height: 1; }
+.room-name { flex: 1; font-weight: 600; }
+.room-count {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.room-btn.active .room-count { background: rgba(255, 255, 255, 0.22); }
+
+/* -- Tour list ----------------------------------------------------------- */
+.tour-section { margin-top: 26px; }
+
+.tour-progress { margin-bottom: 14px; }
+.tour-progress-label { font-size: 12px; color: #8a97a3; margin-bottom: 6px; }
+.tour-progress-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.tour-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--secondary), var(--accent));
+  transition: width 0.25s ease;
+}
+
+.tour-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.tour-item:hover { border-color: var(--secondary); transform: translateX(2px); }
+.tour-item.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  color: white;
+}
+.tour-item-icon {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.tour-item.active .tour-item-icon { background: rgba(255, 255, 255, 0.18); }
+.tour-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.tour-item-name { font-weight: 600; font-size: 13px; }
+.tour-item-shop { font-size: 11px; opacity: 0.75; }
+.tour-item-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #3a2a12;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* -- Shops banner -------------------------------------------------------- */
+.shop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  margin-right: 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.shop-chip-icon { font-size: 15px; }
+.shop-chip-name { font-weight: 600; color: var(--text); }
+.shop-chip-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* -- Product detail ------------------------------------------------------ */
+.product-shop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.product-price-was {
+  margin-top: 4px;
+  font-size: 15px;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.product-promo {
+  margin: 16px 20px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(212, 165, 116, 0.14);
+  border: 1px solid rgba(212, 165, 116, 0.4);
+}
+.product-promo-label { font-weight: 700; color: #8a5a20; font-size: 13px; }
+.product-promo-ends { font-size: 12px; color: #6b7280; margin-top: 3px; }
+.product-promo-terms { font-size: 11px; color: #8a97a3; margin-top: 5px; }
+
+.product-description {
+  margin: 16px 20px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #4b5563;
+}
+
+.product-specs-title {
+  margin: 22px 20px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.product-specs { margin: 0 20px 22px; }
+.product-spec {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.product-spec-label { color: #8a97a3; }
+.product-spec-value { font-weight: 600; text-align: right; color: var(--text); }
+
+/* The shops strip holds pill chips now, which are taller than the text it
+   used to hold. Without this the row clips them in half. */
+#shops-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+  padding: 0 18px;
+}
+.shops-banner-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a97a3;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.shops-scroll {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  flex: 1;
+}

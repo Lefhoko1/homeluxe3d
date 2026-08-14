@@ -13,6 +13,7 @@ import {
 } from './house';
 import { loadProducts, disposeProducts, AdvertPanel } from './products';
 import { recordEvent } from '../../lib/catalog/repository';
+import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import {
   createTourController,
@@ -22,7 +23,8 @@ import {
   TOUR_START,
 } from './tour';
 
-const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
+const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
+                          focusProduct = null, onSelect }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -36,6 +38,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
   const characterRef = useRef(null);
   const [touring, setTouring] = useState(false);
   const [advert, setAdvert] = useState(null);
+  // The pointer handler is installed once; a ref keeps it from capturing
+  // the first render's onSelect forever.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -175,6 +181,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
 
           if (!hits.length) {
             setAdvert(null);
+            onSelectRef.current?.(null);
             return;
           }
 
@@ -184,7 +191,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
           while (node && !node.userData?.productId) node = node.parent;
           if (!node) return;
 
-          setAdvert({ ...node.userData });
+          const picked = { ...node.userData };
+          setAdvert(picked);
+          onSelectRef.current?.(picked);      // tell the panels
           recordEvent('product_click', {
             placementId: node.userData.placementId ?? null,
             metadata: {
@@ -355,16 +364,39 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin }) => {
   }, []);
 
   useEffect(() => {
-    // Update canvas title based on current room and index
-    const canvasTitle = document.getElementById('canvas-title');
-    if (canvasTitle) {
-      if (currentRoom === 'living-room') {
-        canvasTitle.textContent = 'Living Room - Click furniture to explore';
-      } else {
-        canvasTitle.textContent = `Coming soon - ${currentRoom.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
-      }
-    }
-  }, [currentRoom, currentIndex]);
+    // The room label, from the catalogue. The old version hardcoded
+    // 'living-room' and announced "Coming soon" for every other value --
+    // including the real room codes the scene actually uses.
+    const el = document.getElementById('canvas-title');
+    if (!el) return;
+    const label = ROOM_LABELS[currentRoom]?.label ?? currentRoom;
+    el.textContent = advert
+      ? `${advert.name} — ${advert.shopName ?? advert.shop}`
+      : `${label} — click an item to see the advert`;
+  }, [currentRoom, currentIndex, advert]);
+
+  // Selecting in the list flies the camera to that product. Skipped while
+  // walking, since the tour owns the camera then.
+  useEffect(() => {
+    const controls = controlsRef.current;
+    const camera = cameraRef.current;
+    const house = houseRef.current;
+    if (!focusProduct?.position || !controls || !camera || !house) return;
+    if (tourRef.current?.active) return;
+
+    // Placement positions are house-local; the house group carries the
+    // recentring offset, so add it to get world space.
+    const target = new THREE.Vector3(...focusProduct.position).add(house.position);
+    controls.target.copy(target);
+
+    // Stand back along the current view direction so the move reads as a
+    // dolly rather than a teleport to a fixed angle.
+    const back = camera.position.clone().sub(controls.target).setY(0);
+    if (back.lengthSq() < 0.01) back.set(0, 0, 1);
+    back.normalize().multiplyScalar(4.5);
+    camera.position.set(target.x + back.x, target.y + 2.6, target.z + back.z);
+    controls.update();
+  }, [focusProduct]);
 
   // The tour only exists once the scene has finished loading, so both of
   // these no-op until then rather than throwing.

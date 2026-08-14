@@ -6,123 +6,61 @@ import CanvasContainer from './CanvasContainer';
 import ProductPanel from './ProductPanel';
 import TourControls from './TourControls';
 import LoginModal from './LoginModal';
+import { useCatalog } from '../../lib/catalog/useCatalog';
 import './homeluxe.css';
 
 const LuxeHomePage = () => {
-  const [currentRoom, setCurrentRoom] = useState('living-room');
+  const [currentRoom, setCurrentRoom] = useState('living');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [roomProducts, setRoomProducts] = useState({});
+
+  const { shops, productsByRoom, rooms, source, loading } = useCatalog({ scene: '3bed' });
 
   useEffect(() => {
-    // Check for admin access from URL params
-    const urlParams = new URLSearchParams(window.location.search);
-    const adminParam = urlParams.get('admin') === 'true' || urlParams.get('isAdmin') === 'true';
-    setIsAdmin(adminParam);
-
-    // Initialize room products data
-    const products = {
-      "living-room": [
-        {
-          id: "sofa",
-          name: "Modern Luxury Sofa",
-          category: "Seating",
-          price: "P 18,999",
-          icon: "🛋️",
-          shop: "luxeHome",
-          description: "Premium modern sofa with luxury upholstery...",
-          specs: {
-            "Material": "Premium Velvet & Solid Oak",
-            "Dimensions": "220cm × 95cm × 85cm",
-            "Color": "Navy Blue",
-            "Weight Capacity": "500kg",
-            "Features": "USB Charging, Removable Covers",
-            "Warranty": "5 Years"
-          }
-        },
-        {
-          id: "tvUnit",
-          name: "Smart TV Entertainment Unit",
-          category: "Media",
-          price: "P 8,499",
-          icon: "📺",
-          shop: "techHome",
-          description: "Modern TV unit with integrated sound system...",
-          specs: {
-            "Material": "Tempered Glass & Aluminum",
-            "TV Support": "Up to 75\"",
-            "Storage": "4 Drawers, 2 Cabinets",
-            "Features": "LED Lighting, Cable Management",
-            "Color": "Black Matte"
-          }
-        },
-        {
-          id: "coffeeTable",
-          name: "Designer Coffee Table",
-          category: "Tables",
-          price: "P 4,999",
-          icon: "☕",
-          shop: "artisan",
-          description: "Handcrafted solid walnut coffee table...",
-          specs: {
-            "Material": "Solid Walnut & Glass",
-            "Dimensions": "120cm × 70cm × 45cm",
-            "Finish": "Natural Oil & Lacquer",
-            "Weight": "35kg",
-            "Design": "Geometric Legs"
-          }
-        }
-      ],
-      "bedroom": [
-        {
-          id: "bed",
-          name: "Cloud King Bed",
-          category: "Beds",
-          price: "P 12,999",
-          icon: "🛏️",
-          shop: "sleepHaven",
-          description: "Luxurious king bed with upholstered headboard...",
-          specs: { "Size": "King 180×200cm", "Material": "Fabric & Wood", "Storage": "4 Drawers" }
-        }
-      ],
-      "dining-room": [
-        {
-          id: "diningTable",
-          name: "Family Dining Set",
-          category: "Dining",
-          price: "P 8,999",
-          icon: "🍽️",
-          shop: "homeEssentials",
-          description: "6-seater set with extendable table...",
-          specs: { "Table": "180×90cm", "Extendable": "Up to 240cm", "Chairs": "6 Included" }
-        }
-      ],
-      "outdoor": [
-        {
-          id: "patio",
-          name: "Luxury Patio Set",
-          category: "Outdoor",
-          price: "P 9,999",
-          icon: "🌴",
-          shop: "gardenLife",
-          description: "Weather-resistant patio set...",
-          specs: { "Material": "Teak & Aluminum", "Seats": "8 People", "Weather": "All-Weather" }
-        }
-      ]
-    };
-
-    setRoomProducts(products);
+    // Admin is still a URL parameter, not auth. See supabase/README.md.
+    const params = new URLSearchParams(window.location.search);
+    setIsAdmin(params.get('admin') === 'true' || params.get('isAdmin') === 'true');
   }, []);
 
+  // Land on a room that actually has something in it. Without this the page
+  // can open on a room the scene has never heard of and show "coming soon"
+  // over a picture of the living room.
+  useEffect(() => {
+    if (!rooms.length) return;
+    if (!rooms.some((r) => r.code === currentRoom)) {
+      setCurrentRoom(rooms[0].code);
+      setCurrentIndex(0);
+    }
+  }, [rooms, currentRoom]);
+
+  const currentProducts = productsByRoom[currentRoom] ?? [];
+
+  // Selecting a room, a list item or a thing in the 3D scene all end up here,
+  // so the three views can never disagree about what is selected.
   const handleRoomChange = (room) => {
     setCurrentRoom(room);
     setCurrentIndex(0);
+    setSelectedProduct(null);
   };
 
   const handleProductSelect = (index) => {
     setCurrentIndex(index);
+    setSelectedProduct(currentProducts[index] ?? null);
+  };
+
+  // Fired when something is clicked in the 3D scene.
+  const handleSceneSelect = (advert) => {
+    if (!advert) {
+      setSelectedProduct(null);
+      return;
+    }
+    if (advert.room && advert.room !== currentRoom) setCurrentRoom(advert.room);
+    const list = productsByRoom[advert.room] ?? currentProducts;
+    const index = list.findIndex((p) => p.id === advert.productId);
+    if (index >= 0) setCurrentIndex(index);
+    setSelectedProduct(advert);
   };
 
   const handleLogin = (username, password) => {
@@ -146,12 +84,15 @@ const LuxeHomePage = () => {
     <div className="app-container">
       <Header isAdmin={isAdmin} onLogout={handleLogout} />
 
-      <ShopsBanner />
+      <ShopsBanner shops={shops} />
 
       <TourPanel
         currentRoom={currentRoom}
         currentIndex={currentIndex}
-        roomProducts={roomProducts}
+        products={currentProducts}
+        rooms={rooms}
+        shops={shops}
+        loading={loading}
         onRoomChange={handleRoomChange}
         onProductSelect={handleProductSelect}
       />
@@ -160,19 +101,21 @@ const LuxeHomePage = () => {
         currentRoom={currentRoom}
         currentIndex={currentIndex}
         isAdmin={isAdmin}
+        focusProduct={currentProducts[currentIndex] ?? null}
+        onSelect={handleSceneSelect}
       />
 
       <ProductPanel
-        currentRoom={currentRoom}
-        currentIndex={currentIndex}
-        roomProducts={roomProducts}
+        product={selectedProduct ?? currentProducts[currentIndex] ?? null}
+        shops={shops}
+        loading={loading}
       />
 
       <TourControls
         currentIndex={currentIndex}
-        totalItems={roomProducts[currentRoom]?.length || 0}
-        onPrevious={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-        onNext={() => setCurrentIndex(Math.min((roomProducts[currentRoom]?.length || 0) - 1, currentIndex + 1))}
+        totalItems={currentProducts.length}
+        onPrevious={() => handleProductSelect(Math.max(0, currentIndex - 1))}
+        onNext={() => handleProductSelect(Math.min(currentProducts.length - 1, currentIndex + 1))}
         onAutoPlay={() => {}}
       />
 

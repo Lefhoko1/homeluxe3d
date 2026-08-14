@@ -1,80 +1,96 @@
 import React from 'react';
 
-const TourPanel = ({ currentRoom, currentIndex, roomProducts, onRoomChange, onProductSelect }) => {
-  const shops = {
-    luxeHome: { name: "Luxe Home Gallery", icon: "🏛️" },
-    artisan: { name: "Artisan Furniture", icon: "🎨" },
-    techHome: { name: "Tech & Home", icon: "📱" },
-    illuminate: { name: "Illuminate Decor", icon: "💡" },
-    sleepHaven: { name: "Sleep Haven", icon: "😴" },
-    homeEssentials: { name: "Home Essentials", icon: "🏠" },
-    gardenLife: { name: "Garden Life", icon: "🌿" }
-  };
-
-  const products = roomProducts[currentRoom] || [];
-  const totalItems = products.length;
-  const progress = totalItems > 0 ? ((currentIndex + 1) / totalItems) * 100 : 0;
+/**
+ * Room list and the items standing in the selected room.
+ *
+ * Both come from the catalogue. Rooms are only listed if they actually
+ * contain something, which is why "Outdoor" no longer appears and then
+ * announces "coming soon" over a picture of the living room.
+ */
+const TourPanel = ({
+  currentRoom,
+  currentIndex,
+  products = [],
+  rooms = [],
+  shops = [],
+  loading = false,
+  onRoomChange,
+  onProductSelect,
+}) => {
+  const shopsById = Object.fromEntries(shops.map((s) => [s.id, s]));
+  const total = products.length;
+  const progress = total > 0 ? ((currentIndex + 1) / total) * 100 : 0;
 
   return (
     <div id="tour-panel">
       <div className="room-filter">
-        <div className="room-filter-label">Room Categories</div>
-        <div className="room-tabs">
-          {Object.keys(roomProducts).map(room => (
-            <div
-              key={room}
-              className={`room-tab ${currentRoom === room ? 'active' : ''}`}
-              data-room={room}
-              onClick={() => onRoomChange(room)}
-            >
-              <span className="room-tab-icon">
-                {room === 'living-room' ? '🛋️' :
-                 room === 'bedroom' ? '🛏️' :
-                 room === 'dining-room' ? '🍽️' : '🌳'}
-              </span>
-              {room.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        <div className="panel-title">Room Categories</div>
+
+        {loading && <div className="panel-empty">Loading catalogue…</div>}
+
+        {!loading && rooms.length === 0 && (
+          <div className="panel-empty">
+            No furnished rooms yet. Place a product in the catalogue to see it here.
+          </div>
+        )}
+
+        {rooms.map((room) => (
+          <button
+            type="button"
+            key={room.code}
+            className={`room-btn${room.code === currentRoom ? ' active' : ''}`}
+            onClick={() => onRoomChange?.(room.code)}
+          >
+            <span className="room-icon" aria-hidden>{room.icon}</span>
+            <span className="room-name">{room.label}</span>
+            <span className="room-count">{room.count}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="tour-section">
+        <div className="panel-title">Furniture Tour</div>
+        <div className="panel-sub">Click an item to focus it in the room</div>
+
+        {total > 0 && (
+          <div className="tour-progress">
+            <div className="tour-progress-label">
+              Item {currentIndex + 1} of {total}
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="tour-progress-bar">
+              <div className="tour-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
 
-      <div className="divider"></div>
-
-      <div className="tour-header">
-        <h3>Furniture Tour</h3>
-        <p>Click items to view in 360° & see details</p>
-      </div>
-
-      <div className="progress-section">
-        <div className="progress-text" id="progress-text">
-          {totalItems > 0 ? `Item ${currentIndex + 1} of ${totalItems}` : 'Ready to start'}
-        </div>
-        <div className="progress-bar">
-          <div className="progress-fill" id="progress-fill" style={{ width: `${progress}%` }}></div>
-        </div>
-      </div>
-
-      <ul className="furniture-list" id="furniture-list">
         {products.map((product, index) => {
-          const shop = shops[product.shop];
+          const shop = shopsById[product.shopSlug];
+          const onSpecial = product.promotion?.isLive;
           return (
-            <li
+            <button
+              type="button"
               key={product.id}
-              className={`furniture-item ${index === currentIndex ? 'active' : ''}`}
-              onClick={() => onProductSelect(index)}
+              className={`tour-item${index === currentIndex ? ' active' : ''}`}
+              onClick={() => onProductSelect?.(index)}
             >
-              <div className="furniture-icon">{product.icon}</div>
-              <div className="furniture-info">
-                <div className="furniture-name">{product.name}</div>
-                <div className="furniture-shop">
-                  <span>{shop.icon}</span>
-                  {shop.name}
-                </div>
-              </div>
-            </li>
+              <span className="tour-item-icon" aria-hidden>
+                {shop?.icon ?? '📦'}
+              </span>
+              <span className="tour-item-body">
+                <span className="tour-item-name">{product.name}</span>
+                <span className="tour-item-shop">
+                  {shop?.icon} {product.shopName}
+                </span>
+              </span>
+              {onSpecial && <span className="tour-item-badge">SALE</span>}
+            </button>
           );
         })}
-      </ul>
+
+        {!loading && total === 0 && (
+          <div className="panel-empty">Nothing placed in this room yet.</div>
+        )}
+      </div>
     </div>
   );
 };

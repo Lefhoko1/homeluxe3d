@@ -16,23 +16,27 @@
 -- Run after 0001_init.sql.
 -- =============================================================================
 
-create type room_type as enum (
+do $do$ begin
+  if not exists (select 1 from pg_type where typname = 'room_type') then
+    create type room_type as enum (
   'living', 'dining', 'kitchen', 'bedroom', 'bathroom',
   'ensuite', 'laundry', 'hallway', 'storage', 'outdoor'
 );
+  end if;
+end $do$;
 
 -- =============================================================================
 -- 1. SCOPING
 -- =============================================================================
 
 alter table rooms
-  add column room_type room_type not null default 'living';
+  add column if not exists room_type room_type not null default 'living';
 
 comment on column rooms.room_type is
   'The scoping key. A type, not an identity: all three bedrooms are "bedroom".';
 
 alter table placement_slots
-  add column room_type room_type;
+  add column if not exists room_type room_type;
 
 comment on column placement_slots.room_type is
   'Denormalised from the slot''s room so scope can be filtered without a join.';
@@ -40,7 +44,7 @@ comment on column placement_slots.room_type is
 -- A product suits zero or more room types. NO ROWS MEANS ANY ROOM -- a rug
 -- goes anywhere, and forcing every product to enumerate every room would be
 -- noise.
-create table product_room_types (
+create table if not exists product_room_types (
   product_id uuid not null references products(id) on delete cascade,
   room_type  room_type not null,
   primary key (product_id, room_type)
@@ -48,6 +52,7 @@ create table product_room_types (
 
 alter table product_room_types enable row level security;
 
+drop policy if exists product_room_types_read on product_room_types;
 create policy product_room_types_read on product_room_types
   for select using (exists (
     select 1 from products p where p.id = product_id and (
@@ -56,6 +61,7 @@ create policy product_room_types_read on product_room_types
     )
   ));
 
+drop policy if exists product_room_types_write on product_room_types;
 create policy product_room_types_write on product_room_types
   for all using (exists (
     select 1 from products p where p.id = product_id and public.can_manage_shop(p.shop_id)
@@ -103,6 +109,7 @@ begin
 end;
 $$;
 
+drop trigger if exists placements_scope_check on placements;
 create trigger placements_scope_check
   before insert or update of variant_id, slot_id on placements
   for each row execute function public.check_placement_scope();
@@ -111,7 +118,7 @@ create trigger placements_scope_check
 -- 2. PROMOTIONS
 -- =============================================================================
 
-create table promotions (
+create table if not exists promotions (
   id          uuid primary key default gen_random_uuid(),
   shop_id     uuid not null references shops(id) on delete cascade,
   label       text not null,
@@ -130,14 +137,16 @@ create table promotions (
 
 alter table promotions enable row level security;
 
+drop policy if exists promotions_read on promotions;
 create policy promotions_read on promotions
   for select using (public.shop_is_live(shop_id) or public.is_shop_member(shop_id));
+drop policy if exists promotions_write on promotions;
 create policy promotions_write on promotions
   for all using (public.can_manage_shop(shop_id))
   with check (public.can_manage_shop(shop_id));
 
 alter table products
-  add column promotion_id uuid references promotions(id) on delete set null;
+  add column if not exists promotion_id uuid references promotions(id) on delete set null;
 
 /** Is the promotion running today? */
 create or replace function public.promotion_is_live(p_promo uuid)
@@ -175,7 +184,11 @@ $$;
 -- carries the advert detail the click panel needs.
 -- =============================================================================
 
-create or replace view v_live_placements as
+-- Dropped rather than replaced: CREATE OR REPLACE VIEW cannot add, reorder or
+-- rename columns, and this adds several to the 0001 version.
+drop view if exists v_live_placements;
+
+create view v_live_placements as
 select
   pl.id                   as placement_id,
   sc.slug                 as scene_slug,

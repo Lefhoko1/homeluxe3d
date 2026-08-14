@@ -137,19 +137,20 @@ def main() -> int:
     w("")
 
     w("-- Rooms, from blender/houseluxe/config/plan_3bed.py")
-    w("insert into rooms (scene_id, code, name, x0_mm, y0_mm, x1_mm, y1_mm, sort_order)")
-    w("select s.id, v.code, v.name, v.x0, v.y0, v.x1, v.y1, v.ord")
+    w("insert into rooms (scene_id, code, name, room_type, x0_mm, y0_mm, x1_mm, y1_mm, sort_order)")
+    w("select s.id, v.code, v.name, v.rtype::room_type, v.x0, v.y0, v.x1, v.y1, v.ord")
     w("from scenes s, (values")
     rows = []
     for i, room in enumerate(PLAN.rooms):
         rows.append(
-            f"  ({q(room.name)}, {q(room.label)}, {room.x0}, {room.y0}, "
+            f"  ({q(room.name)}, {q(room.label)}, {q(room.room_type)}, {room.x0}, {room.y0}, "
             f"{room.x1}, {room.y1}, {i * 10})"
         )
     w(",\n".join(rows))
-    w(") as v(code, name, x0, y0, x1, y1, ord)")
+    w(") as v(code, name, rtype, x0, y0, x1, y1, ord)")
     w(f"where s.slug = {q(SCENE_SLUG)}")
-    w("on conflict (scene_id, code) do update set name = excluded.name;")
+    w("on conflict (scene_id, code) do update set name = excluded.name, "
+      "room_type = excluded.room_type;")
     w("")
 
     # -- Shops -------------------------------------------------------------
@@ -234,6 +235,75 @@ def main() -> int:
     w("  texture_url = excluded.texture_url;")
     w("")
 
+    # -- Promotions --------------------------------------------------------
+    # One row per distinct special, then linked to the products carrying it.
+    # The end date is what makes a product go dark on its own.
+    promos = {}
+    for shop in catalog["shops"]:
+        for prod in shop["products"]:
+            promo = prod.get("promotion")
+            if promo:
+                promos.setdefault((shop["id"], promo["label"]), promo)
+
+    if promos:
+        w("-- Promotions. product_is_active() stops advertising a product once")
+        w("-- its promotion's ends_on has passed -- no job, nothing deleted.")
+        w("insert into promotions (shop_id, label, terms, starts_on, ends_on, promo_price_cents)")
+        w("select sh.id, v.label, v.terms, v.starts::date, v.ends::date, v.price::integer")
+        w("from shops sh join (values")
+        rows = []
+        for (shop_id, label), promo in promos.items():
+            rows.append(
+                f"  ({q(shop_id)}, {q(label)}, {q(promo.get('terms'))}, "
+                f"{q(promo.get('startsOn'))}, {q(promo.get('endsOn'))}, "
+                f"{cents(promo.get('promoPrice'))})"
+            )
+        w(",\n".join(rows))
+        w(") as v(shop, label, terms, starts, ends, price) on sh.slug = v.shop")
+        w("where not exists (")
+        w("  select 1 from promotions x where x.shop_id = sh.id and x.label = v.label")
+        w(");")
+        w("")
+
+        w("-- Link products to their promotion.")
+        w("update products p set promotion_id = pr.id")
+        w("from promotions pr, shops sh")
+        w("where pr.shop_id = sh.id and p.shop_id = sh.id")
+        w("  and (sh.slug, p.slug, pr.label) in (")
+        rows = []
+        for shop in catalog["shops"]:
+            for prod in shop["products"]:
+                promo = prod.get("promotion")
+                if promo:
+                    rows.append(
+                        f"    ({q(shop['id'])}, {q(prod['id'].split('.', 1)[1])}, "
+                        f"{q(promo['label'])})"
+                    )
+        w(",\n".join(rows))
+        w("  );")
+        w("")
+
+    # -- Room scoping ------------------------------------------------------
+    # No rows for a product means it suits ANY room, so only scoped products
+    # appear here. The jute rug is deliberately absent.
+    scoped = []
+    for shop in catalog["shops"]:
+        for prod in shop["products"]:
+            for rt in prod.get("roomTypes") or []:
+                scoped.append((shop["id"], prod["id"].split(".", 1)[1], rt))
+
+    if scoped:
+        w("-- Room scoping. Absent = suits any room.")
+        w("insert into product_room_types (product_id, room_type)")
+        w("select p.id, v.rt::room_type")
+        w("from products p join shops sh on sh.id = p.shop_id")
+        w("join (values")
+        w(",\n".join(
+            f"  ({q(a)}, {q(b)}, {q(c)})" for a, b, c in scoped))
+        w(") as v(shop, slug, rt) on sh.slug = v.shop and p.slug = v.slug")
+        w("on conflict (product_id, room_type) do nothing;")
+        w("")
+
     # -- Slots -------------------------------------------------------------
     # One slot per existing placement, so the current hand-authored layout
     # becomes sellable inventory rather than being thrown away.
@@ -242,10 +312,10 @@ def main() -> int:
     w("-- placement becomes a slot, so the current arrangement turns into")
     w("-- inventory that can be re-sold rather than being fixed forever.")
     w("insert into placement_slots (scene_id, room_id, code, label, category_code,")
-    w("                             kind, x_mm, y_mm, z_mm, rotation_deg,")
+    w("                             kind, room_type, x_mm, y_mm, z_mm, rotation_deg,")
     w("                             max_width_mm, max_depth_mm, is_premium)")
-    w("select sc.id, r.id, v.code, v.label, v.cat, v.kind,")
-    w("       v.x, v.y, v.z, v.rot, v.maxw, v.maxd, v.premium")
+    w("select sc.id, r.id, v.code, v.label, v.cat, v.kind::product_kind,")
+    w("       r.room_type, v.x, v.y, v.z, v.rot, v.maxw, v.maxd, v.premium")
     w("from scenes sc")
     w("cross join (values")
 
@@ -316,9 +386,9 @@ def main() -> int:
     w("-- Finish slots: which product dresses which room's floor. This is what")
     w("-- makes \"who supplied this floor?\" answerable for any surface.")
     w("insert into placement_slots (scene_id, room_id, code, label, category_code,")
-    w("                             kind, material_name)")
+    w("                             kind, room_type, material_name)")
     w("select sc.id, r.id, 'floor-' || r.code, r.name || ' floor', 'tile',")
-    w("       'finish', v.material")
+    w("       'finish'::product_kind, r.room_type, v.material")
     w("from scenes sc")
     w("join (values")
     rows = [f"  ({q(name)}, {q(finish)})" for name, finish in finishes]
