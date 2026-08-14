@@ -11,7 +11,7 @@ import {
   disposeHouseMaterials,
   HOUSE_VIEWS,
 } from './house';
-import { loadProducts, disposeProducts, AdvertPanel } from './products';
+import { loadProducts, disposeProducts } from './products';
 import { recordEvent } from '../../lib/catalog/repository';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
@@ -381,6 +381,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     const controls = controlsRef.current;
     const camera = cameraRef.current;
     const house = houseRef.current;
+    // Finishes have no position -- they dress the whole surface, so there
+    // is nowhere to fly to.
     if (!focusProduct?.position || !controls || !camera || !house) return;
     if (tourRef.current?.active) return;
 
@@ -443,17 +445,6 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           🚶
         </button>
       </div>
-
-      <AdvertPanel
-        advert={advert}
-        onClose={() => setAdvert(null)}
-        onEnquire={(a) =>
-          recordEvent('enquiry_open', {
-            placementId: a.placementId ?? null,
-            metadata: { product: a.productId, shop: a.shop },
-          })
-        }
-      />
 
       {touring && (
         <TourPad

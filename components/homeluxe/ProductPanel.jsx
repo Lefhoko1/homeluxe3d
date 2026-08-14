@@ -14,7 +14,7 @@ const money = (amount, currency = 'BWP') => {
   return `${currency === 'BWP' ? 'P' : currency} ${n}`;
 };
 
-const ProductPanel = ({ product, shops = [], loading = false }) => {
+const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
   if (loading) {
     return (
       <div id="product-panel">
@@ -86,6 +86,18 @@ const ProductPanel = ({ product, shops = [], loading = false }) => {
 
       {product.description && (
         <div className="product-description">{product.description}</div>
+      )}
+
+      {/* The enquiry is the conversion event -- the thing a shop is paying
+          for. It lived in the popup that used to duplicate this panel. */}
+      {shop && (
+        <button
+          type="button"
+          className="product-enquire"
+          onClick={() => onEnquire?.(product)}
+        >
+          Enquire at {shop.name}
+        </button>
       )}
 
       {specs.length > 0 && (

@@ -74,7 +74,7 @@ const TourPanel = ({
               onClick={() => onProductSelect?.(index)}
             >
               <span className="tour-item-icon" aria-hidden>
-                {shop?.icon ?? '📦'}
+                {product.isFinish ? '🧱' : shop?.icon ?? '📦'}
               </span>
               <span className="tour-item-body">
                 <span className="tour-item-name">{product.name}</span>
@@ -82,6 +82,9 @@ const TourPanel = ({
                   {shop?.icon} {product.shopName}
                 </span>
               </span>
+              {product.isFinish && (
+                <span className="tour-item-badge finish">FINISH</span>
+              )}
               {onSpecial && <span className="tour-item-badge">SALE</span>}
             </button>
           );

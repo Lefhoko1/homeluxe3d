@@ -144,6 +144,11 @@ export async function loadProducts(options = {}) {
   // the database, because the static fallback has no policies.
   const allPlacements = catalog.houses?.[house] ?? [];
   const placements = allPlacements.filter((p) => {
+    // Finishes are advertised but not PLACED -- they dress a surface the
+    // house already has, and the texture is applied by the material library.
+    // They still appear in the room lists; they just have nothing to load.
+    if (p.isFinish) return false;
+
     const product = products.get(p.product);
     if (product && product.isActive === false) {
       inactive.push(p.product);

@@ -7,6 +7,7 @@ import ProductPanel from './ProductPanel';
 import TourControls from './TourControls';
 import LoginModal from './LoginModal';
 import { useCatalog } from '../../lib/catalog/useCatalog';
+import { recordEvent } from '../../lib/catalog/repository';
 import './homeluxe.css';
 
 const LuxeHomePage = () => {
@@ -48,6 +49,13 @@ const LuxeHomePage = () => {
   const handleProductSelect = (index) => {
     setCurrentIndex(index);
     setSelectedProduct(currentProducts[index] ?? null);
+  };
+
+  const handleEnquire = (product) => {
+    if (!product) return;
+    recordEvent('enquiry_open', {
+      metadata: { product: product.id, shop: product.shopSlug ?? product.shop },
+    });
   };
 
   // Fired when something is clicked in the 3D scene.
@@ -109,6 +117,7 @@ const LuxeHomePage = () => {
         product={selectedProduct ?? currentProducts[currentIndex] ?? null}
         shops={shops}
         loading={loading}
+        onEnquire={handleEnquire}
       />
 
       <TourControls

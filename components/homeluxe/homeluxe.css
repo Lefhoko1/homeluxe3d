@@ -1059,11 +1059,19 @@
 /* The shops strip holds pill chips now, which are taller than the text it
    used to hold. Without this the row clips them in half. */
 #shops-banner {
+  /* The app container is a 3-column grid. Without this the banner sits in
+     the 320px first column, the label eats most of it, and every shop after
+     the first overflows into `overflow: hidden` -- which looked exactly like
+     the catalogue only having one shop. */
+  grid-column: 1 / -1;
+  grid-row: 2 / 3;
   display: flex;
   align-items: center;
   gap: 14px;
   overflow: hidden;
   padding: 0 18px;
+  background: white;
+  border-bottom: 1px solid var(--border);
 }
 .shops-banner-label {
   font-size: 11px;
@@ -1080,3 +1088,26 @@
   overflow: hidden;
   flex: 1;
 }
+
+/* A finish is advertised in the room list but is not a placed object, so it
+   reads differently from the furniture around it. */
+.tour-item-badge.finish {
+  background: #6b7f95;
+  color: white;
+}
+
+.product-enquire {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 18px 20px 4px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--secondary);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.product-enquire:hover { filter: brightness(1.1); }

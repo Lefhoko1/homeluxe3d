@@ -117,3 +117,55 @@ what a shop is paying for: proof its placement was seen.
   advisory — the app must check a product fits before assigning it.
 - **No storage buckets.** Models and textures are still served from
   `public/`. Shop-uploaded assets need Supabase Storage and a policy set.
+
+## Rotation: batches
+
+One house, many shops. Every shop that pays wants its sofa in the living
+room, and only one sofa fits. Selling the same slot to everyone at once is
+impossible; selling it to one shop forever leaves the second shop nothing to
+buy.
+
+So the roster **rotates**. A **batch** is a set of shops on show together
+during a part of the day:
+
+```
+morning-a    before 12:00
+afternoon-a  12:00 - 17:00
+evening-a    after 17:00
+```
+
+`v_live_placements` filters to the batch that is live now, so the 3D scene,
+the room lists and the shop banner all rotate together — they read that one
+view.
+
+Three rules, enforced in the database rather than in a screen:
+
+1. **A shop must be subscribed to join a batch.** A trigger on `batch_shops`
+   refuses an unsubscribed shop, so no admin screen or script can add one.
+2. **A batch is live only during its day part**, within its date window.
+3. **A placement with no batch is always live** — permanent fixtures, and it
+   keeps existing placements working.
+
+Day-part boundaries live in `current_day_part()`. Change them there and every
+batch follows.
+
+`v_batch_schedule` shows the roster with a `live_now` flag — the basis of an
+admin screen.
+
+### Rotating in practice
+
+All shops are currently in all three batches, so nothing disappears. To
+actually rotate, split them:
+
+```sql
+delete from batch_shops bs using ad_batches b, shops s
+where bs.batch_id = b.id and bs.shop_id = s.id
+  and b.code = 'morning-a' and s.slug = 'tubod';
+```
+
+and point the placements at a batch (they default to permanent):
+
+```sql
+update placements set batch_id = (select id from ad_batches where code = 'morning-a')
+where shop_id = (select id from shops where slug = 'bradlows');
+```
