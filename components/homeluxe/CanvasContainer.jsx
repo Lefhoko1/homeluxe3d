@@ -11,7 +11,7 @@ import {
   disposeHouseMaterials,
   HOUSE_VIEWS,
 } from './house';
-import { loadProducts, disposeProducts } from './products';
+import { loadProducts, disposeProducts, advertFor } from './products';
 import { recordEvent } from '../../lib/catalog/repository';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
@@ -138,7 +138,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // ---- Shop products ---------------------------------------------
         // Real retail furniture from the Blender catalogue, positioned by
         // the manifest. The old primitive sofas and sofa.glb are gone.
-        const { group, placed, errors: productErrors } = await loadProducts({
+        const { group, placed, errors: productErrors, products } = await loadProducts({
           house: '3bed',
           materials: houseMaterials,
           dracoLoader: getDracoLoader(),
@@ -160,6 +160,20 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         const pointer = new THREE.Vector2();
         let downAt = null;
 
+        // Finishes are advertised on SURFACES, not as objects, so they are
+        // not in the products group and a raycast against it can never hit
+        // them. The link is the material name: Blender bakes it into the
+        // mesh, and a finish product declares which one it supplies.
+        const finishByMaterial = new Map();
+        products.forEach((product) => {
+          if (product.material) finishByMaterial.set(product.material, product);
+        });
+
+        // Surfaces worth testing. Floors today; walls once paint is sold and
+        // the wall meshes are split per room.
+        const surfaces = ['floors'].map((id) => house.userData.parts?.[id])
+          .filter(Boolean);
+
         const onPointerDown = (event) => {
           downAt = { x: event.clientX, y: event.clientY };
         };
@@ -177,29 +191,45 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
           raycaster.setFromCamera(pointer, camera);
+
+          // Objects first: a sofa standing ON a floor should win over the
+          // floor behind it.
+          let picked = null;
           const hits = raycaster.intersectObject(group, true);
 
-          if (!hits.length) {
+          if (hits.length) {
+            // Walk up until we find the tagged object: the hit is a mesh deep
+            // inside the product, but the advert data sits on every level.
+            let node = hits[0].object;
+            while (node && !node.userData?.productId) node = node.parent;
+            if (node) picked = { ...node.userData };
+          } else if (surfaces.length) {
+            // Then surfaces. The mesh is named floors.<room>, so the hit
+            // names the room as well as the material.
+            const surfaceHits = raycaster.intersectObjects(surfaces, true);
+            const mesh = surfaceHits[0]?.object;
+            const product = mesh && finishByMaterial.get(mesh.material?.name);
+            if (product) {
+              const room = mesh.name?.split('.')[1] ?? null;
+              // A finish has no placement of its own in the scene graph, so
+              // the room is supplied here rather than read off a placement.
+              picked = { ...advertFor(product, { room }), isFinish: true };
+            }
+          }
+
+          if (!picked) {
             setAdvert(null);
             onSelectRef.current?.(null);
             return;
           }
-
-          // Walk up until we find the tagged object: the hit is a mesh deep
-          // inside the product, but the advert data sits on every level.
-          let node = hits[0].object;
-          while (node && !node.userData?.productId) node = node.parent;
-          if (!node) return;
-
-          const picked = { ...node.userData };
           setAdvert(picked);
           onSelectRef.current?.(picked);      // tell the panels
           recordEvent('product_click', {
-            placementId: node.userData.placementId ?? null,
+            placementId: picked.placementId ?? null,
             metadata: {
-              product: node.userData.productId,
-              shop: node.userData.shop,
-              room: node.userData.room,
+              product: picked.productId,
+              shop: picked.shop,
+              room: picked.room,
             },
           });
         };
