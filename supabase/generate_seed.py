@@ -334,7 +334,10 @@ def main() -> int:
     # -- Slots -------------------------------------------------------------
     # One slot per existing placement, so the current hand-authored layout
     # becomes sellable inventory rather than being thrown away.
-    placements = catalog["houses"].get(SCENE_SLUG, [])
+    all_placements = catalog["houses"].get(SCENE_SLUG, [])
+    # Object slots only. A finish has no position -- it dresses a surface --
+    # and gets its own slot from the wall and floor sections below.
+    placements = [p for p in all_placements if not p.get("isFinish")]
     w("-- Placement slots. Derived from the hand-authored layout: each existing")
     w("-- placement becomes a slot, so the current arrangement turns into")
     w("-- inventory that can be re-sold rather than being fixed forever.")
