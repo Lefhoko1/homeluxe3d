@@ -159,14 +159,25 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // no placement keeps what Blender gave it.
         const finishSpecs = (placed ?? [])
           .filter((p) => p.isFinish && p.surface)
-          .map((p) => ({
-            surface: p.surface,
-            category: p.product?.category,
-            material: p.product?.material ?? p.surface,
-            texture: p.product?.texture,
-            swatch: p.product?.swatch,
-            tileMm: p.product?.dimensions?.width,
-          }));
+          .map((p) => {
+            // A product sold in several colours carries the colour on the
+            // VARIANT, so the placement has to say which one -- otherwise
+            // every gamazine wall would come out the default shade.
+            const variant = (p.product?.variants ?? []).find(
+              (v) => v.slug === p.variant
+            );
+            return {
+              surface: p.surface,
+              category: p.product?.category,
+              material: variant?.material ?? p.product?.material ?? p.surface,
+              texture: variant?.texture ?? p.product?.texture,
+              swatch: variant?.swatch ?? p.product?.swatch,
+              tileMm: p.product?.dimensions?.width,
+              product: p.product,
+              room: p.room,
+              variantName: variant?.name,
+            };
+          });
 
         const { applied } = applyFinishes(
           [house.userData.parts?.floors, house.userData.parts?.wall_finishes],
@@ -191,9 +202,19 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // not in the products group and a raycast against it can never hit
         // them. The link is the material name: Blender bakes it into the
         // mesh, and a finish product declares which one it supplies.
+        // Keyed by BOTH names a surface can be wearing: the one Blender baked
+        // in, and the one a placed finish replaced it with. A painted wall
+        // reports the second, an undressed surface the first -- and looking up
+        // only the product's base name finds neither.
         const finishByMaterial = new Map();
         products.forEach((product) => {
           if (product.material) finishByMaterial.set(product.material, product);
+        });
+        finishSpecs.forEach((spec) => {
+          if (spec.product) {
+            finishByMaterial.set(spec.surface, spec.product);
+            finishByMaterial.set(spec.material, spec.product);
+          }
         });
 
         // Surfaces worth testing. Floors today; walls once paint is sold and
@@ -238,6 +259,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
             const mesh = surfaceHits[0]?.object;
             const product = mesh && finishByMaterial.get(mesh.material?.name);
             if (product) {
+              // floors.living -> living ; wall.master -> master
               const room = mesh.name?.split('.')[1] ?? null;
               // A finish has no placement of its own in the scene graph, so
               // the room is supplied here rather than read off a placement.

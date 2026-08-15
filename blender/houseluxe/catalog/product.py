@@ -353,26 +353,54 @@ class Placement:
     product_id: str
     house: str
     room: str
-    x: float
-    y: float
+    x: float = 0.0
+    y: float = 0.0
     rotation: float = 0.0
     z: float = 0.0
     note: str = ""
 
+    #: For a FINISH: the surface it dresses -- the material name Blender baked
+    #: into the mesh, such as `wall.living` or `tile_pyc61001`. Set this and the
+    #: placement stops being an object standing somewhere and becomes a coat of
+    #: something on a surface.
+    surface: str = ""
+
+    #: Which colour, for a product sold in several.
+    variant: str = ""
+
+    @property
+    def is_finish(self) -> bool:
+        return bool(self.surface)
+
     def as_dict(self) -> dict:
         """Emit in THREE.JS space, so the app does no conversion.
+
+        A finish carries no position -- it dresses a whole surface -- so it
+        emits `surface` instead, and the app keys off `isFinish`.
 
         The glTF exporter writes Y-up, mapping Blender (x, y, z) to
         three (x, z, -y). A rotation about Blender +Z becomes the same
         rotation about three +Y.
         """
-        return {
+        data = {
             "product": self.product_id,
             "room": self.room,
-            "position": [self.x / 1000.0, self.z / 1000.0, -self.y / 1000.0],
-            "rotationY": self.rotation,
             "note": self.note,
         }
+        if self.is_finish:
+            data.update({
+                "isFinish": True,
+                "surface": self.surface,
+                "variant": self.variant or None,
+                "position": None,
+            })
+        else:
+            data.update({
+                "isFinish": False,
+                "position": [self.x / 1000.0, self.z / 1000.0, -self.y / 1000.0],
+                "rotationY": self.rotation,
+            })
+        return data
 
 
 @dataclass
@@ -440,6 +468,8 @@ class Catalog:
                 if placement.product_id not in known:
                     continue                      # already reported above
                 product = self.product(placement.product_id)
+                if placement.room == "exterior":
+                    continue          # outdoors is not a room in the plan
                 room_type = room_types.get(placement.room)
                 if room_type is None:
                     problems.append(

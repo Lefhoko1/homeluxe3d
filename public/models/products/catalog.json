@@ -573,57 +573,161 @@
       {
         "product": "bradlows.woven-jute-rug",
         "room": "living",
+        "note": "Anchors the seating arrangement.",
+        "isFinish": false,
         "position": [
           7.8,
           0.0,
           -2.3
         ],
-        "rotationY": 0.0,
-        "note": "Anchors the seating arrangement."
+        "rotationY": 0.0
       },
       {
         "product": "bradlows.sandton-sofa-3",
         "room": "living",
+        "note": "Backs onto the south wall, 125mm clear of it.",
+        "isFinish": false,
         "position": [
           7.9,
           0.0,
           -0.83
         ],
-        "rotationY": 0.0,
-        "note": "Backs onto the south wall, 125mm clear of it."
+        "rotationY": 0.0
       },
       {
         "product": "bradlows.sandton-sofa-2",
         "room": "living",
+        "note": "Faces east toward the recliner.",
+        "isFinish": false,
         "position": [
           6.3,
           0.0,
           -2.5
         ],
-        "rotationY": -90.0,
-        "note": "Faces east toward the recliner."
+        "rotationY": -90.0
       },
       {
         "product": "bradlows.sandton-recliner",
         "room": "living",
+        "note": "Footrest extends west into the open floor.",
+        "isFinish": false,
         "position": [
           9.4,
           0.0,
           -2.5
         ],
-        "rotationY": 90.0,
-        "note": "Footrest extends west into the open floor."
+        "rotationY": 90.0
       },
       {
         "product": "bradlows.oakwood-coffee-table",
         "room": "living",
+        "note": "Off-centre west, clearing the recliner footrest by ~100mm.",
+        "isFinish": false,
         "position": [
           7.7,
           0.0,
           -2.35
         ],
-        "rotationY": 0.0,
-        "note": "Off-centre west, clearing the recliner footrest by ~100mm."
+        "rotationY": 0.0
+      },
+      {
+        "product": "tubod.pyc61001",
+        "room": "living",
+        "note": "Floor tiled in PYC61001 Carrara porcelain.",
+        "isFinish": true,
+        "surface": "tile_pyc61001",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.pyc61001",
+        "room": "dining",
+        "note": "Floor tiled in PYC61001 Carrara porcelain.",
+        "isFinish": true,
+        "surface": "tile_pyc61001",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.pyc61001",
+        "room": "hall",
+        "note": "Floor tiled in PYC61001 Carrara porcelain.",
+        "isFinish": true,
+        "surface": "tile_pyc61001",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.pyc61001",
+        "room": "master",
+        "note": "Floor tiled in PYC61001 Carrara porcelain.",
+        "isFinish": true,
+        "surface": "tile_pyc61001",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.pyc61001",
+        "room": "bed2",
+        "note": "Floor tiled in PYC61001 Carrara porcelain.",
+        "isFinish": true,
+        "surface": "tile_pyc61001",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.pyc61001",
+        "room": "bed3",
+        "note": "Floor tiled in PYC61001 Carrara porcelain.",
+        "isFinish": true,
+        "surface": "tile_pyc61001",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.gamazine-exterior",
+        "room": "exterior",
+        "note": "Exterior in Gamazine Sandstone.",
+        "isFinish": true,
+        "surface": "wall.exterior",
+        "variant": "sandstone",
+        "position": null
+      },
+      {
+        "product": "tubod.gamazine-interior",
+        "room": "master",
+        "note": "Master bedroom in Gamazine Sky Blue.",
+        "isFinish": true,
+        "surface": "wall.master",
+        "variant": "sky",
+        "position": null
+      },
+      {
+        "product": "tubod.premium-interior-paint",
+        "room": "living",
+        "note": "Living room in Chalk White.",
+        "isFinish": true,
+        "surface": "wall.living",
+        "variant": "chalk",
+        "position": null
+      },
+      {
+        "product": "tubod.premium-interior-paint",
+        "room": "bed2",
+        "note": "Bedroom 2 in Sage.",
+        "isFinish": true,
+        "surface": "wall.bed2",
+        "variant": "sage",
+        "position": null
+      },
+      {
+        "product": "tubod.wall-tile-satin-white",
+        "room": "bathroom",
+        "note": "Bathroom walls in satin white tile.",
+        "isFinish": true,
+        "surface": "wall.bathroom",
+        "variant": null,
+        "position": null
       }
     ]
   }
