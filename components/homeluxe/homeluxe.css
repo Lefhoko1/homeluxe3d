@@ -1111,3 +1111,24 @@
   transition: filter 0.15s;
 }
 .product-enquire:hover { filter: brightness(1.1); }
+
+/* Shop chips are filters, so they must look pressable and show which one is
+   active. `shops` in useCatalog stays unfiltered on purpose -- the banner
+   must keep offering every shop, including the one not currently selected. */
+.shop-chip {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.shop-chip:hover { border-color: var(--secondary); transform: translateY(-1px); }
+.shop-chip.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+}
+.shop-chip.active .shop-chip-name { color: white; }
+.shop-chip.active .shop-chip-count { background: rgba(255, 255, 255, 0.25); }
+.shop-chip.clear {
+  background: transparent;
+  border-style: dashed;
+  color: #8a97a3;
+  font-weight: 600;
+}

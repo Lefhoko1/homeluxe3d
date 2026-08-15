@@ -208,6 +208,267 @@
           },
           "material": "tile_pyc61001",
           "texture": "/textures/floor/pyc61001.jpg"
+        },
+        {
+          "id": "tubod.gamazine-exterior",
+          "shop": "tubod",
+          "category": "paint",
+          "name": "Gamazine Exterior Textured Coating",
+          "description": "Weather-resistant textured wall coating for exterior walls. Hides hairline cracks and needs no repainting for years. Available in the full colour range.",
+          "colour": "Multiple",
+          "sku": "TUBOD-GAM-EXT",
+          "price": 145.0,
+          "effectivePrice": 145.0,
+          "currency": "BWP",
+          "roomTypes": [
+            "outdoor"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Acrylic polymer",
+            "Marble aggregate"
+          ],
+          "variants": [
+            {
+              "slug": "ivory",
+              "name": "Gamazine Ivory",
+              "colour": "Ivory",
+              "sku": "TUBOD-GAM-EXT-IVORY",
+              "price": null,
+              "material": "gamazine_exterior_ivory",
+              "texture": "",
+              "swatch": "#e8e2d4",
+              "isDefault": true
+            },
+            {
+              "slug": "sandstone",
+              "name": "Gamazine Sandstone",
+              "colour": "Sandstone",
+              "sku": "TUBOD-GAM-EXT-SANDSTONE",
+              "price": null,
+              "material": "gamazine_exterior_sandstone",
+              "texture": "",
+              "swatch": "#c9b489",
+              "isDefault": false
+            },
+            {
+              "slug": "terracotta",
+              "name": "Gamazine Terracotta",
+              "colour": "Terracotta",
+              "sku": "TUBOD-GAM-EXT-TERRACOTTA",
+              "price": null,
+              "material": "gamazine_exterior_terracotta",
+              "texture": "",
+              "swatch": "#b5543a",
+              "isDefault": false
+            },
+            {
+              "slug": "slate",
+              "name": "Gamazine Slate Grey",
+              "colour": "Slate Grey",
+              "sku": "TUBOD-GAM-EXT-SLATE",
+              "price": null,
+              "material": "gamazine_exterior_slate",
+              "texture": "",
+              "swatch": "#4d5560",
+              "isDefault": false
+            },
+            {
+              "slug": "ochre",
+              "name": "Gamazine Ochre",
+              "colour": "Ochre",
+              "sku": "TUBOD-GAM-EXT-OCHRE",
+              "price": null,
+              "material": "gamazine_exterior_ochre",
+              "texture": "",
+              "swatch": "#d1a03c",
+              "isDefault": false
+            },
+            {
+              "slug": "sky",
+              "name": "Gamazine Sky Blue",
+              "colour": "Sky Blue",
+              "sku": "TUBOD-GAM-EXT-SKY",
+              "price": null,
+              "material": "gamazine_exterior_sky",
+              "texture": "",
+              "swatch": "#6fa8c9",
+              "isDefault": false
+            },
+            {
+              "slug": "rose",
+              "name": "Gamazine Dusty Rose",
+              "colour": "Dusty Rose",
+              "sku": "TUBOD-GAM-EXT-ROSE",
+              "price": null,
+              "material": "gamazine_exterior_rose",
+              "texture": "",
+              "swatch": "#c98b93",
+              "isDefault": false
+            },
+            {
+              "slug": "olive",
+              "name": "Gamazine Olive",
+              "colour": "Olive",
+              "sku": "TUBOD-GAM-EXT-OLIVE",
+              "price": null,
+              "material": "gamazine_exterior_olive",
+              "texture": "",
+              "swatch": "#7c8557",
+              "isDefault": false
+            }
+          ],
+          "defaultVariant": "ivory",
+          "material": "gamazine_exterior",
+          "texture": "/textures/wall/GamazineColours.png"
+        },
+        {
+          "id": "tubod.gamazine-interior",
+          "shop": "tubod",
+          "category": "paint",
+          "name": "Gamazine Interior Textured Coating",
+          "description": "The same textured coating in an interior grade, for feature walls and full rooms. Washable and low odour.",
+          "colour": "Multiple",
+          "sku": "TUBOD-GAM-INT",
+          "price": 120.0,
+          "effectivePrice": 120.0,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining",
+            "bedroom",
+            "hallway"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Acrylic polymer",
+            "Marble aggregate"
+          ],
+          "variants": [
+            {
+              "slug": "ivory",
+              "name": "Gamazine Ivory",
+              "colour": "Ivory",
+              "sku": "TUBOD-GAM-INT-IVORY",
+              "price": null,
+              "material": "gamazine_interior_ivory",
+              "texture": "",
+              "swatch": "#e8e2d4",
+              "isDefault": true
+            },
+            {
+              "slug": "sandstone",
+              "name": "Gamazine Sandstone",
+              "colour": "Sandstone",
+              "sku": "TUBOD-GAM-INT-SANDSTONE",
+              "price": null,
+              "material": "gamazine_interior_sandstone",
+              "texture": "",
+              "swatch": "#c9b489",
+              "isDefault": false
+            },
+            {
+              "slug": "terracotta",
+              "name": "Gamazine Terracotta",
+              "colour": "Terracotta",
+              "sku": "TUBOD-GAM-INT-TERRACOTTA",
+              "price": null,
+              "material": "gamazine_interior_terracotta",
+              "texture": "",
+              "swatch": "#b5543a",
+              "isDefault": false
+            },
+            {
+              "slug": "slate",
+              "name": "Gamazine Slate Grey",
+              "colour": "Slate Grey",
+              "sku": "TUBOD-GAM-INT-SLATE",
+              "price": null,
+              "material": "gamazine_interior_slate",
+              "texture": "",
+              "swatch": "#4d5560",
+              "isDefault": false
+            },
+            {
+              "slug": "ochre",
+              "name": "Gamazine Ochre",
+              "colour": "Ochre",
+              "sku": "TUBOD-GAM-INT-OCHRE",
+              "price": null,
+              "material": "gamazine_interior_ochre",
+              "texture": "",
+              "swatch": "#d1a03c",
+              "isDefault": false
+            },
+            {
+              "slug": "sky",
+              "name": "Gamazine Sky Blue",
+              "colour": "Sky Blue",
+              "sku": "TUBOD-GAM-INT-SKY",
+              "price": null,
+              "material": "gamazine_interior_sky",
+              "texture": "",
+              "swatch": "#6fa8c9",
+              "isDefault": false
+            },
+            {
+              "slug": "rose",
+              "name": "Gamazine Dusty Rose",
+              "colour": "Dusty Rose",
+              "sku": "TUBOD-GAM-INT-ROSE",
+              "price": null,
+              "material": "gamazine_interior_rose",
+              "texture": "",
+              "swatch": "#c98b93",
+              "isDefault": false
+            },
+            {
+              "slug": "olive",
+              "name": "Gamazine Olive",
+              "colour": "Olive",
+              "sku": "TUBOD-GAM-INT-OLIVE",
+              "price": null,
+              "material": "gamazine_interior_olive",
+              "texture": "",
+              "swatch": "#7c8557",
+              "isDefault": false
+            }
+          ],
+          "defaultVariant": "ivory",
+          "material": "gamazine_interior",
+          "texture": "/textures/wall/GamazineColours.png"
+        },
+        {
+          "id": "tubod.wall-tile-satin-white",
+          "shop": "tubod",
+          "category": "tile",
+          "name": "Satin White Wall Tile 300x600",
+          "description": "Glazed ceramic wall tile for kitchen splashbacks and bathroom walls. Rectified edges, satin finish.",
+          "colour": "Satin White",
+          "sku": "TUBOD-WT-SW36",
+          "price": 165.0,
+          "effectivePrice": 165.0,
+          "currency": "BWP",
+          "roomTypes": [
+            "bathroom",
+            "ensuite",
+            "laundry",
+            "kitchen"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Glazed ceramic"
+          ],
+          "dimensions": {
+            "width": 300.0,
+            "depth": 600.0,
+            "height": 8.0
+          },
+          "material": "wall_tile_satin_white",
+          "texture": "/textures/wall/GamazineSilver.png"
         }
       ]
     }

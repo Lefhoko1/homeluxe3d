@@ -16,8 +16,9 @@ const LuxeHomePage = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [shopFilter, setShopFilter] = useState(null);
 
-  const { shops, productsByRoom, rooms, source, loading } = useCatalog({ scene: '3bed' });
+  const { shops, productsByRoom, rooms, source, loading } = useCatalog({ scene: '3bed', shopFilter });
 
   useEffect(() => {
     // Admin is still a URL parameter, not auth. See supabase/README.md.
@@ -49,6 +50,15 @@ const LuxeHomePage = () => {
   const handleProductSelect = (index) => {
     setCurrentIndex(index);
     setSelectedProduct(currentProducts[index] ?? null);
+  };
+
+  // Picking a shop narrows the catalogue AND takes the visitor to that
+  // shop's first product, so the click visibly does something in the room
+  // rather than only changing a list.
+  const handleShopSelect = (slug) => {
+    setShopFilter(slug);
+    setSelectedProduct(null);
+    setCurrentIndex(0);
   };
 
   const handleEnquire = (product) => {
@@ -92,7 +102,11 @@ const LuxeHomePage = () => {
     <div className="app-container">
       <Header isAdmin={isAdmin} onLogout={handleLogout} />
 
-      <ShopsBanner shops={shops} />
+      <ShopsBanner
+        shops={shops}
+        activeShop={shopFilter}
+        onShopSelect={handleShopSelect}
+      />
 
       <TourPanel
         currentRoom={currentRoom}

@@ -16,7 +16,14 @@ manifest with its price, SKU and swatch.
 
 from __future__ import annotations
 
-from ...product import Dimensions, Product, ProductCategory, RoomType, Shop
+from ...product import (
+    Dimensions,
+    Product,
+    ProductCategory,
+    RoomType,
+    Shop,
+    Variant,
+)
 
 SHOP = Shop(
     id="tubod",
@@ -52,5 +59,122 @@ PRODUCTS = [
         build=None,            # a finish, not an object
         material=PYC61001_MATERIAL,
         texture="/textures/floor/pyc61001.jpg",
+    ),
+]
+
+
+# --------------------------------------------------------------------------
+# Gamazine -- textured wall coating.
+#
+# ONE coating, many colours, which is why this is the product that forced
+# variants into the model. Modelling each colour as its own product would
+# repeat the description, the scoping and the price band for every shade.
+#
+# The supplied image is a COLOUR CHART photographed in a showroom, not a
+# tileable texture, so it is the product's swatch board. The wall texture
+# itself is generated in three.js and tinted per variant -- one generator,
+# any number of colours.
+# --------------------------------------------------------------------------
+GAMAZINE_EXTERIOR_MATERIAL = "gamazine_exterior"
+GAMAZINE_INTERIOR_MATERIAL = "gamazine_interior"
+
+#: Colours off the chart. Adding one is a line here, not a code change.
+GAMAZINE_COLOURS = [
+    ("ivory",      "Ivory",       "#e8e2d4"),
+    ("sandstone",  "Sandstone",   "#c9b489"),
+    ("terracotta", "Terracotta",  "#b5543a"),
+    ("slate",      "Slate Grey",  "#4d5560"),
+    ("ochre",      "Ochre",       "#d1a03c"),
+    ("sky",        "Sky Blue",    "#6fa8c9"),
+    ("rose",       "Dusty Rose",  "#c98b93"),
+    ("olive",      "Olive",       "#7c8557"),
+]
+
+
+def _gamazine_variants(material: str, sku_prefix: str) -> tuple[Variant, ...]:
+    """A variant per colour, all supplying the same coating material.
+
+    The material name carries the colour so two walls in different shades are
+    distinguishable -- otherwise every gamazine wall would look up the same
+    texture.
+    """
+    return tuple(
+        Variant(
+            slug=slug,
+            name=f"Gamazine {label}",
+            colour=label,
+            sku=f"{sku_prefix}-{slug.upper()}",
+            material=f"{material}_{slug}",
+            swatch=hex_colour,
+            is_default=(slug == "ivory"),
+        )
+        for slug, label, hex_colour in GAMAZINE_COLOURS
+    )
+
+
+PRODUCTS += [
+    Product(
+        id="gamazine-exterior",
+        shop=SHOP,
+        category=ProductCategory.PAINT,
+        name="Gamazine Exterior Textured Coating",
+        description=(
+            "Weather-resistant textured wall coating for exterior walls. "
+            "Hides hairline cracks and needs no repainting for years. "
+            "Available in the full colour range."
+        ),
+        colour="Multiple",
+        materials=("Acrylic polymer", "Marble aggregate",),
+        price=145.0,               # per square metre applied
+        sku="TUBOD-GAM-EXT",
+        room_types=(RoomType.OUTDOOR,),
+        build=None,
+        material=GAMAZINE_EXTERIOR_MATERIAL,
+        texture="/textures/wall/GamazineColours.png",
+        variants=_gamazine_variants(GAMAZINE_EXTERIOR_MATERIAL, "TUBOD-GAM-EXT"),
+    ),
+    Product(
+        id="gamazine-interior",
+        shop=SHOP,
+        category=ProductCategory.PAINT,
+        name="Gamazine Interior Textured Coating",
+        description=(
+            "The same textured coating in an interior grade, for feature "
+            "walls and full rooms. Washable and low odour."
+        ),
+        colour="Multiple",
+        materials=("Acrylic polymer", "Marble aggregate",),
+        price=120.0,
+        sku="TUBOD-GAM-INT",
+        # Interior coating suits dry rooms; wet areas get tile instead.
+        room_types=(
+            RoomType.LIVING, RoomType.DINING, RoomType.BEDROOM,
+            RoomType.HALLWAY,
+        ),
+        build=None,
+        material=GAMAZINE_INTERIOR_MATERIAL,
+        texture="/textures/wall/GamazineColours.png",
+        variants=_gamazine_variants(GAMAZINE_INTERIOR_MATERIAL, "TUBOD-GAM-INT"),
+    ),
+    Product(
+        id="wall-tile-satin-white",
+        shop=SHOP,
+        category=ProductCategory.TILE,
+        name="Satin White Wall Tile 300x600",
+        description=(
+            "Glazed ceramic wall tile for kitchen splashbacks and bathroom "
+            "walls. Rectified edges, satin finish."
+        ),
+        colour="Satin White",
+        materials=("Glazed ceramic",),
+        price=165.0,
+        sku="TUBOD-WT-SW36",
+        dimensions=Dimensions(300.0, 600.0, 8.0),
+        # Wall tile is a WET-AREA product. Scoping is what stops it being
+        # offered for a bedroom wall.
+        room_types=RoomType.wet_areas(),
+        build=None,
+        material="wall_tile_satin_white",
+        texture="/textures/wall/GamazineSilver.png",
     ),
 ]

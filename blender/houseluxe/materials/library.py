@@ -91,6 +91,17 @@ FINISHES: dict[str, Finish] = {
     "cushion_sage":    Finish("cushion_sage",    (0.353, 0.412, 0.310), roughness=0.85),
     "jute":            Finish("jute",            (0.706, 0.588, 0.404), roughness=0.95),
 
+    # -- Tubod wall finishes -----------------------------------------------
+    # Fallback colours only. The textured coating is generated in three.js and
+    # tinted per variant; these keep a Blender render honest.
+    "gamazine_exterior_ivory":      Finish("gamazine_exterior_ivory",      (0.910, 0.886, 0.831), roughness=0.92),
+    "gamazine_exterior_sandstone":  Finish("gamazine_exterior_sandstone",  (0.788, 0.706, 0.537), roughness=0.92),
+    "gamazine_exterior_terracotta": Finish("gamazine_exterior_terracotta", (0.710, 0.329, 0.227), roughness=0.92),
+    "gamazine_exterior_slate":      Finish("gamazine_exterior_slate",      (0.302, 0.333, 0.376), roughness=0.92),
+    "gamazine_interior_ivory":      Finish("gamazine_interior_ivory",      (0.910, 0.886, 0.831), roughness=0.88),
+    "gamazine_interior_sky":        Finish("gamazine_interior_sky",        (0.435, 0.659, 0.788), roughness=0.88),
+    "wall_tile_satin_white":        Finish("wall_tile_satin_white",        (0.925, 0.925, 0.918), roughness=0.20),
+
     # -- Tour character ----------------------------------------------------
     "character_skin":     Finish("character_skin",     (0.769, 0.573, 0.435), roughness=0.70),
     "character_shirt":    Finish("character_shirt",    (0.153, 0.353, 0.514), roughness=0.80),

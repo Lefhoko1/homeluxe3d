@@ -174,6 +174,48 @@ class Dimensions:
 
 
 @dataclass(frozen=True)
+class Variant:
+    """One buyable version of a product.
+
+    Gamazine is the case that forces this: it is ONE coating sold in dozens of
+    colours. Modelling each colour as its own product would duplicate the
+    description, the room scoping and the price band forty times over, and a
+    shop changing its terms would have to change them forty times.
+
+    A variant supplies its own material name so the app can tell the colours
+    apart on a wall, and its own texture or tint.
+    """
+
+    slug: str
+    name: str
+    colour: str = ""
+    sku: str = ""
+    price: float | None = None
+
+    #: Material name this variant supplies, for finishes.
+    material: str = ""
+    texture: str = ""
+
+    #: sRGB hex, for a swatch and for tinting a procedural texture.
+    swatch: str = ""
+
+    is_default: bool = False
+
+    def as_dict(self) -> dict:
+        return {
+            "slug": self.slug,
+            "name": self.name,
+            "colour": self.colour,
+            "sku": self.sku,
+            "price": self.price,
+            "material": self.material,
+            "texture": self.texture,
+            "swatch": self.swatch,
+            "isDefault": self.is_default,
+        }
+
+
+@dataclass(frozen=True)
 class Product:
     """One thing a shop sells.
 
@@ -218,6 +260,9 @@ class Product:
 
     #: The shop's own on/off switch, independent of any promotion.
     enabled: bool = True
+
+    #: Buyable versions. Empty means the product IS its own single variant.
+    variants: tuple[Variant, ...] = ()
 
     @property
     def qualified_id(self) -> str:
@@ -279,6 +324,12 @@ class Product:
             data["promotion"] = self.promotion.as_dict()
         if self.materials:
             data["madeOf"] = list(self.materials)
+        if self.variants:
+            data["variants"] = [v.as_dict() for v in self.variants]
+            data["defaultVariant"] = next(
+                (v.slug for v in self.variants if v.is_default),
+                self.variants[0].slug,
+            )
         if self.dimensions:
             data["dimensions"] = self.dimensions.as_dict()
         if model_url:
