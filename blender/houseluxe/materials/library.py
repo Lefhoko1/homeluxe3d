@@ -150,6 +150,24 @@ class MaterialLibrary:
 
         return material
 
+    def ensure(
+        self,
+        name: str,
+        base_color: tuple[float, float, float] = (0.902, 0.894, 0.874),
+        roughness: float = 0.78,
+    ) -> bpy.types.Material:
+        """Register a finish on demand, if it is not already declared.
+
+        Wall finishes are PER ROOM, so their names are derived from the plan
+        rather than typed here -- a house with a fourth bedroom would
+        otherwise need a library edit before it could be painted. The default
+        is plain plaster: the real colour is decided by whichever product a
+        shop places on that surface.
+        """
+        if name not in self._finishes:
+            self._finishes[name] = Finish(name, base_color, roughness=roughness)
+        return self.get(name)
+
     def assign(self, obj: bpy.types.Object, name: str) -> None:
         """Give an object a single material slot."""
         obj.data.materials.clear()

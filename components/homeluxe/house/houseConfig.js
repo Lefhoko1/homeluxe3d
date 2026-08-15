@@ -27,6 +27,10 @@ export const HOUSE_PARTS = [
   { id: "floors",         file: "floors.glb",         label: "Floor finishes", visible: true,  castShadow: false, receiveShadow: true },
   { id: "walls_exterior", file: "walls_exterior.glb", label: "Exterior walls", visible: true,  castShadow: true,  receiveShadow: true },
   { id: "walls_interior", file: "walls_interior.glb", label: "Interior walls", visible: true,  castShadow: true,  receiveShadow: true },
+  // The paintable skin over every wall face, one surface per room. This is
+  // what a paint or coating product is applied to; the walls themselves are
+  // structure and keep their brick and plaster.
+  { id: "wall_finishes",  file: "wall_finishes.glb",  label: "Wall finishes",  visible: true,  castShadow: false, receiveShadow: true },
   { id: "windows",        file: "windows.glb",        label: "Windows",        visible: true,  castShadow: false, receiveShadow: false },
   { id: "doors",          file: "doors.glb",          label: "Doors",          visible: true,  castShadow: true,  receiveShadow: true },
   { id: "ceiling",        file: "ceiling.glb",        label: "Ceiling",        visible: true,   castShadow: false, receiveShadow: true },

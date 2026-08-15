@@ -12,6 +12,7 @@ import {
   HOUSE_VIEWS,
 } from './house';
 import { loadProducts, disposeProducts, advertFor } from './products';
+import { applyFinishes } from './house/textures/finishOverrides';
 import { recordEvent } from '../../lib/catalog/repository';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
@@ -152,6 +153,32 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         house.add(group);
         productsRef.current = group;
 
+        // ---- Activate placed finishes -----------------------------------
+        // Which product dresses which surface is DATA. A paint or coating
+        // placed on wall.<room> repaints exactly that room; a surface with
+        // no placement keeps what Blender gave it.
+        const finishSpecs = (placed ?? [])
+          .filter((p) => p.isFinish && p.surface)
+          .map((p) => ({
+            surface: p.surface,
+            category: p.product?.category,
+            material: p.product?.material ?? p.surface,
+            texture: p.product?.texture,
+            swatch: p.product?.swatch,
+            tileMm: p.product?.dimensions?.width,
+          }));
+
+        const { applied } = applyFinishes(
+          [house.userData.parts?.floors, house.userData.parts?.wall_finishes],
+          finishSpecs,
+          { anisotropy: renderer.capabilities.getMaxAnisotropy() }
+        );
+        if (finishSpecs.length) {
+          console.info(
+            `[finishes] ${finishSpecs.length} placed, applied to ${applied} mesh(es)`
+          );
+        }
+
         // ---- Click an advert --------------------------------------------
         // Raycast only against the products group, never the whole scene:
         // clicking a wall should do nothing, and testing 160 house meshes on
@@ -171,7 +198,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
         // Surfaces worth testing. Floors today; walls once paint is sold and
         // the wall meshes are split per room.
-        const surfaces = ['floors'].map((id) => house.userData.parts?.[id])
+        const surfaces = ['floors', 'wall_finishes']
+          .map((id) => house.userData.parts?.[id])
           .filter(Boolean);
 
         const onPointerDown = (event) => {

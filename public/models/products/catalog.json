@@ -469,6 +469,101 @@
           },
           "material": "wall_tile_satin_white",
           "texture": "/textures/wall/GamazineSilver.png"
+        },
+        {
+          "id": "tubod.premium-interior-paint",
+          "shop": "tubod",
+          "category": "paint",
+          "name": "Premium Acrylic Interior Paint",
+          "description": "Low-sheen washable acrylic for interior walls and ceilings. Smooth finish, unlike the textured gamazine coating.",
+          "colour": "Multiple",
+          "sku": "TUBOD-PAINT-INT",
+          "price": 38.0,
+          "effectivePrice": 38.0,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining",
+            "bedroom",
+            "hallway",
+            "kitchen",
+            "storage"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Acrylic emulsion"
+          ],
+          "variants": [
+            {
+              "slug": "chalk",
+              "name": "Chalk White",
+              "colour": "Chalk White",
+              "sku": "TUBOD-PAINT-CHALK",
+              "price": null,
+              "material": "paint_interior_chalk",
+              "texture": "",
+              "swatch": "#f2efe9",
+              "isDefault": true
+            },
+            {
+              "slug": "linen",
+              "name": "Linen",
+              "colour": "Linen",
+              "sku": "TUBOD-PAINT-LINEN",
+              "price": null,
+              "material": "paint_interior_linen",
+              "texture": "",
+              "swatch": "#e6ddcc",
+              "isDefault": false
+            },
+            {
+              "slug": "stone",
+              "name": "Stone Grey",
+              "colour": "Stone Grey",
+              "sku": "TUBOD-PAINT-STONE",
+              "price": null,
+              "material": "paint_interior_stone",
+              "texture": "",
+              "swatch": "#b9b6ae",
+              "isDefault": false
+            },
+            {
+              "slug": "sage",
+              "name": "Sage",
+              "colour": "Sage",
+              "sku": "TUBOD-PAINT-SAGE",
+              "price": null,
+              "material": "paint_interior_sage",
+              "texture": "",
+              "swatch": "#9aa88c",
+              "isDefault": false
+            },
+            {
+              "slug": "clay",
+              "name": "Clay",
+              "colour": "Clay",
+              "sku": "TUBOD-PAINT-CLAY",
+              "price": null,
+              "material": "paint_interior_clay",
+              "texture": "",
+              "swatch": "#c08b6e",
+              "isDefault": false
+            },
+            {
+              "slug": "midnight",
+              "name": "Midnight Blue",
+              "colour": "Midnight Blue",
+              "sku": "TUBOD-PAINT-MIDNIGHT",
+              "price": null,
+              "material": "paint_interior_midnight",
+              "texture": "",
+              "swatch": "#38465c",
+              "isDefault": false
+            }
+          ],
+          "defaultVariant": "chalk",
+          "material": "paint_interior"
         }
       ]
     }

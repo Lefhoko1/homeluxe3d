@@ -178,3 +178,57 @@ PRODUCTS += [
         texture="/textures/wall/GamazineSilver.png",
     ),
 ]
+
+
+# --------------------------------------------------------------------------
+# Ordinary interior paint.
+#
+# The plain alternative to gamazine, and the reason both exist as PRODUCTS
+# rather than as a texture switch: a wall is either coated or painted, both
+# are sold by somebody, and the house should be able to show either.
+# --------------------------------------------------------------------------
+PAINT_MATERIAL = "paint_interior"
+
+PAINT_COLOURS = [
+    ("chalk",     "Chalk White",   "#f2efe9"),
+    ("linen",     "Linen",         "#e6ddcc"),
+    ("stone",     "Stone Grey",    "#b9b6ae"),
+    ("sage",      "Sage",          "#9aa88c"),
+    ("clay",      "Clay",          "#c08b6e"),
+    ("midnight",  "Midnight Blue", "#38465c"),
+]
+
+PRODUCTS += [
+    Product(
+        id="premium-interior-paint",
+        shop=SHOP,
+        category=ProductCategory.PAINT,
+        name="Premium Acrylic Interior Paint",
+        description=(
+            "Low-sheen washable acrylic for interior walls and ceilings. "
+            "Smooth finish, unlike the textured gamazine coating."
+        ),
+        colour="Multiple",
+        materials=("Acrylic emulsion",),
+        price=38.0,                 # per square metre applied
+        sku="TUBOD-PAINT-INT",
+        room_types=(
+            RoomType.LIVING, RoomType.DINING, RoomType.BEDROOM,
+            RoomType.HALLWAY, RoomType.KITCHEN, RoomType.STORAGE,
+        ),
+        build=None,
+        material=PAINT_MATERIAL,
+        variants=tuple(
+            Variant(
+                slug=slug,
+                name=f"{label}",
+                colour=label,
+                sku=f"TUBOD-PAINT-{slug.upper()}",
+                material=f"{PAINT_MATERIAL}_{slug}",
+                swatch=hex_colour,
+                is_default=(slug == "chalk"),
+            )
+            for slug, label, hex_colour in PAINT_COLOURS
+        ),
+    ),
+]

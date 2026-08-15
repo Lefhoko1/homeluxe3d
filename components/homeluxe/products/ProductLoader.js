@@ -147,7 +147,15 @@ export async function loadProducts(options = {}) {
     // Finishes are advertised but not PLACED -- they dress a surface the
     // house already has, and the texture is applied by the material library.
     // They still appear in the room lists; they just have nothing to load.
-    if (p.isFinish) return false;
+    // Kept in `placed` (the caller applies them to surfaces) but never
+    // loaded as geometry -- a finish has no model.
+    if (p.isFinish) {
+      const product = products.get(p.product);
+      if (product && product.isActive !== false) {
+        placed.push({ ...p, product, isFinish: true });
+      }
+      return false;
+    }
 
     const product = products.get(p.product);
     if (product && product.isActive === false) {

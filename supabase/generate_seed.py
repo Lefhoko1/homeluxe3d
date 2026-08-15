@@ -235,6 +235,33 @@ def main() -> int:
     w("  texture_url = excluded.texture_url;")
     w("")
 
+    # Colour variants. Gamazine and paint are one product each, sold in many
+    # shades, and each shade supplies its own material so two walls in
+    # different colours stay distinguishable.
+    variant_rows = []
+    for shop in catalog["shops"]:
+        for prod in shop["products"]:
+            for var in prod.get("variants") or []:
+                variant_rows.append(
+                    f"  ({q(shop['id'])}, {q(prod['id'].split('.', 1)[1])}, "
+                    f"{q(var['slug'])}, {q(var['name'])}, {q(var['sku'])},"
+                    f" {q(var['material'])}, {q(var.get('texture'))},"
+                    f" {q(var.get('swatch'))}, {q(var['isDefault'])})"
+                )
+    if variant_rows:
+        w("-- Colour variants.")
+        w("insert into product_variants (product_id, slug, name, sku,")
+        w("                              material_name, texture_url, is_default)")
+        w("select p.id, v.slug, v.name, v.sku, v.material, v.texture, false")
+        w("from products p join shops sh on sh.id = p.shop_id")
+        w("join (values")
+        w(",\n".join(variant_rows))
+        w(") as v(shop, prod, slug, name, sku, material, texture, swatch, is_def)")
+        w("  on sh.slug = v.shop and p.slug = v.prod")
+        w("on conflict (product_id, slug) do update set")
+        w("  material_name = excluded.material_name;")
+        w("")
+
     # -- Promotions --------------------------------------------------------
     # One row per distinct special, then linked to the products carrying it.
     # The end date is what makes a product go dark on its own.
@@ -397,6 +424,26 @@ def main() -> int:
     w("join rooms r on r.scene_id = sc.id and r.code = v.room_code")
     w(f"where sc.slug = {q(SCENE_SLUG)}")
     w("on conflict (scene_id, code) do update set material_name = excluded.material_name;")
+    w("")
+
+    # -- Wall surfaces -----------------------------------------------------
+    # One paintable surface per room plus the exterior, matching the skins
+    # Blender exports. These are what a paint or coating is placed ON.
+    w("-- Wall surfaces: one slot per room, plus the exterior.")
+    w("insert into placement_slots (scene_id, room_id, code, label, category_code,")
+    w("                             kind, room_type, material_name)")
+    w("select sc.id, r.id, 'wall-' || r.code, r.name || ' walls', 'paint',")
+    w("       'finish'::product_kind, r.room_type, 'wall.' || r.code")
+    w("from scenes sc join rooms r on r.scene_id = sc.id")
+    w(f"where sc.slug = {q(SCENE_SLUG)}")
+    w("on conflict (scene_id, code) do update set material_name = excluded.material_name;")
+    w("")
+    w("insert into placement_slots (scene_id, code, label, category_code,")
+    w("                             kind, room_type, material_name)")
+    w("select sc.id, 'wall-exterior', 'Exterior walls', 'paint',")
+    w("       'finish'::product_kind, 'outdoor'::room_type, 'wall.exterior'")
+    w(f"from scenes sc where sc.slug = {q(SCENE_SLUG)}")
+    w("on conflict (scene_id, code) do nothing;")
     w("")
 
     # -- Finish placements -------------------------------------------------

@@ -544,4 +544,77 @@ export function createTilePhotoTexture(url, options = {}) {
   return texture;
 }
 
+/**
+ * Gamazine -- textured wall coating.
+ *
+ * Generated rather than photographed, because the product is ONE coating in
+ * dozens of colours: a photograph would have to be reshot per shade, while a
+ * generator takes the colour as an argument. The supplied image is a swatch
+ * board, which is the right thing to show in the catalogue and the wrong
+ * thing to tile across a wall.
+ *
+ * The look is a heavy stipple with directional drag, which is what a trowel
+ * leaves behind.
+ */
+export function createGamazineTexture(options = {}) {
+  const { base = "#e8e2d4", seed = 211, coarseness = 1.0 } = options;
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  const random = makeRandom(seed);
+
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  const { r, g, b } = hexToRgb(base);
+
+  // Aggregate: thousands of small raised grains.
+  const grains = Math.round(26000 * coarseness);
+  for (let i = 0; i < grains; i += 1) {
+    const x = random() * size;
+    const y = random() * size;
+    const lift = Math.floor(random() * 54 - 22);
+    ctx.fillStyle = `rgba(${clamp(r + lift)},${clamp(g + lift)},${clamp(b + lift)},0.55)`;
+    ctx.beginPath();
+    ctx.arc(x, y, 1 + random() * 2.4 * coarseness, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Trowel drag: short vertical streaks, the giveaway of a hand-applied coat.
+  for (let i = 0; i < 900; i += 1) {
+    const x = random() * size;
+    const y = random() * size;
+    const lift = Math.floor(random() * 30 - 15);
+    ctx.strokeStyle = `rgba(${clamp(r + lift)},${clamp(g + lift)},${clamp(b + lift)},0.30)`;
+    ctx.lineWidth = 1 + random() * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (random() - 0.5) * 6, y + 6 + random() * 16);
+    ctx.stroke();
+  }
+  return canvas;
+}
+
+/** Smooth emulsion: almost flat, with just enough tooth to catch light. */
+export function createPaintTexture(options = {}) {
+  const { base = "#f2efe9", seed = 221 } = options;
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+  addGrain(ctx, size, { count: 9000, alpha: 0.035, spread: 12, seed });
+  return canvas;
+}
+
+function hexToRgb(hex) {
+  const v = hex.replace("#", "");
+  return {
+    r: parseInt(v.slice(0, 2), 16),
+    g: parseInt(v.slice(2, 4), 16),
+    b: parseInt(v.slice(4, 6), 16),
+  };
+}
+const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+
 export { toTexture, PX_PER_M };

@@ -14,6 +14,7 @@ from .openings import DoorsComponent, WindowsComponent
 from .porch import PorchComponent
 from .roof import RoofComponent
 from .slab import SlabComponent
+from .wallfinish import WallFinishComponent
 from .walls import ExteriorWallsComponent, InteriorWallsComponent
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "FloorFinishComponent",
     "ExteriorWallsComponent",
     "InteriorWallsComponent",
+    "WallFinishComponent",
     "WindowsComponent",
     "DoorsComponent",
     "CeilingComponent",
@@ -37,6 +39,7 @@ def default_components() -> list[Component]:
         FloorFinishComponent(),
         ExteriorWallsComponent(),
         InteriorWallsComponent(),
+        WallFinishComponent(),
         WindowsComponent(),
         DoorsComponent(),
         CeilingComponent(),
