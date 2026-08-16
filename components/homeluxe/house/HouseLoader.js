@@ -21,6 +21,7 @@ import {
   SITE_PARTS,
 } from "./houseConfig";
 import { createHouseMaterials } from "./textures/materialLibrary";
+import { addFarGround } from "./farGround";
 
 /**
  * Where the Draco decoder lives. Vendored into `public/draco/` from
@@ -227,6 +228,12 @@ export async function loadHouse(options = {}) {
 
   house.userData.parts = partMap;
   house.userData.bounds = bounds;
+
+  // Extend the ground past the yard. Without this the 30x40 site is the whole
+  // world and, from any angle low enough to see past the fence, it reads as a
+  // slab of lawn floating in mid air. Must come after recentring, since it
+  // probes the loaded geometry for its height.
+  if (includeSite) addFarGround(house, materials);
 
   return { house, errors, bounds, stats };
 }
