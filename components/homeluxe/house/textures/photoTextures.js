@@ -23,12 +23,15 @@
 import * as THREE from "three";
 
 /**
- * Load an image as a tiling surface texture.
+ * Load an image as a surface texture.
  *
  * @param {string} url
  * @param {object} options
- * @param {number} options.metresPerTile  how much ground one copy covers. UVs
- *        from `uv_project_box` are in metres, so repeat is its reciprocal.
+ * @param {number|null} options.metresPerTile  how much ground one copy covers.
+ *        UVs from `uv_project_box` are in metres, so repeat is its reciprocal.
+ *        **null means do not tile at all**: the texture is clamped and the
+ *        caller is expected to fit one copy over the surface with
+ *        `fitTextureToSpan`.
  * @param {number} options.anisotropy
  * @param {boolean} options.level         flatten the vertical light gradient
  * @param {number} options.size           square resample size
@@ -36,7 +39,7 @@ import * as THREE from "three";
  */
 export function loadPhotoTexture(url, options = {}) {
   const {
-    metresPerTile = 2,
+    metresPerTile = null,
     anisotropy = 4,
     level = true,
     size = 1024,
@@ -63,11 +66,47 @@ export function loadPhotoTexture(url, options = {}) {
     }
   );
 
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1 / metresPerTile, 1 / metresPerTile);
+  if (metresPerTile) {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1 / metresPerTile, 1 / metresPerTile);
+  } else {
+    // Clamped, so a fitted copy cannot bleed a second one in at the edges.
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+  }
+
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = anisotropy;
+  return texture;
+}
+
+/**
+ * Stretch ONE copy of a texture over a given span of UV space.
+ *
+ * The alternative to tiling. Tiling a photograph of a real place cannot be
+ * made to look right: every copy carries the same blades of grass, the same
+ * bare patch and the same bright corner, so the eye locks onto the grid
+ * immediately however carefully the seams are matched. One copy has no grid
+ * to find.
+ *
+ * The cost is resolution -- one image over forty metres is soft -- and that
+ * is the trade being made deliberately. Soft grass reads as grass; repeated
+ * grass reads as a texture.
+ *
+ * Spans are in the same units as the UVs, which the Blender exporter writes
+ * in metres.
+ */
+export function fitTextureToSpan(texture, { uMin, uMax, vMin, vMax }) {
+  const uSpan = uMax - uMin;
+  const vSpan = vMax - vMin;
+  if (!texture || uSpan <= 0 || vSpan <= 0) return texture;
+
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.repeat.set(1 / uSpan, 1 / vSpan);
+  texture.offset.set(-uMin / uSpan, -vMin / vSpan);
+  texture.needsUpdate = true;
   return texture;
 }
 

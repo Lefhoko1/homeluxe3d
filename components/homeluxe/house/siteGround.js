@@ -1,5 +1,24 @@
 /**
- * The ground beyond the yard.
+ * Making the ground look like ground.
+ *
+ * Two jobs, both of which need the yard's real extent and so can only be done
+ * once it has loaded: fitting the lawn photograph to the site, and continuing
+ * the ground past it.
+ *
+ * ---------------------------------------------------------------------------
+ * 1. THE LAWN IS FITTED, NOT TILED
+ *
+ * Tiling a photograph of a real lawn cannot be made to look right. Every copy
+ * carries the same blades, the same bare patch, the same bright corner, so the
+ * eye finds the grid immediately -- and the levelling that removes the seams
+ * makes each copy MORE identical, not less. The result was a chequerboard.
+ *
+ * One copy stretched over the whole site has no grid to find. It is softer,
+ * and that is the trade: soft grass reads as grass, repeated grass reads as a
+ * texture.
+ *
+ * ---------------------------------------------------------------------------
+ * 2. THE GROUND BEYOND THE YARD
  *
  * The site is a 30x40 rectangle of contoured turf sitting on a block of soil.
  * That is the whole world -- outside it there is nothing, so from any camera
@@ -29,6 +48,8 @@
 
 import * as THREE from "three";
 
+import { fitTextureToSpan } from "./textures/photoTextures";
+
 /** How far out the ground runs. Comfortably past the backdrop at 260m. */
 const EXTENT = 700;
 
@@ -51,8 +72,8 @@ const CLEARANCE = 0.02;
  */
 export function addFarGround(house, materials) {
   const yard = house?.userData?.parts?.yard_ground;
-  const lawn = materials?.get("lawn");
-  if (!yard || !lawn) return null;
+  const material = materials?.get("far_ground");
+  if (!yard || !material) return null;
 
   // Raycasts read world matrices, which are otherwise only refreshed during
   // render -- so the first probe would use stale ones.
@@ -67,13 +88,8 @@ export function addFarGround(house, materials) {
 
   const geometry = new THREE.PlaneGeometry(EXTENT, EXTENT, 1, 1);
   geometry.rotateX(-Math.PI / 2);
-  // UVs in metres, matching the contract the rest of the pipeline uses: the
-  // Blender exporter projects at 1 UV unit per metre, and the lawn material's
-  // repeat is set from that. A plane's default 0..1 UVs would stretch one
-  // copy of the photograph across 700 metres.
-  setMetreUvs(geometry, EXTENT);
 
-  const mesh = new THREE.Mesh(geometry, lawn);
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.name = "far_ground";
   mesh.receiveShadow = true;
   // It is scenery, not terrain: the tour must not be able to walk out onto
@@ -129,12 +145,34 @@ function lowestPerimeterY(yard, box, centre, size) {
 
 const clampUnit = (v) => Math.max(-1, Math.min(1, v));
 
-/** Give a plane UVs measured in metres rather than 0..1 across its extent. */
-function setMetreUvs(geometry, extent) {
-  const position = geometry.attributes.position;
-  const uv = geometry.attributes.uv;
-  for (let i = 0; i < position.count; i += 1) {
-    uv.setXY(i, position.getX(i) + extent / 2, position.getZ(i) + extent / 2);
-  }
-  uv.needsUpdate = true;
+/**
+ * Stretch one copy of the lawn photograph over the whole site.
+ *
+ * The UV frame is the Blender one. `uv_project_box` writes u = x and v = y in
+ * metres, and glTF maps Blender (x, y, z) onto three (x, z, -y) -- so for a
+ * point in the house group's local space, u is its x and v is MINUS its z.
+ * Getting that sign wrong flips the lawn north-to-south, which is invisible
+ * on a photograph of grass and would therefore never be noticed; it is
+ * written out here rather than left to be re-derived.
+ */
+export function fitLawnToYard(house, materials) {
+  const yard = house?.userData?.parts?.yard_ground;
+  const map = materials?.get("lawn")?.map;
+  if (!yard || !map) return null;
+
+  house.updateMatrixWorld(true);
+
+  // World bounds, less the group's offset, gives local. The house group is
+  // only ever translated -- no rotation, no scale -- so this is a subtraction
+  // rather than a full transform.
+  const box = new THREE.Box3().setFromObject(yard);
+  const min = box.min.clone().sub(house.position);
+  const max = box.max.clone().sub(house.position);
+
+  return fitTextureToSpan(map, {
+    uMin: min.x,
+    uMax: max.x,
+    vMin: -max.z,
+    vMax: -min.z,
+  });
 }

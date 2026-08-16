@@ -234,20 +234,46 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
   // -- Site / landscaping -------------------------------------------------
   // Names match `blender/houseluxe/materials/library.py`, same contract as
   // the house: Blender says what a surface is, this says what it looks like.
-  // The lawn is a photograph, not a drawing. `metresPerTile` is the ground a
-  // single copy covers; 3m keeps individual blades readable when the tour
-  // camera is at walking height without the repeat becoming obvious from the
-  // overview. The drawn grass stays as the fallback if the file is missing --
-  // a lawn that is the wrong green beats a lawn that is white.
+  // The lawn is a photograph, and it is NOT TILED.
+  //
+  // Tiled at 3m it was unusable: a photograph of a real lawn carries the same
+  // blades, the same bare patch and the same bright corner in every copy, so
+  // the eye finds the grid instantly however well the seams are levelled --
+  // and levelling the seams is exactly what makes each copy identical.
+  //
+  // So one copy is stretched over the whole site. `fitLawnToYard` sets the
+  // repeat and offset once the yard is loaded and its extent is known; until
+  // then this is just an unfitted clamped texture. Resampled larger than the
+  // other surfaces because it has thirty metres to cover rather than three.
+  //
+  // The drawn grass stays as the fallback if the file is missing -- a lawn
+  // that is the wrong green beats a lawn that is white.
   materials.set(
     "lawn",
     new THREE.MeshStandardMaterial({
       name: "lawn",
       map: loadPhotoTexture("/lawnTexture.png", {
-        metresPerTile: 3,
+        metresPerTile: null,      // fitted, not tiled
+        size: 2048,
         anisotropy,
         fallback: createGrassTexture(),
       }),
+      roughness: 1.0,
+      metalness: 0.0,
+    })
+  );
+
+  // The ground beyond the property line. Flat colour, not the photograph:
+  // stretching one copy across seven hundred metres would be a smear, and
+  // tiling it there brings back the grid this whole change is removing. The
+  // colour is the photograph's own mean once levelled, so the join at the
+  // fence is a change of detail rather than a change of hue -- and the fog
+  // has washed it halfway to sky by the time it is far enough to notice.
+  materials.set(
+    "far_ground",
+    new THREE.MeshStandardMaterial({
+      name: "far_ground",
+      color: 0x51aa10,
       roughness: 1.0,
       metalness: 0.0,
     })
