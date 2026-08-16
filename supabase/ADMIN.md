@@ -32,6 +32,34 @@ where s.slug = 'bradlows' and u.email = 'staff@bradlows.co.bw';
 `handle_new_user()` creates a profile for every new sign-up. Accounts created
 before migration 0001 ran had none — 0005 backfills them.
 
+### Creating an account in SQL, and the trap in it
+
+Normally you sign up through the app. If you must insert into `auth.users`
+directly, **the empty-string columns must be `''` and not `NULL`**:
+
+```sql
+update auth.users set
+  confirmation_token         = coalesce(confirmation_token, ''),
+  recovery_token             = coalesce(recovery_token, ''),
+  email_change_token_new     = coalesce(email_change_token_new, ''),
+  email_change               = coalesce(email_change, ''),
+  email_change_token_current = coalesce(email_change_token_current, ''),
+  phone_change               = coalesce(phone_change, ''),
+  phone_change_token         = coalesce(phone_change_token, ''),
+  reauthentication_token     = coalesce(reauthentication_token, '')
+where email = 'you@example.com';
+```
+
+GoTrue reads those into non-nullable Go strings. Leave them `NULL` and every
+sign-in fails with **"Database error querying schema"** — which sounds like a
+broken schema or a bad connection and is neither; the row simply cannot be
+scanned. The password itself is fine, which makes it very hard to guess.
+
+Two more things such a row needs: a matching `auth.identities` row with
+`provider = 'email'` (its `email` column is generated from `identity_data`, so
+do not insert it), and `email_confirmed_at` set, or the account cannot sign in
+until it confirms an email that was never sent.
+
 ## Why this needed real auth first
 
 Every table has row-level security on and every write policy resolves through
