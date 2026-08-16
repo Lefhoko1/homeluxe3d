@@ -1132,3 +1132,95 @@
   color: #8a97a3;
   font-weight: 600;
 }
+
+/* ==========================================================================
+   THE ADVERT'S PICTURE
+
+   `thumbnail_url` has been travelling from the database through the
+   repository and onto the mesh since the catalogue was wired up, and nothing
+   rendered it. It renders now that shops have a way to upload one.
+   ========================================================================== */
+
+.product-gallery {
+  margin: -20px -20px 16px;
+}
+
+.product-hero {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: #f1f5f9;
+}
+
+.product-thumbs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 20px 0;
+  overflow-x: auto;
+}
+
+.product-thumbs img {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* -- who is signed in ---------------------------------------------------- */
+
+#admin-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The admin entry point is an <a> when it navigates and a <button> when it
+   opens the dialog, so both have to look the same. */
+#admin-controls a.control-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-user {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-role {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #1f6feb;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.login-cancel {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 6px;
+  display: block;
+  width: 100%;
+}
+
+/* Which source the catalogue came from. "static" means the app is reading the
+   file the Blender build wrote, and nothing can be saved. */
+.catalog-source {
+  position: fixed;
+  bottom: 4px;
+  left: 6px;
+  font-size: 9px;
+  color: rgba(120, 130, 145, 0.55);
+  pointer-events: none;
+  z-index: 5;
+}

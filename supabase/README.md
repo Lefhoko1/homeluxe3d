@@ -103,20 +103,26 @@ can read either source.
 `v_shop_daily_stats` — views, clicks, expands and enquiries per day. This is
 what a shop is paying for: proof its placement was seen.
 
+## Admin
+
+Migration `0005_storage_and_admin.sql` adds storage buckets, model anchoring
+and `admin_place_product()`, and the app has the screens to drive them. See
+[ADMIN.md](ADMIN.md) — how to become an admin, how uploads are scoped by
+storage path, and why placing is one function call rather than three inserts.
+
 ## Known gaps
 
-- **Not executed anywhere.** Validated by parsing against a Postgres grammar,
-  not by running it. Expect to fix something on first run.
-- **No admin UI.** The schema and policies support one; the screens do not
-  exist. `isAdmin` in the app is still a URL parameter, not auth.
 - **No payment integration.** `shop_subscriptions.external_ref` is where a
   provider id would go; nothing writes it.
 - **Notifications are rows, not delivery.** The trigger fans a published post
   out to followers; email/push is not wired.
 - **Slot fitting is not enforced in SQL.** `max_width_mm` and friends are
   advisory — the app must check a product fits before assigning it.
-- **No storage buckets.** Models and textures are still served from
-  `public/`. Shop-uploaded assets need Supabase Storage and a policy set.
+- **Finishes cannot be uploaded.** Paint, gamazine and tiles are still
+  authored in Blender. The schema supports uploading them; the form offers
+  only `object` categories.
+- **Shops are created in SQL.** There is no self-service sign-up, and staff
+  are added to `shop_members` by hand.
 
 ## Rotation: batches
 

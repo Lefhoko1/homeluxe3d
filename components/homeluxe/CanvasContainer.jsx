@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { OrbitControls, DragControls, TransformControls } from 'three-stdlib';
+import { OrbitControls } from 'three-stdlib';
 
 import {
   loadHouse,
@@ -11,7 +11,7 @@ import {
   disposeHouseMaterials,
   HOUSE_VIEWS,
 } from './house';
-import { loadProducts, disposeProducts, advertFor } from './products';
+import { loadProducts, loadOneProduct, disposeProducts, advertFor } from './products';
 import { applyFinishes } from './house/textures/finishOverrides';
 import { recordEvent } from '../../lib/catalog/repository';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
@@ -23,9 +23,12 @@ import {
   TourPad,
   TOUR_START,
 } from './tour';
+import { AdminBar, AdminGate, AdminList, PlacementEditor, UploadDialog } from './admin';
+import { PlacementService } from '../../lib/admin/PlacementService';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
-                          focusProduct = null, onSelect }) => {
+                          shops = [], focusProduct = null, onSelect,
+                          onCatalogChanged }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -43,6 +46,24 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // the first render's onSelect forever.
   const onSelectRef = useRef(onSelect);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  // ---- Admin editing ------------------------------------------------------
+  // The gizmo is a plain three.js object, not a component: it moves meshes
+  // sixty times a second and routing that through React state would re-render
+  // the page on every mouse move. React owns the toolbar; the editor owns the
+  // scene; `adminState` is the small amount that has to cross between them.
+  const editorRef = useRef(null);
+  const pickedNodeRef = useRef(null);
+  const placementsRef = useRef(null);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [adminState, setAdminState] = useState({
+    mode: 'translate', snap: true, lockY: true,
+    hasSelection: false, isDirty: false, transform: null, advert: null,
+  });
+  const [saving, setSaving] = useState(false);
+  const [adminMessage, setAdminMessage] = useState(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showList, setShowList] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -152,6 +173,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
         house.add(group);
         productsRef.current = group;
+        // The admin editor is created in its own effect, which cannot run
+        // until there is something to edit.
+        setSceneReady(true);
 
         // ---- Activate placed finishes -----------------------------------
         // Which product dresses which surface is DATA. A paint or coating
@@ -224,6 +248,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           .filter(Boolean);
 
         const onPointerDown = (event) => {
+          // A press that lands on a transform handle belongs to the gizmo.
+          // `controls.axis` is non-null while the pointer is over one, which
+          // is the only reliable way to tell before the drag begins --
+          // otherwise letting go of a handle without moving deselects the
+          // very thing being edited.
+          if (editorRef.current?.controls?.axis != null) {
+            downAt = null;
+            return;
+          }
           downAt = { x: event.clientX, y: event.clientY };
         };
 
@@ -231,6 +264,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           // A drag is an orbit, not a click. Without this, every time you
           // rotate the view over a sofa the advert would open.
           if (!downAt) return;
+          if (editorRef.current?.isDragging) { downAt = null; return; }
           const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
           downAt = null;
           if (moved > 6) return;
@@ -244,14 +278,22 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           // Objects first: a sofa standing ON a floor should win over the
           // floor behind it.
           let picked = null;
+          let pickedNode = null;
           const hits = raycaster.intersectObject(group, true);
 
           if (hits.length) {
-            // Walk up until we find the tagged object: the hit is a mesh deep
-            // inside the product, but the advert data sits on every level.
+            // The hit is a mesh deep inside the product. Climb to the DIRECT
+            // CHILD of the products group: that node holds the placement's
+            // transform, and it is what the gizmo must move -- grabbing the
+            // mesh instead would move a sofa's arm relative to its own seat.
+            // `tag()` copies the advert onto every level, so the userData is
+            // there either way.
             let node = hits[0].object;
-            while (node && !node.userData?.productId) node = node.parent;
-            if (node) picked = { ...node.userData };
+            while (node && node.parent && node.parent !== group) node = node.parent;
+            if (node?.userData?.productId) {
+              picked = { ...node.userData };
+              pickedNode = node;
+            }
           } else if (surfaces.length) {
             // Then surfaces. The mesh is named floors.<room>, so the hit
             // names the room as well as the material.
@@ -269,10 +311,18 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
           if (!picked) {
             setAdvert(null);
+            pickedNodeRef.current = null;
+            editorRef.current?.detach();
             onSelectRef.current?.(null);
             return;
           }
           setAdvert(picked);
+          // Clicking a product also selects it for editing, when there is an
+          // editor. A finish has no object, so it can be advertised but not
+          // moved -- it dresses a surface the house already has.
+          pickedNodeRef.current = pickedNode;
+          if (pickedNode) editorRef.current?.attach(pickedNode);
+          else editorRef.current?.detach();
           onSelectRef.current?.(picked);      // tell the panels
           recordEvent('product_click', {
             placementId: picked.placementId ?? null,
@@ -480,6 +530,192 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     controls.update();
   }, [focusProduct]);
 
+  // ---- The placement editor ----------------------------------------------
+  // Created only for an admin, and only once there is a scene. Torn down the
+  // moment either stops being true, so a sign-out leaves no gizmo behind and
+  // no listeners on the canvas.
+  useEffect(() => {
+    if (!isAdmin || !sceneReady) return undefined;
+
+    const editor = new PlacementEditor({
+      camera: cameraRef.current,
+      dom: rendererRef.current.domElement,
+      scene: sceneRef.current,
+      orbitControls: controlsRef.current,
+      onChange: setAdminState,
+    });
+    editorRef.current = editor;
+    placementsRef.current = new PlacementService(null, { scene: '3bed' });
+
+    // Blender's own shortcuts, because anyone who has placed furniture in a
+    // 3D tool already has them in their fingers.
+    const onKey = (event) => {
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (event.key === 'g' || event.key === 'G') editor.setMode('translate');
+      else if (event.key === 'r' || event.key === 'R') editor.setMode('rotate');
+      else if (event.key === 's' && !event.ctrlKey) editor.setMode('scale');
+      else if (event.key === 'Escape') editor.detach();
+    };
+    window.addEventListener('keydown', onKey);
+
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      editor.dispose();
+      editorRef.current = null;
+      // OrbitControls is disabled while a handle is held; disposing mid-drag
+      // would otherwise leave the camera permanently frozen.
+      if (controlsRef.current) controlsRef.current.enabled = true;
+    };
+  }, [isAdmin, sceneReady]);
+
+  /** Transient toolbar message. Errors stay; confirmations fade. */
+  const say = useCallback((text, tone = 'info') => {
+    setAdminMessage({ text, tone });
+    if (tone !== 'bad') setTimeout(() => setAdminMessage(null), 3500);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const editor = editorRef.current;
+    const node = pickedNodeRef.current;
+    if (!editor?.hasSelection || !node) return;
+
+    const data = node.userData;
+    if (!data.variantId) {
+      // Everything in the static catalogue is in this position: it was
+      // authored in Blender and has no row to update. Saying so is better
+      // than a permission error from PostgREST.
+      say(
+        'This item comes from the static catalogue, not the database, so ' +
+        'there is no row to move. Set the Supabase environment variables to ' +
+        'edit placements.',
+        'bad'
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const placementId = await placementsRef.current.place({
+        variantId: data.variantId,
+        placementId: data.placementId ?? null,
+        transform: editor.toTransform(),
+      });
+
+      // The object is now a saved placement, so a second save updates rather
+      // than inserting a duplicate.
+      node.userData.placementId = placementId;
+      node.userData.pending = false;
+      node.traverse((child) => {
+        if (child.isMesh) child.userData.placementId = placementId;
+      });
+
+      editor.markSaved();
+      say(data.placementId ? 'Moved.' : 'Placed.');
+      // The room lists read the database, so they must re-read or they will
+      // keep describing the layout as it was before this save.
+      onCatalogChanged?.();
+    } catch (error) {
+      say(error.message, 'bad');
+    } finally {
+      setSaving(false);
+    }
+  }, [say, onCatalogChanged]);
+
+  const handleRevert = useCallback(() => {
+    editorRef.current?.revert();
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    const node = pickedNodeRef.current;
+    if (!node) return;
+    const { placementId, pending, name } = node.userData;
+
+    if (!pending && !window.confirm(`Remove "${name}" from the house?`)) return;
+
+    setSaving(true);
+    try {
+      // A pending object has never been written, so there is nothing to
+      // delete -- taking it out of the scene is the whole operation.
+      if (placementId) await placementsRef.current.remove(placementId);
+
+      editorRef.current?.detach();
+      node.parent?.remove(node);
+      node.traverse((child) => { if (child.isMesh) child.geometry?.dispose(); });
+      pickedNodeRef.current = null;
+      setAdvert(null);
+      onSelectRef.current?.(null);
+      say(placementId ? 'Removed.' : 'Discarded.');
+      if (placementId) onCatalogChanged?.();
+    } catch (error) {
+      say(error.message, 'bad');
+    } finally {
+      setSaving(false);
+    }
+  }, [say, onCatalogChanged]);
+
+  /**
+   * Drop a product into the scene from the admin list.
+   *
+   * Nothing is written here. The model is loaded, put where the camera is
+   * looking and handed to the gizmo; it becomes a placement only when the
+   * admin presses Save. So a mis-click costs a download and nothing else.
+   */
+  const handlePlace = useCallback(async ({ product, variant }) => {
+    const group = productsRef.current;
+    const controls = controlsRef.current;
+    if (!group || !variant?.model_url) return;
+
+    setSaving(true);
+    try {
+      const instance = await loadOneProduct({
+        modelUrl: variant.model_url,
+        anchor: variant.anchor,
+        dracoLoader: getDracoLoader(),
+        materials: houseMaterialsRef.current,
+        advert: {
+          productId: product.qualified_id,
+          name: product.name,
+          shop: product.shop_slug,
+          shopName: product.shop_name,
+          category: product.category_code,
+          description: product.description,
+          price: product.price_cents != null ? product.price_cents / 100 : null,
+          currency: product.currency,
+          thumbnail: product.thumbnail_url ?? null,
+          dimensions: product.width_mm
+            ? { width: product.width_mm, depth: product.depth_mm, height: product.height_mm }
+            : undefined,
+          roomTypes: product.room_types ?? [],
+          variantId: variant.id,
+          placementId: null,
+          // Marks it as never-saved, so Delete discards instead of asking
+          // the database to remove a row that does not exist.
+          pending: true,
+        },
+      });
+
+      // Put it where the admin is looking, on the floor. `controls.target` is
+      // the point the camera orbits, which is inside whichever room is being
+      // viewed -- far more useful than the world origin.
+      const target = controls?.target?.clone() ?? new THREE.Vector3();
+      target.y = 0;
+      group.worldToLocal(target);
+      instance.position.set(target.x, 0, target.z);
+
+      group.add(instance);
+      pickedNodeRef.current = instance;
+      setAdvert({ ...instance.userData });
+      editorRef.current?.attach(instance);
+      editorRef.current?.setMode('translate');
+      say(`${product.name} dropped in. Move it, then press Save.`);
+    } catch (error) {
+      say(`Could not load that model: ${error.message}`, 'bad');
+    } finally {
+      setSaving(false);
+    }
+  }, [say]);
+
   // The tour only exists once the scene has finished loading, so both of
   // these no-op until then rather than throwing.
   const startTour = () => {
@@ -495,22 +731,52 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   };
 
   return (
-    <div id="canvas-container">
+    <div id="canvas-container" className={isAdmin ? 'admin' : undefined}>
       <div className="canvas-overlay" id="canvas-title">Living Room - Click furniture to explore</div>
       <div className="rotation-indicator">
         <span className="rotation-icon">↻</span>
         <span id="rotation-text">360° View Active</span>
       </div>
+      {/* The editing toolbar. Mounted only for someone who can actually
+          change something -- it replaces three buttons that sat here with
+          `display: none`, wired to nothing. */}
+      <AdminGate isAdmin={isAdmin}>
+        <AdminBar
+          state={adminState}
+          saving={saving}
+          message={adminMessage}
+          onMode={(mode) => editorRef.current?.setMode(mode)}
+          onSnap={(on) => editorRef.current?.setSnap(on)}
+          onLockY={(on) => editorRef.current?.setLockY(on)}
+          onDropToFloor={() => editorRef.current?.dropToFloor()}
+          onSave={handleSave}
+          onRevert={handleRevert}
+          onDelete={handleDelete}
+          onUpload={() => setShowUpload(true)}
+          onManage={() => setShowList(true)}
+        />
+      </AdminGate>
+
+      {showUpload && (
+        <UploadDialog
+          shops={shops}
+          onClose={() => setShowUpload(false)}
+          onCreated={(created) => {
+            say(`Created ${created.qualifiedId}. Open Manage to place it.`);
+            onCatalogChanged?.();
+          }}
+        />
+      )}
+
+      {showList && (
+        <AdminList
+          shops={shops}
+          onClose={() => setShowList(false)}
+          onPlace={handlePlace}
+        />
+      )}
+
       <div className="camera-controls">
-        <div className="edit-controls">
-          <button className="edit-btn" id="drag-mode" title="Drag Mode - Click and drag furniture" style={{ display: 'none' }}>✋</button>
-          <button className="edit-btn" id="transform-mode" title="Transform Mode - Edit position/rotation/scale" style={{ display: isAdmin ? 'block' : 'none' }}>🔧</button>
-        </div>
-        <div className="transform-sub-controls" id="transform-sub-controls" style={{ display: 'none' }}>
-          <button className="transform-sub-btn" id="translate-mode" title="Move">↔️</button>
-          <button className="transform-sub-btn" id="rotate-mode" title="Rotate">🔄</button>
-          <button className="transform-sub-btn" id="scale-mode" title="Scale">📏</button>
-        </div>
         <button className="camera-btn" id="camera-front" title="Front View">👁️</button>
         <button className="camera-btn" id="camera-side" title="Side View">👈</button>
         <button className="camera-btn" id="camera-top" title="Top View">⬇️</button>

@@ -8,23 +8,30 @@ import TourControls from './TourControls';
 import LoginModal from './LoginModal';
 import { useCatalog } from '../../lib/catalog/useCatalog';
 import { recordEvent } from '../../lib/catalog/repository';
+import { useAdmin } from './admin';
 import './homeluxe.css';
 
 const LuxeHomePage = () => {
   const [currentRoom, setCurrentRoom] = useState('living');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shopFilter, setShopFilter] = useState(null);
 
-  const { shops, productsByRoom, rooms, source, loading } = useCatalog({ scene: '3bed', shopFilter });
+  const { shops, productsByRoom, rooms, source, loading, refresh } =
+    useCatalog({ scene: '3bed', shopFilter });
 
-  useEffect(() => {
-    // Admin is still a URL parameter, not auth. See supabase/README.md.
-    const params = new URLSearchParams(window.location.search);
-    setIsAdmin(params.get('admin') === 'true' || params.get('isAdmin') === 'true');
-  }, []);
+  // Real identity, not `?admin=true`. The old parameter showed the admin
+  // chrome to anyone who guessed it and granted nothing when they used it --
+  // every write policy in the database resolves through auth.uid().
+  const {
+    isAdmin,
+    isSignedIn,
+    displayName,
+    shops: manageableShops,
+    signIn,
+    signOut,
+  } = useAdmin();
 
   // Land on a room that actually has something in it. Without this the page
   // can open on a room the scene has never heard of and show "coming soon"
@@ -81,26 +88,24 @@ const LuxeHomePage = () => {
     setSelectedProduct(advert);
   };
 
-  const handleLogin = (username, password) => {
-    // Simple login logic - in real app, this would be API call
-    if (username === 'admin' && password === 'admin') {
-      setIsAdmin(true);
-      setShowLogin(false);
-      // Set cookie for persistence
-      document.cookie = 'isAdmin=true;path=/';
-    } else {
-      alert('Invalid credentials');
-    }
-  };
-
-  const handleLogout = () => {
-    setIsAdmin(false);
-    document.cookie = 'isAdmin=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+  // Sign-in is Supabase's, and the session is persisted by its client -- so
+  // there is no cookie to set here and no admin state to keep in this
+  // component. The old version wrote `isAdmin=true` into document.cookie,
+  // which authorised precisely nothing.
+  const handleLogin = async (email, password) => {
+    await signIn(email, password);
+    setShowLogin(false);
   };
 
   return (
     <div className="app-container">
-      <Header isAdmin={isAdmin} onLogout={handleLogout} />
+      <Header
+        isAdmin={isAdmin}
+        isSignedIn={isSignedIn}
+        displayName={displayName}
+        onLogin={() => setShowLogin(true)}
+        onLogout={signOut}
+      />
 
       <ShopsBanner
         shops={shops}
@@ -123,8 +128,12 @@ const LuxeHomePage = () => {
         currentRoom={currentRoom}
         currentIndex={currentIndex}
         isAdmin={isAdmin}
+        shops={manageableShops}
         focusProduct={currentProducts[currentIndex] ?? null}
         onSelect={handleSceneSelect}
+        // A save changes what the database says is in the house, so the room
+        // lists have to re-read or they keep showing the old layout.
+        onCatalogChanged={refresh}
       />
 
       <ProductPanel
@@ -148,6 +157,11 @@ const LuxeHomePage = () => {
           onClose={() => setShowLogin(false)}
         />
       )}
+
+      {/* Where the catalogue came from. Worth showing: "supabase" means live
+          edits are in effect, "static" means the app is reading the file the
+          Blender build wrote and nothing here can be saved. */}
+      {source && <div className="catalog-source">catalogue: {source}</div>}
     </div>
   );
 };

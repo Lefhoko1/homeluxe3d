@@ -54,8 +54,32 @@ const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
     ['Suits', product.roomTypes?.length ? product.roomTypes.join(', ') : 'any room'],
   ].filter(([, value]) => value);
 
+  // The photographs. `media` is every image, thumbnail first; older rows and
+  // the static catalogue carry only `thumbnail`, so accept either.
+  const images = product.media?.length
+    ? product.media
+    : product.thumbnail
+      ? [product.thumbnail]
+      : [];
+
   return (
     <div id="product-panel">
+      {/* The advert's picture. The column has been travelling all the way
+          from the database to this component since the catalogue was wired
+          up; nothing rendered it until now. */}
+      {images.length > 0 && (
+        <div className="product-gallery">
+          <img className="product-hero" src={images[0]} alt={product.name} />
+          {images.length > 1 && (
+            <div className="product-thumbs">
+              {images.slice(1).map((url) => (
+                <img key={url} src={url} alt="" />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="product-header">
         <div className="product-category">{product.category}</div>
         <h2 className="product-name">{product.name}</h2>

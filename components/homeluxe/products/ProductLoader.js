@@ -88,10 +88,40 @@ export function advertFor(product, placement) {
     promotion: product.promotion ?? null,
     roomTypes: product.roomTypes ?? [],
     isActive: product.isActive !== false,
+    // The pictures. Without these on the mesh, clicking a sofa in the 3D
+    // scene produced an advert with no photograph even once the panel could
+    // show one -- the panel reads what the raycast hands it, not the
+    // catalogue.
+    thumbnail: product.thumbnail ?? null,
+    media: product.media ?? null,
     room: placement.room,
     placementId: placement.placementId,
+    // Which row a save should update. A placement is edited; a variant is
+    // what gets placed.
+    variantId: placement.variantId ?? product.variantId ?? null,
     clickable: true,
   };
+}
+
+/**
+ * Wrap a model so its origin is where the placement system expects it.
+ *
+ * Products built by blender/houseluxe already have their footprint centre on
+ * the origin and their base on the floor. An uploaded .glb has whatever its
+ * exporter left behind, so the correction measured at upload time is applied
+ * here, as an offset on a wrapper Group.
+ *
+ * A wrapper rather than a baked offset because the transform gizmo, the
+ * rotation and the saved coordinates all address the OUTER object -- so the
+ * thing being rotated turns about its own centre, whatever the file says.
+ */
+export function anchored(scene, anchor) {
+  if (!anchor || (!anchor.dx && !anchor.dy && !anchor.dz)) return scene;
+
+  const pivot = new THREE.Group();
+  scene.position.set(anchor.dx ?? 0, anchor.dy ?? 0, anchor.dz ?? 0);
+  pivot.add(scene);
+  return pivot;
 }
 
 function tag(root, product, placement) {
@@ -203,8 +233,9 @@ export async function loadProducts(options = {}) {
     if (!source) return;
 
     const product = products.get(placement.product);
-    // Clone so repeated placements share geometry but not transforms.
-    const instance = source.clone(true);
+    // Clone so repeated placements share geometry but not transforms, then
+    // apply the model's own anchor correction if it needs one.
+    const instance = anchored(source.clone(true), product?.anchor);
 
     instance.position.fromArray(placement.position);
     instance.rotation.y = THREE.MathUtils.degToRad(placement.rotationY ?? 0);
@@ -243,6 +274,46 @@ function applyMaterials(root, materials) {
     const override = materials.get(child.material?.name);
     if (override) child.material = override;
   });
+}
+
+/**
+ * Load ONE model, for the admin placing something that is not in the scene
+ * yet.
+ *
+ * Deliberately separate from `loadProducts`: that function's job is to build
+ * the whole advertised scene from the manifest, and it would be the wrong
+ * shape for "put this single thing in front of the camera". The two share
+ * `anchored` and `tag`, which is where the actual contract lives.
+ *
+ * The returned object carries the same userData as anything else in the
+ * scene, so it is clickable, selectable and shows an advert immediately --
+ * before it has ever been saved.
+ */
+export async function loadOneProduct({
+  modelUrl,
+  anchor = null,
+  advert = {},
+  dracoLoader = null,
+  materials = null,
+}) {
+  const loader = new GLTFLoader();
+  if (dracoLoader) loader.setDRACOLoader(dracoLoader);
+
+  const scene = await loadGltf(loader, modelUrl);
+  const instance = anchored(scene, anchor);
+  if (materials) applyMaterials(instance, materials);
+
+  const info = { ...advert, clickable: true };
+  instance.userData = { ...instance.userData, ...info };
+  instance.traverse((child) => {
+    if (child.isMesh) {
+      child.userData = { ...child.userData, ...info };
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  return instance;
 }
 
 /** Release product geometry. Materials are owned by the material library. */
