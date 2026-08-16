@@ -16,6 +16,7 @@ import { applyFinishes } from './house/textures/finishOverrides';
 import { recordEvent } from '../../lib/catalog/repository';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
+import { createLighting } from './lighting/Lighting';
 import {
   createTourController,
   loadCharacter,
@@ -38,6 +39,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const houseRef = useRef(null);
   const houseMaterialsRef = useRef(null);
   const atmosphereRef = useRef(null);
+  const lightingRef = useRef(null);
+  const interiorBoxRef = useRef(null);
+  const cameraBlockersRef = useRef([]);
   const tourRef = useRef(null);
   const characterRef = useRef(null);
   const [touring, setTouring] = useState(false);
@@ -397,9 +401,28 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // `group` is the furniture, so you cannot walk through a sofa.
         const obstacles = [
           ...structure,
-          ...['yard_hedges', 'yard_planting'].map(part).filter(Boolean),
+          ...['yard_hedges', 'yard_planting', 'yard_trees']
+            .map(part).filter(Boolean),
           group,
         ];
+
+        // ---- Keep the camera in the room it is looking into --------------
+        // Orbiting a sofa at close range used to swing the camera straight
+        // through the wall behind it, so the shot became: lawn in the
+        // foreground, the living room floating beyond it. The walk-through
+        // already solved this for itself with `cameraObstacles`; the orbit
+        // camera had no equivalent.
+        //
+        // The envelope is the exterior walls' own bounds, so it needs no
+        // hardcoded dimensions and follows the plan.
+        const exterior = part('walls_exterior');
+        if (exterior) {
+          interiorBoxRef.current = new THREE.Box3().setFromObject(exterior);
+          // Ceiling included: orbiting upward should stop at it rather than
+          // rising through the roof for a plan view of the furniture.
+          cameraBlockersRef.current = ['walls_exterior', 'ceiling', 'roof']
+            .map(part).filter(Boolean);
+        }
 
         const tour = createTourController({
           character,
@@ -425,8 +448,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       }
     })();
 
-    // Lighting setup
-    setupLighting(scene, atmosphere.sunDirection);
+    const lighting = createLighting({ sunDirection: atmosphere.sunDirection });
+    lighting.applyTo(scene);
+    lightingRef.current = lighting;
 
     // Set initial camera position
     const view = HOUSE_VIEWS.overview;
@@ -436,6 +460,42 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
     // Animation loop
     const clock = new THREE.Clock();
+    const camRay = new THREE.Raycaster();
+    const toCamera = new THREE.Vector3();
+
+    /**
+     * Stop the orbit camera leaving the room it is looking into.
+     *
+     * Only applies CLOSE UP. Pulled back for the overview the camera is
+     * supposed to be outside, and clamping there would yank the viewer into
+     * the building the moment they tried to look at the house. So the rule
+     * is: if what you are looking at is inside the building AND you are
+     * near it, you are inside with it.
+     */
+    const INSIDE_RANGE = 15;
+    const clampCameraToInterior = () => {
+      const box = interiorBoxRef.current;
+      const blockers = cameraBlockersRef.current;
+      if (!box || !blockers.length || tourRef.current?.active) return;
+      if (!box.containsPoint(orbitControls.target)) return;
+
+      toCamera.subVectors(camera.position, orbitControls.target);
+      const distance = toCamera.length();
+      if (distance < 0.05 || distance > INSIDE_RANGE) return;
+
+      toCamera.divideScalar(distance);
+      camRay.set(orbitControls.target, toCamera);
+      camRay.far = distance;
+
+      const hit = camRay.intersectObjects(blockers, true)[0];
+      if (!hit) return;
+
+      // Just short of whatever was hit, and never so close to the target
+      // that the near plane clips through it.
+      const pulled = Math.max(0.7, hit.distance - 0.25);
+      camera.position.copy(orbitControls.target).addScaledVector(toCamera, pulled);
+    };
+
     const animate = () => {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
@@ -446,12 +506,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         tourRef.current.update(delta);
       } else {
         orbitControls.update();
+        clampCameraToInterior();
       }
 
       atmosphere.update(delta);
 
       // Keep the sky centred on the viewer so it can never be reached.
       atmosphere.group.position.set(camera.position.x, 0, camera.position.z);
+      // And the shadow frustum centred on what is being looked at.
+      lighting.follow(orbitControls.target);
 
       renderer.render(scene, camera);
     };
@@ -483,6 +546,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       disposeHouseMaterials(houseMaterialsRef.current);
       disposeDracoLoader();   // shuts down the decoder's Web Workers
       atmosphereRef.current?.dispose();
+      lightingRef.current?.dispose();
+      lightingRef.current = null;
       productsRef.current = null;
       houseRef.current = null;
       houseMaterialsRef.current = null;
@@ -806,58 +871,6 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     </div>
   );
 };
-
-// Lighting setup function.
-//
-// There is no ground plane any more -- the lawn from blender/houseluxe is the
-// ground, and a second flat plane would z-fight with it.
-function setupLighting(scene, sunDirection) {
-  // Sky/ground hemisphere does most of the ambient work and keeps interiors
-  // from going flat grey now that the ceiling can be closed over them.
-  const hemi = new THREE.HemisphereLight(0xbcd6f0, 0x6b7355, 0.85);
-  scene.add(hemi);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
-  scene.add(ambientLight);
-
-  // Sun, aimed along the atmosphere's sun direction so shadows fall away
-  // from the bright quarter of the sky.
-  const mainLight = new THREE.DirectionalLight(0xfff4e6, 2.2);
-  mainLight.position.copy(sunDirection).multiplyScalar(45);
-  mainLight.castShadow = true;
-
-  // The frustum now has to cover the whole 30x40 yard, not just the house.
-  // Sized too tightly, trees at the boundary stop casting entirely.
-  const extent = 26;
-  mainLight.shadow.camera.left = -extent;
-  mainLight.shadow.camera.right = extent;
-  mainLight.shadow.camera.top = extent;
-  mainLight.shadow.camera.bottom = -extent;
-  mainLight.shadow.camera.near = 1;
-  mainLight.shadow.camera.far = 140;
-  mainLight.shadow.mapSize.width = 2048;
-  mainLight.shadow.mapSize.height = 2048;
-  // Wider frustum means coarser texels, so the bias has to grow with it.
-  mainLight.shadow.bias = -0.0009;
-  mainLight.shadow.normalBias = 0.03;
-  scene.add(mainLight);
-
-  const fillLight = new THREE.DirectionalLight(0x87ceeb, 0.35);
-  fillLight.position.set(-12, 8, -10);
-  scene.add(fillLight);
-
-  // Interior fills, placed just under the 2.4m ceiling in the living zone
-  // and the kitchen so the inside is readable when the roof is on.
-  [
-    [2.7, 2.2, 2.7],
-    [-0.6, 2.2, -1.6],
-    [-3.5, 2.2, 3.0],
-  ].forEach(([x, y, z]) => {
-    const lamp = new THREE.PointLight(0xfff8dc, 8, 9);
-    lamp.position.set(x, y, z);
-    scene.add(lamp);
-  });
-}
 
 // GLTF loading function
 

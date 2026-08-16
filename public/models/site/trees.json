@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "model": "/models/site/tree.glb",
+  "trees": [
+    {
+      "seed": 1,
+      "position": [
+        -3.0,
+        -0.39237101884559733,
+        7.0
+      ],
+      "height": 5.5,
+      "spread": 3.6,
+      "rotation": 101.6
+    },
+    {
+      "seed": 2,
+      "position": [
+        20.5,
+        -0.4083565072988619,
+        8.0
+      ],
+      "height": 6.0,
+      "spread": 4.0,
+      "rotation": 112.9
+    },
+    {
+      "seed": 3,
+      "position": [
+        -3.2,
+        -0.33996721360396476,
+        -15.0
+      ],
+      "height": 6.5,
+      "spread": 4.2,
+      "rotation": 124.2
+    },
+    {
+      "seed": 4,
+      "position": [
+        4.0,
+        -0.34830914323816353,
+        -20.0
+      ],
+      "height": 7.0,
+      "spread": 4.5,
+      "rotation": 135.5
+    },
+    {
+      "seed": 5,
+      "position": [
+        14.0,
+        -0.34518091584411015,
+        -21.0
+      ],
+      "height": 6.0,
+      "spread": 3.8,
+      "rotation": 62.0
+    },
+    {
+      "seed": 6,
+      "position": [
+        21.0,
+        -0.31919942924002376,
+        -16.0
+      ],
+      "height": 5.5,
+      "spread": 3.6,
+      "rotation": 73.3
+    },
+    {
+      "seed": 7,
+      "position": [
+        -3.5,
+        -0.23994977303555423,
+        -6.0
+      ],
+      "height": 5.0,
+      "spread": 3.4,
+      "rotation": 84.6
+    },
+    {
+      "seed": 8,
+      "position": [
+        22.0,
+        -0.22918885180604914,
+        -12.8
+      ],
+      "height": 4.5,
+      "spread": 3.0,
+      "rotation": 95.9
+    }
+  ]
+}

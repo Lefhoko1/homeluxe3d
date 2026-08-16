@@ -34,6 +34,20 @@ class PlantingComponent(Component):
     category = "yard_planting"
     label = "Planting"
 
+    #: Trees are a MODEL now, not primitives.
+    #:
+    #: `_tree` below still works and is left intact -- it is what the yard had
+    #: before, and it is the fallback if the model is ever missing. But a real
+    #: scanned tree beats a trunk with seven ellipsoids stuck on it by so much
+    #: that there is no reason to draw the ellipsoids as well.
+    #:
+    #: What replaces it is a PLACEMENT: `export/planting_json.py` writes where
+    #: each tree stands and how big it is, and the app instances one GLB at
+    #: those points. Same division as products -- geometry is an asset,
+    #: position is data -- so re-planting the garden is a config edit rather
+    #: than a rebuild.
+    BUILD_TREE_GEOMETRY = False
+
     def build(self, ctx: BuildContext) -> list[bpy.types.Object]:
         site = ctx.site
         if site is None:
@@ -46,7 +60,8 @@ class PlantingComponent(Component):
             # Each plant sits on the terrain under it, not on a nominal level.
             ground = site.elevation(plant.x, plant.y)
             if plant.kind == "tree":
-                objects.extend(self._tree(ctx, plant, ground))
+                if self.BUILD_TREE_GEOMETRY:
+                    objects.extend(self._tree(ctx, plant, ground))
             elif plant.kind == "shrub":
                 objects.append(self._shrub(ctx, plant, ground))
             else:

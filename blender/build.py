@@ -39,6 +39,10 @@ from houseluxe.export.catalog_json import (  # noqa: E402
     write_manifest,
 )
 from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
+from houseluxe.export.planting_json import (  # noqa: E402
+    report as planting_report,
+    write_manifest as write_planting_manifest,
+)
 from houseluxe.materials.library import MaterialLibrary  # noqa: E402
 
 REPO_ROOT = os.path.dirname(_HERE)
@@ -47,6 +51,7 @@ SITE_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "site")
 PRODUCT_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "products")
 TOUR_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "tour")
 CATALOG_PATH = os.path.join(PRODUCT_MODEL_DIR, "catalog.json")
+TREES_PATH = os.path.join(SITE_MODEL_DIR, "trees.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
@@ -157,6 +162,13 @@ def main(
         if products:
             manifest = write_manifest(CATALOG, CATALOG_PATH)
             print(catalog_report(manifest, CATALOG_PATH))
+
+        # Trees are placed from a manifest rather than built as geometry --
+        # the app instances one real tree model at these points. See
+        # export/planting_json.py.
+        if site_spec is not None:
+            trees = write_planting_manifest(site_spec, TREES_PATH)
+            print(planting_report(trees))
 
     # Stage the furniture into the scene AFTER exporting, so the saved .blend
     # shows a furnished house while the exported models stay at the origin.

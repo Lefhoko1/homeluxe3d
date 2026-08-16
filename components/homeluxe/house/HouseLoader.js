@@ -22,6 +22,7 @@ import {
 } from "./houseConfig";
 import { createHouseMaterials } from "./textures/materialLibrary";
 import { addFarGround, fitLawnToYard } from "./siteGround";
+import { addTrees } from "./trees";
 
 /**
  * Where the Draco decoder lives. Vendored into `public/draco/` from
@@ -236,6 +237,10 @@ export async function loadHouse(options = {}) {
   if (includeSite) {
     fitLawnToYard(house, materials);
     addFarGround(house, materials);
+    // Trees are a model instanced from a manifest, not baked geometry. This
+    // is awaited so callers get a finished yard rather than one that grows
+    // trees a second later.
+    await addTrees(house, { materials, dracoLoader: getDracoLoader() });
   }
 
   return { house, errors, bounds, stats };
