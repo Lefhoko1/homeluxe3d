@@ -112,7 +112,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     controlsRef.current = orbitControls;
 
     // ---- Sky, clouds, fog ------------------------------------------------
-    const atmosphere = createAtmosphere();
+    const atmosphere = createAtmosphere({
+      anisotropy: renderer.capabilities.getMaxAnisotropy(),
+    });
     atmosphere.applyTo(scene);
     atmosphereRef.current = atmosphere;
 

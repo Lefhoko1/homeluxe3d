@@ -36,6 +36,7 @@ import {
   createTimberTexture,
   toTexture,
 } from "./proceduralTextures";
+import { loadPhotoTexture } from "./photoTextures";
 
 /**
  * Photographic finishes supplied by a shop.
@@ -233,11 +234,20 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
   // -- Site / landscaping -------------------------------------------------
   // Names match `blender/houseluxe/materials/library.py`, same contract as
   // the house: Blender says what a surface is, this says what it looks like.
+  // The lawn is a photograph, not a drawing. `metresPerTile` is the ground a
+  // single copy covers; 3m keeps individual blades readable when the tour
+  // camera is at walking height without the repeat becoming obvious from the
+  // overview. The drawn grass stays as the fallback if the file is missing --
+  // a lawn that is the wrong green beats a lawn that is white.
   materials.set(
     "lawn",
     new THREE.MeshStandardMaterial({
       name: "lawn",
-      map: color(createGrassTexture()),
+      map: loadPhotoTexture("/lawnTexture.png", {
+        metresPerTile: 3,
+        anisotropy,
+        fallback: createGrassTexture(),
+      }),
       roughness: 1.0,
       metalness: 0.0,
     })

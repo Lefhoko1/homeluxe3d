@@ -1,34 +1,40 @@
 /**
- * Sky, clouds and fog.
+ * Sky, horizon and fog.
  *
  * Three layers that have to agree with each other or the illusion breaks:
  *
  *   1. A sky DOME carrying a vertical gradient. Painted, not lit, so it never
  *      darkens when the sun moves.
- *   2. Two CLOUD DOMES inside it, drifting at different speeds.
+ *   2. A BACKDROP cylinder just inside it, carrying a photographed horizon --
+ *      distant fields below, cloud above.
  *   3. FOG whose colour matches the sky at the horizon.
  *
- * Clouds are domes rather than flat planes on purpose. A plane only shows
- * when you look up, and the default view of a house looks DOWN — so a plane
- * puts clouds exactly where nobody is looking, and its straight edge cuts
- * across the sky when they do. Domes put cloud across the whole sky
- * including the band just above the horizon, which is the part actually in
- * frame most of the time.
+ * The backdrop replaced two drifting cloud domes built from a noise texture.
+ * Drawn cloud is convincing looked at directly and much less so at the
+ * horizon, which is the part actually in frame: the default view of a house
+ * looks slightly DOWN, so most of the visible sky is the band just above the
+ * skyline, and that band is exactly where a noise texture reads as fog rather
+ * than weather. A photograph carries real cloud shape AND the far ground the
+ * yard should appear to continue into.
  *
- * The domes are flattened on Y so the texture is not pinched into a knot at
- * the zenith, which is the usual giveaway of a spherical cloud map.
+ * The trade is that the sky no longer moves. Drifting a photographed sky
+ * means sliding recognisable clouds sideways, which reads as a moving
+ * backdrop rather than as wind.
  */
 
 import * as THREE from "three";
 
-import { createCloudTexture } from "../house/textures/proceduralTextures";
-
-/** Sky colours, bottom to top. */
-export const SKY_HORIZON = new THREE.Color(0xbcd2e8);
-export const SKY_ZENITH = new THREE.Color(0x4a7fc1);
+import { loadBackdropTexture } from "../house/textures/photoTextures";
 
 /**
- * Fog applies to scene geometry only -- the sky and cloud domes opt out.
+ * Sky colours, bottom to top, sampled from the backdrop image itself so the
+ * dome and the photograph meet without a visible change of blue.
+ */
+export const SKY_HORIZON = new THREE.Color(0xb9dcf3);
+export const SKY_ZENITH = new THREE.Color(0x3182b9);
+
+/**
+ * Fog applies to scene geometry only -- the sky and the backdrop opt out.
  * It starts past the far side of the yard so nothing you are looking at is
  * washed out, and only softens the boundary fence at full zoom-out.
  */
@@ -36,6 +42,19 @@ const FOG_NEAR = 60;
 const FOG_FAR = 320;
 
 const DOME_RADIUS = 700;
+
+/** The backdrop, well outside the 30x40 yard but inside the sky dome. */
+const BACKDROP_RADIUS = 260;
+const BACKDROP_HEIGHT = 200;
+
+/**
+ * Where ground meets sky in backgroundimage.png, measured from the top.
+ * Sampled from the file rather than guessed: the first row where green
+ * overtakes blue is 218 of 417.
+ *
+ * Textures are addressed from the BOTTOM, so the horizon sits at 1 - this.
+ */
+const HORIZON_FROM_TOP = 0.523;
 
 const SKY_VERTEX = /* glsl */ `
   varying vec3 vWorldPosition;
@@ -77,46 +96,47 @@ function createSkyDome() {
 
   const dome = new THREE.Mesh(geometry, material);
   dome.name = "sky";
-  dome.renderOrder = -2;   // behind the clouds, and behind everything else
+  dome.renderOrder = -2;   // behind the backdrop, and behind everything else
   return dome;
 }
 
 /**
- * One cloud dome.
+ * The photographed horizon, wrapped around the world.
  *
- * `speed` is in texture-units per second; because the texture tiles, a slow
- * constant offset reads as wind and never visibly repeats.
+ * An open cylinder rather than a dome: the image is a horizon strip, and
+ * projecting a strip onto a sphere pinches it at the poles. A cylinder keeps
+ * the skyline straight and level, which is what a distant horizon is.
  *
- * `flatten` squashes the hemisphere toward a layer. Values near 1 give an
- * obvious dome with a pinched zenith; low values read as high cloud.
+ * `repeat` copies it around the circumference. Four copies keep each one
+ * about 400m wide, which is sharp enough at this distance; mirrored wrapping
+ * turns the joins into reflections rather than seams.
  */
-function createCloudDome({ texture, radius, flatten, repeatU, repeatV,
-                           opacity, speed }) {
-  const map = texture.clone();
-  map.needsUpdate = true;
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
-  map.repeat.set(repeatU, repeatV);
+function createBackdrop({ anisotropy }) {
+  const map = loadBackdropTexture("/backgroundimage.png", { anisotropy });
+  map.repeat.set(4, 1);
+
+  const geometry = new THREE.CylinderGeometry(
+    BACKDROP_RADIUS, BACKDROP_RADIUS, BACKDROP_HEIGHT, 64, 1, true
+  );
 
   const material = new THREE.MeshBasicMaterial({
     map,
-    transparent: true,
-    opacity,
-    depthWrite: false,       // never occlude anything
+    transparent: true,       // the top of the sky fades into the dome
     side: THREE.BackSide,    // seen from inside
-    fog: false,              // the sky is not in the fog
+    depthWrite: false,       // never occlude anything
+    fog: false,              // a painted backdrop is not in the fog
   });
 
-  // Upper hemisphere only; nothing below the horizon needs cloud.
-  const geometry = new THREE.SphereGeometry(
-    radius, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2
-  );
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = "backdrop";
+  mesh.renderOrder = -1;
 
-  const dome = new THREE.Mesh(geometry, material);
-  dome.scale.y = flatten;
-  dome.renderOrder = -1;
-  dome.userData.speed = speed;
-  return dome;
+  // Line the photographed skyline up with the ground plane. Cylinder v runs
+  // 0 at the bottom to 1 at the top, so the horizon sits at 1 - 0.523.
+  const horizonV = 1 - HORIZON_FROM_TOP;
+  mesh.position.y = BACKDROP_HEIGHT * (0.5 - horizonV);
+
+  return mesh;
 }
 
 /**
@@ -126,41 +146,19 @@ function createCloudDome({ texture, radius, flatten, repeatU, repeatV,
  *            applyTo: Function, update: Function, dispose: Function}}
  */
 export function createAtmosphere(options = {}) {
-  const { cloudSeed = 1337, coverage = 0.46 } = options;
+  const { anisotropy = 4 } = options;
 
   const group = new THREE.Group();
   group.name = "atmosphere";
 
   group.add(createSkyDome());
-
-  const cloudCanvas = createCloudTexture({ seed: cloudSeed, coverage });
-  const base = new THREE.CanvasTexture(cloudCanvas);
-  base.colorSpace = THREE.SRGBColorSpace;
-
-  // Two domes at different radii and speeds: the parallax between them is
-  // what stops the sky reading as a single sliding wallpaper.
-  const layers = [
-    createCloudDome({
-      texture: base, radius: 620, flatten: 0.30,
-      repeatU: 4, repeatV: 2, opacity: 0.80, speed: 0.0035,
-    }),
-    createCloudDome({
-      texture: base, radius: 560, flatten: 0.22,
-      repeatU: 2.4, repeatV: 1.2, opacity: 0.45, speed: 0.0016,
-    }),
-  ];
-  layers.forEach((layer) => group.add(layer));
-
-  // `base` is deliberately NOT disposed here. Each layer holds a clone, and
-  // clones share the original's Source -- disposing it can free the GPU
-  // texture out from under them. It is released by dispose() below.
+  group.add(createBackdrop({ anisotropy }));
 
   /** Direction the sun shines FROM, matching the sky's bright quarter. */
   const sunDirection = new THREE.Vector3(0.55, 0.62, 0.36).normalize();
 
   return {
     group,
-    layers,
     sunDirection,
 
     /** Set the scene's fog and clear colour to match the sky. */
@@ -170,15 +168,15 @@ export function createAtmosphere(options = {}) {
       scene.add(group);
     },
 
-    /** Drift the clouds. `delta` in seconds. */
-    update(delta) {
-      layers.forEach((layer) => {
-        const { map } = layer.material;
-        if (!map) return;
-        map.offset.x += layer.userData.speed * delta;
-        map.offset.y += layer.userData.speed * 0.35 * delta;
-      });
-    },
+    /**
+     * Kept in the interface, and deliberately empty.
+     *
+     * The drifting cloud domes are gone, so there is nothing to animate. The
+     * render loop still calls this every frame; leaving the method here means
+     * a future moving element -- a sun that tracks, a day cycle -- has an
+     * obvious home, and the caller does not need changing twice.
+     */
+    update() {},
 
     dispose() {
       group.traverse((child) => {
@@ -187,7 +185,6 @@ export function createAtmosphere(options = {}) {
         child.material?.map?.dispose();
         child.material?.dispose();
       });
-      base.dispose();
     },
   };
 }
