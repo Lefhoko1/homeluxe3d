@@ -1,0 +1,598 @@
+{
+  "version": 1,
+  "scene": "3bed",
+  "clearance_mm": 300.0,
+  "waypoints": [
+    {
+      "position": [
+        5.115,
+        1.885
+      ],
+      "room": null,
+      "label": "Front door",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        5.115,
+        1.085
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        5.115,
+        -1.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        5.115,
+        -3.815
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        5.115,
+        -4.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.815,
+        -4.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.915,
+        -3.715
+      ],
+      "room": "living",
+      "label": "Living",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        10.015,
+        -3.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        11.515,
+        -2.215
+      ],
+      "room": "dining",
+      "label": "Dining",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        9.915,
+        -4.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -6.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.415,
+        -6.815
+      ],
+      "room": "kitchen",
+      "label": "Kitchen",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        8.015,
+        -6.615
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        8.815,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.615,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.915,
+        -6.215
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        10.415,
+        -6.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        10.715,
+        -6.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        11.815,
+        -6.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        12.015,
+        -6.715
+      ],
+      "room": "laundry",
+      "label": "Laundry",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        11.315,
+        -6.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        10.615,
+        -6.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        10.315,
+        -6.615
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.815,
+        -6.115
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.515,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.715,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        3.715,
+        -6.515
+      ],
+      "room": "hall",
+      "label": "Hallway",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        6.815,
+        -6.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -5.815
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -5.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.715,
+        -5.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        5.115,
+        -4.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        4.415,
+        -3.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        3.715,
+        -3.015
+      ],
+      "room": "master",
+      "label": "Master Bedroom",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        3.015,
+        -3.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        1.415,
+        -3.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        1.015,
+        -2.415
+      ],
+      "room": "ensuite",
+      "label": "Ensuite",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        1.415,
+        -3.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        3.115,
+        -3.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        4.515,
+        -3.815
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        5.215,
+        -4.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.815,
+        -4.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -5.115
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.715,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.915,
+        -5.915
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.215,
+        -5.215
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        1.015,
+        -4.515
+      ],
+      "room": "wir",
+      "label": "Walk-in Robe",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        2.315,
+        -5.215
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.315,
+        -6.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.315,
+        -7.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.715,
+        -7.815
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.715,
+        -8.815
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.115,
+        -9.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        1.815,
+        -9.715
+      ],
+      "room": "bed3",
+      "label": "Bedroom 3",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        2.015,
+        -9.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        2.715,
+        -8.515
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        3.415,
+        -7.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        4.115,
+        -7.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        4.115,
+        -9.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        4.515,
+        -10.315
+      ],
+      "room": "bathroom",
+      "label": "Bathroom",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        5.215,
+        -9.215
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.115,
+        -9.215
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.215,
+        -10.315
+      ],
+      "room": "wc",
+      "label": "WC",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        6.215,
+        -9.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.515,
+        -8.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.015,
+        -8.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.315,
+        -8.015
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.315,
+        -8.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -9.115
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.215,
+        -9.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.515,
+        -9.715
+      ],
+      "room": "bed2",
+      "label": "Bedroom 2",
+      "dwell": 3.0
+    },
+    {
+      "position": [
+        9.115,
+        -9.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -9.115
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -8.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -6.615
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.515,
+        -4.215
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.915,
+        -3.715
+      ],
+      "room": "living",
+      "label": "Living",
+      "dwell": 3.0
+    }
+  ],
+  "stops": [
+    "Front door",
+    "Living",
+    "Dining",
+    "Kitchen",
+    "Laundry",
+    "Hallway",
+    "Master Bedroom",
+    "Ensuite",
+    "Walk-in Robe",
+    "Bedroom 3",
+    "Bathroom",
+    "WC",
+    "Bedroom 2",
+    "Living"
+  ],
+  "unreachable": []
+}

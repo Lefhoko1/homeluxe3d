@@ -32,7 +32,19 @@ const button = {
   backdropFilter: 'blur(6px)',
 };
 
-const TourPad = ({ onPress, onRelease, onExit }) => {
+const wide = {
+  ...button,
+  width: 'auto',
+  height: 36,
+  padding: '0 14px',
+  fontSize: 12,
+};
+
+const TourPad = ({
+  onPress, onRelease, onExit,
+  onGuided, onToggleView,
+  guided = false, view = 'third', stopLabel = null,
+}) => {
   const hold = (dir) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -68,7 +80,43 @@ const TourPad = ({ onPress, onRelease, onExit }) => {
           marginBottom: 2,
         }}
       >
-        Walking · arrow keys or WASD
+        {guided
+          ? `Guided tour${stopLabel ? ` · ${stopLabel}` : ''} · any key to take over`
+          : 'Walking · arrow keys or WASD'}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
+        <button
+          type="button"
+          onClick={onGuided}
+          style={{
+            ...wide,
+            background: guided ? '#1f6feb' : wide.background,
+            borderColor: guided ? '#1f6feb' : wide.border,
+          }}
+          title={
+            guided
+              ? 'Stop the guided tour and walk yourself'
+              : 'Walk the whole house automatically, stopping in every room'
+          }
+        >
+          {guided ? '⏸ Stop tour' : '▶ Guided tour'}
+        </button>
+
+        {/* In a 2m bathroom no third-person camera can work at all, so being
+            able to just look through the visitor's eyes is not a luxury. */}
+        <button
+          type="button"
+          onClick={onToggleView}
+          style={{
+            ...wide,
+            background: view === 'first' ? '#1f6feb' : wide.background,
+            borderColor: view === 'first' ? '#1f6feb' : wide.border,
+          }}
+          title="Switch between over-the-shoulder and eye level"
+        >
+          {view === 'first' ? '👁 Eye level' : '🎥 Follow'}
+        </button>
       </div>
 
       <button type="button" style={button} title="Walk forward" {...hold('forward')}>
@@ -90,14 +138,7 @@ const TourPad = ({ onPress, onRelease, onExit }) => {
       <button
         type="button"
         onClick={onExit}
-        style={{
-          ...button,
-          width: 'auto',
-          height: 36,
-          padding: '0 14px',
-          fontSize: 12,
-          marginTop: 4,
-        }}
+        style={{ ...wide, marginTop: 4 }}
         title="Leave the tour and go back to orbiting"
       >
         ✕ Exit tour

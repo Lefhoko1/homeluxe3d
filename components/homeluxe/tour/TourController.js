@@ -64,13 +64,67 @@ const PROBE_HEIGHT = 4.0;
  */
 const MAX_STEP = 0.45;
 
-/** Third-person camera rig. */
-const CAMERA_BACK = 4.2;
-const CAMERA_UP = 2.4;
-const CAMERA_LOOK_AT = 1.3;
+/**
+ * How close counts as arriving at a waypoint.
+ *
+ * This is a tighter number than it first appears it should be, and the reason
+ * is doorways. Accept 450mm and the character turns for the next waypoint
+ * from up to 450mm off the route -- which in a 1m front door is outside the
+ * gap, so the new straight line runs into the jamb and it grinds there.
+ * Solved routes are kept 300mm clear of walls, so arriving has to be tighter
+ * than that or the clearance buys nothing.
+ */
+const ARRIVE_RADIUS = 0.22;
+
+/**
+ * THE CAMERA RIG, AND WHY THE OLD ONE COULD NOT WORK INDOORS
+ *
+ * It sat 4.2m behind the character and 2.4m up, looking AT the character's
+ * chest. Every one of those three numbers fights a house:
+ *
+ *  - 4.2m BACK is deeper than most rooms in this plan. Bedroom 2 is 2.97m
+ *    deep. So the camera was always outside the room, always dragged back in
+ *    by the wall test, and always ended up at its 0.9m minimum -- which is
+ *    close enough that a 1.7m character fills the frame.
+ *
+ *  - 2.4m UP is exactly the ceiling height. The camera sat in the ceiling
+ *    plane, and the ceiling was not in the list of things it must not pass
+ *    through, so it went above it.
+ *
+ *  - LOOKING AT THE CHARACTER puts the back of their head in the middle of
+ *    the screen and the room in the periphery. For a walk-through of a house
+ *    that is exactly backwards: the room is the subject, the character is
+ *    there for scale.
+ *
+ * So the camera now sits close and low, and looks AHEAD of the character
+ * rather than at them -- the room the visitor is walking into fills the
+ * frame, and the character reads as a figure in the lower third.
+ *
+ * FIRST PERSON is the same rig with the offsets collapsed and the character
+ * hidden. In a 2m bathroom no third-person camera can work at all, and being
+ * able to just look is the whole point.
+ */
+export const VIEWS = {
+  third: {
+    back: 2.3,          // fits the smallest room in the plan
+    up: 1.72,           // above the head, well under the 2.4m ceiling
+    lookAhead: 3.4,     // the room, not the character
+    lookHeight: 1.35,
+    fov: 68,            // wide: a narrow lens makes a small room a corridor
+    showCharacter: true,
+  },
+  first: {
+    back: -0.05,        // a hair in front of the eyes, so no nose geometry
+    up: 1.45,
+    lookAhead: 4.0,
+    lookHeight: 1.45,
+    fov: 74,
+    showCharacter: false,
+  },
+};
 
 /** Closest the camera may sit to the character when pushed in by a wall. */
-const CAMERA_MIN = 0.9;
+const CAMERA_MIN = 0.45;
 
 /**
  * How quickly the camera catches up. 1 = instant, lower = smoother.
@@ -110,6 +164,25 @@ export function createTourController(options = {}) {
   let heading = startHeading;
   let active = false;
   let lastGroundY = 0;
+
+  let view = VIEWS.third;
+  let viewName = "third";
+
+  // -- Guided route -------------------------------------------------------
+  // A solved path through the house, from tour.json. `null` means the
+  // visitor is driving.
+  let route = null;
+  let routeIndex = 0;
+  let dwellLeft = 0;
+  let onArrive = null;
+
+  /** Shortest signed angle from a to b. */
+  const angleTo = (from, to) => {
+    let diff = (to - from) % (Math.PI * 2);
+    if (diff > Math.PI) diff -= Math.PI * 2;
+    if (diff < -Math.PI) diff += Math.PI * 2;
+    return diff;
+  };
 
   const groundRay = new THREE.Raycaster();
   groundRay.far = PROBE_HEIGHT * 2;
@@ -161,6 +234,29 @@ export function createTourController(options = {}) {
 
   function onKeyUp(event) {
     keys.delete(event.code);
+  }
+
+  /**
+   * A wider lens while walking.
+   *
+   * 55 degrees is right for orbiting a building from outside. Inside a 3m
+   * bedroom it turns the room into a corridor -- you see a wall and no idea
+   * what is either side of you. Restored on exit so the outside view is
+   * unaffected.
+   */
+  let savedFov = null;
+  function applyFov() {
+    if (!camera?.isPerspectiveCamera) return;
+    if (savedFov === null) savedFov = camera.fov;
+    camera.fov = view.fov;
+    camera.updateProjectionMatrix();
+  }
+
+  function restoreFov() {
+    if (savedFov === null || !camera?.isPerspectiveCamera) return;
+    camera.fov = savedFov;
+    camera.updateProjectionMatrix();
+    savedFov = null;
   }
 
   /** Height of whatever is directly under (x, z). */
@@ -223,18 +319,24 @@ export function createTourController(options = {}) {
       if (y !== null) lastGroundY = y;
       position.y = lastGroundY;
 
-      character.visible = true;
+      character.visible = view.showCharacter;
       character.position.copy(position);
       character.rotation.y = heading;
+
+      applyFov();
 
       // Snap the camera in rather than sweeping it across the whole site.
       forward.set(Math.sin(heading), 0, -Math.cos(heading));
       camera.position.set(
-        position.x - forward.x * CAMERA_BACK,
-        position.y + CAMERA_UP,
-        position.z - forward.z * CAMERA_BACK
+        position.x - forward.x * view.back,
+        position.y + view.up,
+        position.z - forward.z * view.back
       );
-      camera.lookAt(position.x, position.y + CAMERA_LOOK_AT, position.z);
+      camera.lookAt(
+        position.x + forward.x * view.lookAhead,
+        position.y + view.lookHeight,
+        position.z + forward.z * view.lookAhead
+      );
     },
 
     /** Leave walk mode and hand the camera back to OrbitControls. */
@@ -242,11 +344,75 @@ export function createTourController(options = {}) {
       if (!active) return;
       active = false;
       keys.clear();
+      route = null;
       character.visible = false;
+      restoreFov();
       if (controls) {
         controls.enabled = true;
         controls.target.set(position.x, position.y + 1, position.z);
       }
+    },
+
+    /** 'third' or 'first'. */
+    get view() {
+      return viewName;
+    },
+
+    setView(name) {
+      if (!VIEWS[name]) return;
+      viewName = name;
+      view = VIEWS[name];
+      character.visible = active && view.showCharacter;
+      if (active) applyFov();
+    },
+
+    toggleView() {
+      this.setView(viewName === "third" ? "first" : "third");
+    },
+
+    // -- The guided tour --------------------------------------------------
+
+    get touring() {
+      return Boolean(route);
+    },
+
+    /** Which stop the tour is at, for the UI. */
+    get stop() {
+      return route ? route[Math.min(routeIndex, route.length - 1)] : null;
+    },
+
+    /**
+     * Walk a solved route, entering walk mode if needed.
+     *
+     * @param {Array<{position:[number,number], label?:string, dwell?:number}>} waypoints
+     *        WORLD coordinates -- the character lives in the scene, not in the
+     *        house group, so the caller adds the house offset.
+     * @param {(stop:object, index:number) => void} [arrived] called on reaching
+     *        a stop, so the panels can follow the visitor from room to room.
+     */
+    followRoute(waypoints, arrived = null) {
+      if (!waypoints?.length) return;
+      if (!active) this.enter();
+
+      route = waypoints.map((point) => ({ ...point, done: false }));
+      dwellLeft = 0;
+      onArrive = arrived;
+
+      // ALWAYS START AT THE BEGINNING. Snapping to the nearest waypoint looks
+      // like a saving and is a trap: every waypoint is indoors, the visitor
+      // starts on the driveway, and the nearest one is on the far side of the
+      // front wall -- so the tour would set off diagonally and press itself
+      // against the outside of the house forever.
+      //
+      // The route's first point is in front of the front door precisely so
+      // that walking to it is a clear run across the drive.
+      routeIndex = 0;
+    },
+
+    /** Stop following, but stay in walk mode so the visitor can take over. */
+    stopRoute() {
+      route = null;
+      onArrive = null;
     },
 
     toggle() {
@@ -289,8 +455,91 @@ export function createTourController(options = {}) {
       const step = Math.min(delta, 0.05);
 
       const held = readKeys();
-      const turn = held.t + input.turn;
-      const drive = held.f + input.forward;
+      let turn = held.t + input.turn;
+      let drive = held.f + input.forward;
+
+      // ---- Guided tour -------------------------------------------------
+      // The route steers by writing the SAME two inputs a person would use,
+      // so everything below -- collision, sliding, ground following, the
+      // step limit -- applies unchanged. A separate "just teleport along the
+      // path" mode would have to re-solve all of it and would still walk
+      // through a sofa that was moved after the route was solved.
+      if (route) {
+        if (turn || drive) {
+          // Any manual input hands control back. A tour you cannot escape is
+          // a cutscene.
+          this.stopRoute();
+        } else {
+          const target = route[routeIndex];
+          const dx = target.position[0] - position.x;
+          const dz = target.position[1] - position.z;
+          const distance = Math.hypot(dx, dz);
+
+          // ARRIVED, OR GONE PAST.
+          //
+          // Distance alone is not enough. Walking is continuous and turning
+          // takes time, so the character can sail past a waypoint by more
+          // than the arrival radius -- and then it turns round, comes back,
+          // overshoots the other way, and circles it forever. Nothing hits a
+          // wall; it simply never arrives. That is what stalled the walk at
+          // the laundry, where the route doubles back on itself.
+          //
+          // So a waypoint also counts as reached once the character is past
+          // the far end of the leg leading to it.
+          let passed = false;
+          if (routeIndex > 0) {
+            const prev = route[routeIndex - 1].position;
+            const legX = target.position[0] - prev[0];
+            const legZ = target.position[1] - prev[1];
+            const legLength = Math.hypot(legX, legZ);
+            if (legLength > 1e-4) {
+              const travelled =
+                ((position.x - prev[0]) * legX + (position.z - prev[1]) * legZ) /
+                legLength;
+              passed = travelled > legLength - ARRIVE_RADIUS * 0.5;
+            }
+          }
+
+          if (distance < ARRIVE_RADIUS || passed) {
+            if (dwellLeft > 0) {
+              dwellLeft -= step;
+            } else if (target.dwell && dwellLeft === 0 && !target.done) {
+              // Reached a stop: pause, and tell whoever is listening so the
+              // room lists can follow the visitor through the house.
+              target.done = true;
+              dwellLeft = target.dwell;
+              onArrive?.(target, routeIndex);
+            } else {
+              routeIndex += 1;
+              dwellLeft = 0;
+              if (routeIndex >= route.length) {
+                // Loop: the route ends where it began.
+                routeIndex = 0;
+                route.forEach((point) => { point.done = false; });
+              }
+            }
+          } else {
+            const wanted = Math.atan2(dx, -dz);
+            const diff = angleTo(heading, wanted);
+            const maxTurn = TURN_SPEED * step;
+
+            if (Math.abs(diff) > 0.02) {
+              heading += Math.abs(diff) < maxTurn ? diff : Math.sign(diff) * maxTurn;
+            }
+            // TURN FIRST, THEN WALK. The tolerance here is the whole
+            // difference between following the route and grinding along a
+            // wall: at anything loose the character walks while still
+            // turning, which is an ARC, and the route is a series of straight
+            // lines. The arc cuts every corner -- and the corners are door
+            // reveals, so it cuts into the jamb and sticks there.
+            //
+            // Simulated over the solved route, 0.6 rad reached 2 waypoints of
+            // 46 before jamming. 0.12 walks the whole house.
+            drive = Math.abs(diff) < 0.12 ? 1 : 0;
+            turn = 0;
+          }
+        }
+      }
 
       if (turn) heading += turn * TURN_SPEED * step;
 
@@ -339,13 +588,13 @@ export function createTourController(options = {}) {
       character.position.copy(position);
       character.rotation.y = heading;
 
-      // Chase camera: directly behind the character's heading.
+      // Chase camera: behind the character's heading, looking past them.
       forward.set(Math.sin(heading), 0, -Math.cos(heading));
-      head.set(position.x, position.y + CAMERA_LOOK_AT, position.z);
+      head.set(position.x, position.y + view.lookHeight, position.z);
       camTarget.set(
-        position.x - forward.x * CAMERA_BACK,
-        position.y + CAMERA_UP,
-        position.z - forward.z * CAMERA_BACK
+        position.x - forward.x * view.back,
+        position.y + view.up,
+        position.z - forward.z * view.back
       );
 
       // Keep the camera out of the building: cast from the character's head
@@ -368,7 +617,14 @@ export function createTourController(options = {}) {
       }
 
       camera.position.lerp(camTarget, CAMERA_LERP);
-      lookTarget.copy(head);
+
+      // LOOK AHEAD, NOT AT THE CHARACTER. This is the difference between a
+      // walk-through of a house and a video of someone's back.
+      lookTarget.set(
+        position.x + forward.x * view.lookAhead,
+        position.y + view.lookHeight,
+        position.z + forward.z * view.lookAhead
+      );
       camera.lookAt(lookTarget);
     },
   };

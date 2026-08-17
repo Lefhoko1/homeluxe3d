@@ -250,3 +250,36 @@ PLAN = HousePlan(
         "room clear dimensions were treated as authoritative.",
     ),
 )
+
+
+# --------------------------------------------------------------------------
+# The guided tour.
+#
+# The order rooms are visited in, which is a DESIGN decision rather than a
+# shortest path: a visitor should be walked through the house the way an
+# estate agent would walk them through it -- arrive in the living room, work
+# through the public rooms, then the private ones -- and that is not the
+# answer a travelling-salesman solver gives.
+#
+# The route BETWEEN these is solved from the plan by
+# `export/tour_json.py`, so this list only has to be a sensible order. It
+# cannot describe an impossible route; an unreachable room is reported at
+# build time instead of walking into a wall at run time.
+#
+# Ends back in the living room so the tour can loop.
+# --------------------------------------------------------------------------
+TOUR_ORDER = [
+    "living",     # arrive: the three-piece suite and the coffee table
+    "dining",     # through the open plan, past the slider to the pool
+    "kitchen",    # north through the servery
+    "laundry",    # the service end
+    "hall",       # back west into the circulation spine
+    "master",     # the private wing
+    "ensuite",
+    "wir",
+    "bed3",       # the north band, west to east
+    "bathroom",
+    "wc",
+    "bed2",
+    "living",     # home again
+]

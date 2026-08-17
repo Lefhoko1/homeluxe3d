@@ -61,15 +61,55 @@ export function createLighting({ sunDirection } = {}) {
   // -- Ambient ------------------------------------------------------------
   // Sky above, ground bounce below. Unoccluded, so it reaches interiors --
   // this is what makes a room readable once its ceiling stops the sun.
-  const hemisphere = new THREE.HemisphereLight(0xbcd6f0, 0x6b7355, 1.15);
+  const hemisphere = new THREE.HemisphereLight(0xd3e6f7, 0x7d8468, 1.3);
   group.add(hemisphere);
 
-  // A flat floor of light so nothing is ever pure black. Kept low: raise this
-  // instead of the hemisphere and everything goes flat and chalky.
-  group.add(new THREE.AmbientLight(0xffffff, 0.32));
+  // A flat floor of light so nothing is ever pure black. Kept moderate:
+  // raise this instead of the hemisphere and everything goes flat and chalky.
+  group.add(new THREE.AmbientLight(0xffffff, 0.35));
+
+  // -- Interior daylight --------------------------------------------------
+  //
+  // The problem this solves: once the ceiling casts shadows -- which it must,
+  // or the sun pours through it -- NO direct light reaches an interior at
+  // all. Physically right, and it left the furniture dim and shapeless. A
+  // sofa lit only by ambient has no form; you cannot see that a cushion is a
+  // cushion.
+  //
+  // The fix is not more point lights. Those were what made the interiors
+  // blotchy in the first place: a lamp with a 9m range leaves a bright pool
+  // and a dark edge, and moving the furniture moves the pools.
+  //
+  // These are two DIRECTIONAL lights with castShadow OFF. A directional light
+  // reaches everywhere -- through the ceiling, since it casts nothing -- and
+  // gives every surface shading that depends only on which way it faces. So a
+  // sofa gets a lit top, a shaded front and a readable edge, in every room,
+  // with no pools and nothing to keep in step with the layout.
+  //
+  // Aimed to agree with the sun rather than fight it, so an interior looks
+  // like the same time of day as the garden.
+  const keyDirection = (sunDirection ?? new THREE.Vector3(0.55, 0.62, 0.36))
+    .clone().normalize();
+
+  // NOTE ON THE BUDGET. These reach outdoors too, so the sun below was
+  // brought down from 2.1 to 1.7 and the old cool fill removed entirely --
+  // `interiorBounce` does that job now. Without rebalancing, adding two more
+  // lights to a scene already carrying four blows the lawn out to white
+  // under ACES.
+  const interiorKey = new THREE.DirectionalLight(0xfff6ea, 0.8);
+  interiorKey.position.copy(keyDirection).multiplyScalar(30);
+  group.add(interiorKey);
+
+  // Opposite and above, so the side facing away from the key is modelled
+  // rather than black. This is also the scene's cool fill.
+  const interiorBounce = new THREE.DirectionalLight(0xa9c8e8, 0.4);
+  interiorBounce.position.set(
+    -keyDirection.x * 30, 24, -keyDirection.z * 30
+  );
+  group.add(interiorBounce);
 
   // -- The sun ------------------------------------------------------------
-  const sun = new THREE.DirectionalLight(0xfff4e6, 2.1);
+  const sun = new THREE.DirectionalLight(0xfff4e6, 1.7);
   sun.position.copy(sunDirection ?? new THREE.Vector3(0.55, 0.62, 0.36))
      .multiplyScalar(60);
   sun.castShadow = true;
@@ -97,13 +137,9 @@ export function createLighting({ sunDirection } = {}) {
   group.add(sun);
   group.add(sun.target);
 
-  // -- Fill ---------------------------------------------------------------
-  // Cool light from the opposite quarter, so the shadowed side of the house
-  // is blue-grey rather than dead. No shadow: a second shadow pass would
-  // double the cost to soften an edge nobody is looking at.
-  const fill = new THREE.DirectionalLight(0x87ceeb, 0.32);
-  fill.position.set(-12, 9, -10);
-  group.add(fill);
+  // The old cool fill light lived here. `interiorBounce` above replaced it:
+  // same job -- keeping the shadowed side blue-grey rather than dead -- and
+  // keeping both would have been paying twice for one effect.
 
   return {
     group,

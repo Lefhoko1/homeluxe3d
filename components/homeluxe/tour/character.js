@@ -28,6 +28,19 @@ export const TOUR_START = {
   heading: 0,               // 0 = facing -Z = north = toward the house
 };
 
+/**
+ * How tall the visitor is, in metres.
+ *
+ * The model is built at 1.70m. Shrinking it to 1.55m is not about realism --
+ * it is about how much of a 3m-deep bedroom the figure occupies when the
+ * camera has to sit two metres behind it. A shorter figure leaves more of the
+ * room visible over its shoulder, and 1.55m is still a plausible adult
+ * standing next to a 2.1m door head, so the sense of scale a walk-through
+ * exists to give is not thrown away.
+ */
+export const CHARACTER_HEIGHT = 1.55;
+const MODEL_HEIGHT = 1.70;
+
 /** Load the character, or return null if it is missing. */
 export async function loadCharacter({ materials = null, dracoLoader = null } = {}) {
   const loader = new GLTFLoader();
@@ -39,6 +52,9 @@ export async function loadCharacter({ materials = null, dracoLoader = null } = {
 
   scene.name = "tour-character";
   scene.visible = false;   // shown only while the tour is running
+  // Feet stay at the origin, so scaling here does not lift the character off
+  // the floor or sink it into the slab.
+  scene.scale.setScalar(CHARACTER_HEIGHT / MODEL_HEIGHT);
 
   scene.traverse((child) => {
     if (!child.isMesh) return;

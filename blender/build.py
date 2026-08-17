@@ -31,7 +31,7 @@ from houseluxe.components import default_components  # noqa: E402
 from houseluxe.components.character import CharacterComponent  # noqa: E402
 from houseluxe.components.products import product_components  # noqa: E402
 from houseluxe.components.site import site_components  # noqa: E402
-from houseluxe.config.plan_3bed import PLAN  # noqa: E402
+from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER  # noqa: E402
 from houseluxe.config.site_3bed import SITE  # noqa: E402
 from houseluxe.core.scene import SceneBuilder, purge_scene  # noqa: E402
 from houseluxe.export.catalog_json import (  # noqa: E402
@@ -43,6 +43,10 @@ from houseluxe.export.planting_json import (  # noqa: E402
     report as planting_report,
     write_manifest as write_planting_manifest,
 )
+from houseluxe.export.tour_json import (  # noqa: E402
+    report as tour_report,
+    write_manifest as write_tour_manifest,
+)
 from houseluxe.materials.library import MaterialLibrary  # noqa: E402
 
 REPO_ROOT = os.path.dirname(_HERE)
@@ -52,6 +56,7 @@ PRODUCT_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "products")
 TOUR_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "tour")
 CATALOG_PATH = os.path.join(PRODUCT_MODEL_DIR, "catalog.json")
 TREES_PATH = os.path.join(SITE_MODEL_DIR, "trees.json")
+TOUR_PATH = os.path.join(TOUR_MODEL_DIR, "tour.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
@@ -169,6 +174,26 @@ def main(
         if site_spec is not None:
             trees = write_planting_manifest(site_spec, TREES_PATH)
             print(planting_report(trees))
+
+        # The guided walk-through, solved over the plan's own walls and
+        # doorways so it cannot route through one. See export/tour_json.py.
+        # The route must avoid the furniture as well as the walls: the walk
+        # collides with both, and the living room's centre is inside the
+        # coffee table.
+        furniture = [
+            {
+                "x": pl.x, "y": pl.y, "rotation": pl.rotation,
+                "width": getattr(product.dimensions, "width", 0.0) if product else 0.0,
+                "depth": getattr(product.dimensions, "depth", 0.0) if product else 0.0,
+            }
+            for pl in CATALOG.for_house(plan.name)
+            if not pl.is_finish
+            for product in [CATALOG.product(pl.product_id)]
+        ]
+        route = write_tour_manifest(
+            plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture
+        )
+        print(tour_report(route))
 
     # Stage the furniture into the scene AFTER exporting, so the saved .blend
     # shows a furnished house while the exported models stay at the origin.

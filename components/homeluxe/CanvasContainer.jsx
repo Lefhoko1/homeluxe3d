@@ -21,6 +21,7 @@ import {
   createTourController,
   loadCharacter,
   disposeCharacter,
+  loadRoute,
   TourPad,
   TOUR_START,
 } from './tour';
@@ -29,7 +30,7 @@ import { PlacementService } from '../../lib/admin/PlacementService';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
                           shops = [], focusProduct = null, onSelect,
-                          onCatalogChanged }) => {
+                          onCatalogChanged, onTourApi }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -46,6 +47,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const characterRef = useRef(null);
   const [touring, setTouring] = useState(false);
   const [advert, setAdvert] = useState(null);
+  // Guided-tour state, mirrored into React so the pad can draw itself.
+  const routeRef = useRef(null);
+  const [guided, setGuided] = useState(false);
+  const [tourView, setTourView] = useState('third');
+  const [stopLabel, setStopLabel] = useState(null);
   // The pointer handler is installed once; a ref keeps it from capturing
   // the first render's onSelect forever.
   const onSelectRef = useRef(onSelect);
@@ -437,6 +443,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         tour.attach(window);
         tourRef.current = tour;
 
+        // The solved route through the house. House-local in the manifest,
+        // converted to world here because the character lives in the scene.
+        routeRef.current = await loadRoute(house);
+
         // Deep link: /#tour drops the visitor straight onto the driveway.
         // Handy for "take the tour" links in an advert.
         if (window.location.hash === '#tour') {
@@ -790,12 +800,69 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     if (!tour) return;
     tour.toggle();
     setTouring(tour.active);
+    if (!tour.active) { setGuided(false); setStopLabel(null); }
   };
 
   const exitTour = () => {
     tourRef.current?.exit();
     setTouring(false);
+    setGuided(false);
+    setStopLabel(null);
   };
+
+  /**
+   * Start or stop the guided walk.
+   *
+   * Arriving at a stop moves the panels to that room, so the list on the left
+   * and the advert on the right describe wherever the visitor is standing.
+   */
+  const toggleGuided = useCallback(() => {
+    const tour = tourRef.current;
+    const route = routeRef.current;
+    if (!tour) return;
+
+    if (tour.touring) {
+      tour.stopRoute();
+      setGuided(false);
+      return;
+    }
+    if (!route?.waypoints?.length) return;
+
+    tour.followRoute(route.waypoints, (stop) => {
+      setStopLabel(stop.label ?? null);
+      if (stop.room) onSelectRef.current?.({ room: stop.room, roomOnly: true });
+    });
+    setTouring(true);
+    setGuided(true);
+  }, []);
+
+  // Hand the guided tour up, so the "Auto Tour" button in the bottom bar can
+  // start it. The scene has to own the controller -- it needs the camera, the
+  // character and the geometry -- so the button borrows it rather than the
+  // other way round.
+  useEffect(() => {
+    onTourApi?.({ startGuided: toggleGuided });
+  }, [onTourApi, toggleGuided]);
+
+  const toggleTourView = () => {
+    const tour = tourRef.current;
+    if (!tour) return;
+    tour.toggleView();
+    setTourView(tour.view);
+  };
+
+  // The guided walk stops itself when the visitor touches a control, so the
+  // button has to follow the controller rather than the other way round.
+  useEffect(() => {
+    if (!guided) return undefined;
+    const id = setInterval(() => {
+      if (tourRef.current && !tourRef.current.touring) {
+        setGuided(false);
+        setStopLabel(null);
+      }
+    }, 400);
+    return () => clearInterval(id);
+  }, [guided]);
 
   return (
     <div id="canvas-container" className={isAdmin ? 'admin' : undefined}>
@@ -864,6 +931,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           onPress={(dir) => tourRef.current?.setButton(dir, true)}
           onRelease={(dir) => tourRef.current?.setButton(dir, false)}
           onExit={exitTour}
+          onGuided={toggleGuided}
+          onToggleView={toggleTourView}
+          guided={guided}
+          view={tourView}
+          stopLabel={stopLabel}
         />
       )}
 

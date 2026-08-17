@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Header from './Header';
 import ShopsBanner from './ShopsBanner';
 import TourPanel from './TourPanel';
@@ -68,6 +68,11 @@ const LuxeHomePage = () => {
     setCurrentIndex(0);
   };
 
+  // The 3D scene owns the tour controller -- it needs the camera, the
+  // character and the geometry -- and lends this button its start function.
+  const tourApi = useRef(null);
+  const handleTourApi = useCallback((api) => { tourApi.current = api; }, []);
+
   const handleEnquire = (product) => {
     if (!product) return;
     recordEvent('enquiry_open', {
@@ -78,6 +83,17 @@ const LuxeHomePage = () => {
   // Fired when something is clicked in the 3D scene.
   const handleSceneSelect = (advert) => {
     if (!advert) {
+      setSelectedProduct(null);
+      return;
+    }
+    // The guided tour reports arriving in a room, not clicking a product, so
+    // the lists follow the visitor without the detail panel showing a
+    // half-filled advert for something nobody selected.
+    if (advert.roomOnly) {
+      if (advert.room && advert.room !== currentRoom) {
+        setCurrentRoom(advert.room);
+        setCurrentIndex(0);
+      }
       setSelectedProduct(null);
       return;
     }
@@ -134,6 +150,7 @@ const LuxeHomePage = () => {
         // A save changes what the database says is in the house, so the room
         // lists have to re-read or they keep showing the old layout.
         onCatalogChanged={refresh}
+        onTourApi={handleTourApi}
       />
 
       <ProductPanel
@@ -148,7 +165,7 @@ const LuxeHomePage = () => {
         totalItems={currentProducts.length}
         onPrevious={() => handleProductSelect(Math.max(0, currentIndex - 1))}
         onNext={() => handleProductSelect(Math.min(currentProducts.length - 1, currentIndex + 1))}
-        onAutoPlay={() => {}}
+        onAutoPlay={() => tourApi.current?.startGuided()}
       />
 
       {showLogin && (
