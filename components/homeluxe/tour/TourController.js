@@ -39,8 +39,32 @@ export const WALK_SPEED = 2.4;
 /** Radians per second when turning on the spot. */
 export const TURN_SPEED = 2.2;
 
-/** How far ahead to check for obstacles. Roughly shoulder width. */
+/**
+ * The GUIDED tour moves slower than a person driving themselves.
+ *
+ * 2.4 m/s is a brisk walk -- right when you are steering, because you already
+ * know where you are going. Being driven at it is useless: the whole house
+ * goes by in about a minute and you cannot take in a single room. An estate
+ * agent walks a client through at closer to 1 m/s and stops talking in each
+ * room, which is what these two numbers are for.
+ */
+export const GUIDED_WALK_SPEED = 1.05;
+export const GUIDED_TURN_SPEED = 1.1;
+
+/**
+ * How far ahead to check for obstacles.
+ *
+ * MUST NOT EXCEED THE ROUTE'S CLEARANCE. The solved route keeps 300mm from
+ * every wall; a ray reaching 420mm finds a wall the route considers clear, so
+ * the character stops short of waypoints in tight rooms, slides, and
+ * eventually sticks -- which is why the guided tour appeared to skip rooms.
+ * While following a route this drops to the clearance the route was solved
+ * with; steering yourself it stays at the wider, safer value.
+ */
 const COLLIDE_DISTANCE = 0.42;
+
+/** How far the character sweeps its heading while paused at a stop. */
+const SURVEY_ARC = 1.05;   // radians, about 60 degrees either side
 
 /**
  * Heights at which the forward ray is fired.
@@ -174,6 +198,8 @@ export function createTourController(options = {}) {
   let route = null;
   let routeIndex = 0;
   let dwellLeft = 0;
+  let dwellTotal = 0;
+  let surveyFrom = 0;
   let onArrive = null;
 
   /** Shortest signed angle from a to b. */
@@ -390,13 +416,20 @@ export function createTourController(options = {}) {
      * @param {(stop:object, index:number) => void} [arrived] called on reaching
      *        a stop, so the panels can follow the visitor from room to room.
      */
-    followRoute(waypoints, arrived = null) {
+    followRoute(waypoints, arrived = null, { clearance = null } = {}) {
       if (!waypoints?.length) return;
       if (!active) this.enter();
 
       route = waypoints.map((point) => ({ ...point, done: false }));
       dwellLeft = 0;
       onArrive = arrived;
+
+      // Match the collision reach to the clearance the route was solved with,
+      // or the character stops short of its own waypoints. See
+      // COLLIDE_DISTANCE.
+      wallRay.far = clearance
+        ? Math.min(COLLIDE_DISTANCE, clearance)
+        : COLLIDE_DISTANCE;
 
       // ALWAYS START AT THE BEGINNING. Snapping to the nearest waypoint looks
       // like a saving and is a trap: every waypoint is indoors, the visitor
@@ -413,6 +446,15 @@ export function createTourController(options = {}) {
     stopRoute() {
       route = null;
       onArrive = null;
+      wallRay.far = COLLIDE_DISTANCE;   // back to the safer manual reach
+    },
+
+    /** Progress through the stops, for the UI: {at, total}. */
+    get progress() {
+      if (!route) return null;
+      const stops = route.filter((point) => point.label);
+      const done = stops.filter((point) => point.done).length;
+      return { at: done, total: stops.length };
     },
 
     toggle() {
@@ -503,11 +545,21 @@ export function createTourController(options = {}) {
           if (distance < ARRIVE_RADIUS || passed) {
             if (dwellLeft > 0) {
               dwellLeft -= step;
+              // LOOK AROUND. Standing still facing one way shows a visitor
+              // one wall of the room they were brought to see. Sweeping the
+              // heading through a slow full cycle -- right, back, left, back
+              // -- takes in the whole room in the time the tour was pausing
+              // anyway, and leaves the character facing where it came in so
+              // the next leg starts pointed sensibly.
+              const t = 1 - dwellLeft / Math.max(dwellTotal, 0.001);
+              heading = surveyFrom + Math.sin(t * Math.PI * 2) * SURVEY_ARC;
             } else if (target.dwell && dwellLeft === 0 && !target.done) {
               // Reached a stop: pause, and tell whoever is listening so the
               // room lists can follow the visitor through the house.
               target.done = true;
               dwellLeft = target.dwell;
+              dwellTotal = target.dwell;
+              surveyFrom = heading;
               onArrive?.(target, routeIndex);
             } else {
               routeIndex += 1;
@@ -521,7 +573,7 @@ export function createTourController(options = {}) {
           } else {
             const wanted = Math.atan2(dx, -dz);
             const diff = angleTo(heading, wanted);
-            const maxTurn = TURN_SPEED * step;
+            const maxTurn = GUIDED_TURN_SPEED * step;
 
             if (Math.abs(diff) > 0.02) {
               heading += Math.abs(diff) < maxTurn ? diff : Math.sign(diff) * maxTurn;
@@ -545,7 +597,8 @@ export function createTourController(options = {}) {
 
       if (drive) {
         forward.set(Math.sin(heading), 0, -Math.cos(heading));
-        const distance = drive * WALK_SPEED * step;
+        const speed = route ? GUIDED_WALK_SPEED : WALK_SPEED;
+        const distance = drive * speed * step;
         desired.copy(forward).multiplyScalar(Math.sign(distance));
 
         const nextX = position.x + forward.x * distance;

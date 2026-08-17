@@ -56,7 +56,13 @@ export async function loadRoute(house, url = TOUR_ROUTE_URL) {
       `${waypoints.length} waypoints, ${manifest.clearance_mm}mm clear of walls`
     );
 
-    return { waypoints, stops: manifest.stops ?? [] };
+    return {
+      waypoints,
+      stops: manifest.stops ?? [],
+      // The controller narrows its collision reach to this, or it stops
+      // short of its own waypoints in tight rooms.
+      clearance: (manifest.clearance_mm ?? 0) / 1000,
+    };
   } catch (error) {
     console.warn("[tour] no route manifest:", error.message);
     return null;

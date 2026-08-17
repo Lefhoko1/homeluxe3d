@@ -43,7 +43,7 @@ const wide = {
 const TourPad = ({
   onPress, onRelease, onExit,
   onGuided, onToggleView,
-  guided = false, view = 'third', stopLabel = null,
+  guided = false, view = 'third', stopLabel = null, progress = null,
 }) => {
   const hold = (dir) => ({
     onPointerDown: (e) => {
@@ -80,8 +80,15 @@ const TourPad = ({
           marginBottom: 2,
         }}
       >
+        {/* The count matters: without it there is no way to tell a tour that
+            is working its way round from one that has quietly stopped. */}
         {guided
-          ? `Guided tour${stopLabel ? ` · ${stopLabel}` : ''} · any key to take over`
+          ? [
+              'Guided tour',
+              progress ? `room ${progress.at} of ${progress.total}` : null,
+              stopLabel,
+              'any key to take over',
+            ].filter(Boolean).join(' · ')
           : 'Walking · arrow keys or WASD'}
       </div>
 

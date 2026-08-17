@@ -52,6 +52,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const [guided, setGuided] = useState(false);
   const [tourView, setTourView] = useState('third');
   const [stopLabel, setStopLabel] = useState(null);
+  const [progress, setProgress] = useState(null);
   // The pointer handler is installed once; a ref keeps it from capturing
   // the first render's onSelect forever.
   const onSelectRef = useRef(onSelect);
@@ -828,12 +829,18 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     }
     if (!route?.waypoints?.length) return;
 
-    tour.followRoute(route.waypoints, (stop) => {
-      setStopLabel(stop.label ?? null);
-      if (stop.room) onSelectRef.current?.({ room: stop.room, roomOnly: true });
-    });
+    tour.followRoute(
+      route.waypoints,
+      (stop) => {
+        setStopLabel(stop.label ?? null);
+        setProgress(tour.progress);
+        if (stop.room) onSelectRef.current?.({ room: stop.room, roomOnly: true });
+      },
+      { clearance: route.clearance }
+    );
     setTouring(true);
     setGuided(true);
+    setProgress(tour.progress);
   }, []);
 
   // Hand the guided tour up, so the "Auto Tour" button in the bottom bar can
@@ -936,6 +943,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           guided={guided}
           view={tourView}
           stopLabel={stopLabel}
+          progress={progress}
         />
       )}
 

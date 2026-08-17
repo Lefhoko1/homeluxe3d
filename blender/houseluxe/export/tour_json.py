@@ -455,7 +455,17 @@ def _solve(plan, order, clearance, furniture=()):
     return grid, stops, linked
 
 
-def build_manifest(plan, order=None, dwell: float = 3.0, furniture=()) -> dict:
+#: Seconds paused in each room.
+#:
+#: Long enough to actually look. Three seconds was chosen as "a pause" and is
+#: not one: the visitor arrives, the room name appears, and they are moving
+#: again before they have found what is in it. The character spends this time
+#: sweeping its heading through the room -- see SURVEY_ARC in the controller
+#: -- so this is the length of a slow look around, not of standing still.
+DWELL = 6.0
+
+
+def build_manifest(plan, order=None, dwell: float = DWELL, furniture=()) -> dict:
     """Solve the whole tour.
 
     `order` is the list of room names to visit, in order. It is a DESIGNED
