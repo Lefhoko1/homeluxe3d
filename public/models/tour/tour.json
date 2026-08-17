@@ -10,7 +10,7 @@
       ],
       "room": null,
       "label": "Front door",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -50,16 +50,23 @@
     {
       "position": [
         7.915,
-        -3.715
+        -3.815
       ],
       "room": "living",
       "label": "Living",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
-        10.015,
-        -3.715
+        10.215,
+        -3.815
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        10.515,
+        -3.415
       ],
       "dwell": 0.0
     },
@@ -70,12 +77,19 @@
       ],
       "room": "dining",
       "label": "Dining",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
-        9.915,
+        9.715,
         -4.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.015,
+        -5.115
       ],
       "dwell": 0.0
     },
@@ -93,26 +107,33 @@
       ],
       "room": "kitchen",
       "label": "Kitchen",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
-        8.015,
+        7.915,
         -6.615
       ],
       "dwell": 0.0
     },
     {
       "position": [
-        8.815,
-        -5.915
+        9.315,
+        -5.315
       ],
       "dwell": 0.0
     },
     {
       "position": [
         9.615,
-        -5.915
+        -5.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.615,
+        -5.515
       ],
       "dwell": 0.0
     },
@@ -120,13 +141,6 @@
       "position": [
         9.915,
         -6.215
-      ],
-      "dwell": 0.0
-    },
-    {
-      "position": [
-        10.415,
-        -6.715
       ],
       "dwell": 0.0
     },
@@ -151,7 +165,7 @@
       ],
       "room": "laundry",
       "label": "Laundry",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -169,21 +183,28 @@
     },
     {
       "position": [
-        10.315,
-        -6.615
-      ],
-      "dwell": 0.0
-    },
-    {
-      "position": [
-        9.815,
+        10.415,
         -6.115
       ],
       "dwell": 0.0
     },
     {
       "position": [
-        9.515,
+        9.715,
+        -5.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        9.415,
+        -5.315
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        7.315,
         -5.915
       ],
       "dwell": 0.0
@@ -202,7 +223,7 @@
       ],
       "room": "hall",
       "label": "Hallway",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -234,6 +255,13 @@
     },
     {
       "position": [
+        5.815,
+        -4.715
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
         5.115,
         -4.515
       ],
@@ -253,7 +281,7 @@
       ],
       "room": "master",
       "label": "Master Bedroom",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -276,7 +304,7 @@
       ],
       "room": "ensuite",
       "label": "Ensuite",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -355,7 +383,7 @@
       ],
       "room": "wir",
       "label": "Walk-in Robe",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -406,7 +434,7 @@
       ],
       "room": "bed3",
       "label": "Bedroom 3",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -450,7 +478,7 @@
       ],
       "room": "bathroom",
       "label": "Bathroom",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -473,7 +501,7 @@
       ],
       "room": "wc",
       "label": "WC",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -484,29 +512,29 @@
     },
     {
       "position": [
-        6.515,
+        6.415,
         -8.415
+      ],
+      "dwell": 0.0
+    },
+    {
+      "position": [
+        6.715,
+        -7.715
       ],
       "dwell": 0.0
     },
     {
       "position": [
         7.015,
-        -8.015
+        -7.715
       ],
       "dwell": 0.0
     },
     {
       "position": [
         7.315,
-        -8.015
-      ],
-      "dwell": 0.0
-    },
-    {
-      "position": [
-        7.315,
-        -8.415
+        -8.115
       ],
       "dwell": 0.0
     },
@@ -531,7 +559,7 @@
       ],
       "room": "bed2",
       "label": "Bedroom 2",
-      "dwell": 9.0
+      "dwell": 10.0
     },
     {
       "position": [
@@ -571,11 +599,11 @@
     {
       "position": [
         7.915,
-        -3.715
+        -3.815
       ],
       "room": "living",
       "label": "Living",
-      "dwell": 9.0
+      "dwell": 10.0
     }
   ],
   "stops": [

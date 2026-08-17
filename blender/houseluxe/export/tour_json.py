@@ -151,16 +151,55 @@ def _opening_rect(wall, opening, pad: float) -> tuple[float, float, float, float
         return (0.0, 0.0, 0.0, 0.0)
 
     ux, uy = (ex - sx) / length, (ey - sy) / length
-    a = opening.offset + pad
-    b = opening.offset + opening.width - pad
+
+    # CLAMP TO THE WALL. Several openings in this plan run off the end of the
+    # wall they are declared on -- the servery is 2400 wide at offset 1800 on
+    # a 3600 wall, so it claims 600mm of nothing. Unclamped, the gap is punched
+    # into whatever is beyond, which is usually the wall that meets this one.
+    start = max(0.0, opening.offset)
+    end = min(length, opening.offset + opening.width)
+    if end <= start:
+        return (0.0, 0.0, 0.0, 0.0)
+
+    a = start + pad
+    b = end - pad
     if b <= a:                      # opening narrower than twice the pad
-        a = b = opening.offset + opening.width / 2.0
+        a = b = (start + end) / 2.0
 
     ax, ay = sx + ux * a, sy + uy * a
     bx, by = sx + ux * b, sy + uy * b
 
     through = wall.thickness / 2.0 + CLEARANCE + CELL
     # Perpendicular to the wall.
+    px, py = -uy * through, ux * through
+
+    xs = [ax + px, ax - px, bx + px, bx - px]
+    ys = [ay + py, ay - py, by + py, by - py]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _opening_core(wall, opening) -> tuple[float, float, float, float]:
+    """The gap an opening leaves in its own wall's SOLID body.
+
+    Unlike `_opening_rect` this reaches only through the wall's thickness, not
+    into the clearance band -- it exists to reopen a doorway after the wall
+    cores are repainted, without reopening anything else.
+    """
+    (sx, sy), (ex, ey) = wall.start, wall.end
+    length = math.hypot(ex - sx, ey - sy)
+    if length <= 0:
+        return (0.0, 0.0, 0.0, 0.0)
+
+    ux, uy = (ex - sx) / length, (ey - sy) / length
+    start = max(0.0, opening.offset)
+    end = min(length, opening.offset + opening.width)
+    if end <= start:
+        return (0.0, 0.0, 0.0, 0.0)
+
+    ax, ay = sx + ux * start, sy + uy * start
+    bx, by = sx + ux * end, sy + uy * end
+
+    through = wall.thickness / 2.0 + CELL
     px, py = -uy * through, ux * through
 
     xs = [ax + px, ax - px, bx + px, bx - px]
@@ -225,10 +264,38 @@ def build_grid(plan, furniture=()) -> Grid:
                 for ix in range(ax, bx + 1):
                     grid.doors.add((ix, iy))
 
+    # PUT THE WALLS BACK.
+    #
+    # An opening has to be punched deeper than its own wall is thick, or the
+    # clearance band either side of the wall seals the gap again. That depth
+    # is the problem: where two walls meet, one wall's doorway punch reaches
+    # into the BODY of the other. The servery is 455mm deep and the kitchen's
+    # east wall is 250mm away, so the route was handed a hole through a wall
+    # with no opening in it -- and the tour walked into it and stopped, every
+    # time, just after the kitchen.
+    #
+    # So every wall's solid core is repainted afterwards, and then only its
+    # OWN openings are cleared from it. A punch can no longer open anything
+    # but the wall it belongs to.
+    for wall in plan.walls:
+        grid.paint(*_wall_rect(wall, 0.0), 1)
+
+    for wall in plan.walls:
+        for opening in wall.openings:
+            if opening.kind not in WALKABLE_OPENINGS:
+                continue
+            grid.paint(*_opening_core(wall, opening), 0)
+
     # Furniture last, and never over a doorway: a sofa is not a door, but a
     # rug placed across a threshold should not seal the room off either.
+    #
+    # FULL clearance, not a fraction of it. At 0.6 the route ran within 180mm
+    # of a sofa while the walk's obstacle ray reached 300mm, so the character
+    # was stopped by furniture the route considered cleared -- the same
+    # mistake as padding walls less than the ray reaches, and it stuck the
+    # tour in the kitchen.
     for item in furniture:
-        grid.paint(*_furniture_rect(item, CLEARANCE * 0.6), 1)
+        grid.paint(*_furniture_rect(item, CLEARANCE), 1)
     for cell in grid.doors:
         if 0 <= cell[0] < grid.nx and 0 <= cell[1] < grid.ny:
             grid.blocked[grid.index(*cell)] = 0
@@ -464,10 +531,11 @@ def _solve(plan, order, clearance, furniture=()):
 #: This is also the DENOMINATOR OF THE LOOK-AROUND SPEED. The character
 #: spends the whole pause sweeping its heading across the room, so the pause
 #: length and SURVEY_ARC in components/homeluxe/tour/TourController.js decide
-#: between them how fast the view turns. At 6s the sweep came out at about 40
-#: degrees a second, which reads as the camera being whipped round rather than
-#: someone looking; 9s brings it to about 20. Change one and check the other.
-DWELL = 9.0
+#: between them how fast the view turns. 6s gave about 40 degrees a second and
+#: 9s about 20; both read as the camera being swung rather than someone
+#: looking. 10s with a narrower arc gives about 13. Change one, check the
+#: other.
+DWELL = 10.0
 
 
 def build_manifest(plan, order=None, dwell: float = DWELL, furniture=()) -> dict:
@@ -612,6 +680,49 @@ def _point(grid: Grid, cell) -> dict:
     return {"position": [x_mm / 1000.0, -y_mm / 1000.0]}
 
 
+def verify(plan, manifest: dict, furniture=()) -> list[str]:
+    """Check every leg against the TRUE geometry, not the padded grid.
+
+    THIS IS THE GUARANTEE THE WALK RELIES ON. While following a route the
+    controller no longer tests the walls at all -- it cannot, because a ray
+    from a point and a padded 2D grid disagree about what "clear" means, and
+    every attempt to reconcile them moved where the tour stuck rather than
+    removing it. Instead the route is asserted walkable here, once, against
+    the real wall and furniture footprints with no padding at all.
+
+    So this is not a nicety. If it ever fails, the tour walks into a wall.
+    """
+    global CLEARANCE
+    remembered = CLEARANCE
+    try:
+        CLEARANCE = 1.0                     # ~no padding: true footprints
+        solid = build_grid(plan, furniture)
+    finally:
+        CLEARANCE = remembered
+
+    def free(x_m, z_m):
+        return solid.is_free(*solid.to_cell(x_m * 1000.0, -z_m * 1000.0))
+
+    problems = []
+    points = manifest.get("waypoints", [])
+
+    for i, point in enumerate(points):
+        if not free(*point["position"]):
+            problems.append(f"waypoint {i} stands inside geometry")
+
+    for i in range(1, len(points)):
+        ax, az = points[i - 1]["position"]
+        bx, bz = points[i]["position"]
+        steps = max(2, int(math.hypot(bx - ax, bz - az) / 0.02))
+        for k in range(steps + 1):
+            t = k / steps
+            if not free(ax + (bx - ax) * t, az + (bz - az) * t):
+                problems.append(f"leg {i - 1}->{i} passes through geometry")
+                break
+
+    return problems
+
+
 def write_manifest(plan, path: str, order=None, furniture=()) -> dict:
     manifest = build_manifest(plan, order=order, furniture=furniture)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -621,7 +732,7 @@ def write_manifest(plan, path: str, order=None, furniture=()) -> dict:
     return manifest
 
 
-def report(manifest: dict) -> str:
+def report(manifest: dict, problems=None) -> str:
     stops = manifest.get("stops", [])
     points = manifest.get("waypoints", [])
     missed = manifest.get("unreachable", [])
@@ -631,4 +742,12 @@ def report(manifest: dict) -> str:
     )
     if missed:
         line += f"\n  ! UNREACHABLE: {', '.join(missed)}"
+
+    if problems:
+        line += f"\n  ! ROUTE IS NOT WALKABLE -- {len(problems)} problem(s):"
+        for problem in problems[:6]:
+            line += f"\n      {problem}"
+    elif problems is not None:
+        line += "\n  verified walkable against the true wall and furniture geometry"
+
     return line

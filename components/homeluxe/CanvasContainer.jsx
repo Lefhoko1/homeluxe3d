@@ -437,6 +437,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           controls: orbitControls,
           groundObjects,
           obstacles,
+          // The guided route already avoids the walls and the catalogue's
+          // furniture, and was verified against both. What it cannot know is
+          // furniture an admin moved afterwards -- so that is what the walk
+          // keeps testing while it follows the route.
+          movableObstacles: [group],
           cameraObstacles: structure,
           start: TOUR_START.position,
           startHeading: TOUR_START.heading,

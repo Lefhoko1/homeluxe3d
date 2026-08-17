@@ -45,6 +45,7 @@ from houseluxe.export.planting_json import (  # noqa: E402
 )
 from houseluxe.export.tour_json import (  # noqa: E402
     report as tour_report,
+    verify as verify_tour,
     write_manifest as write_tour_manifest,
 )
 from houseluxe.materials.library import MaterialLibrary  # noqa: E402
@@ -193,7 +194,10 @@ def main(
         route = write_tour_manifest(
             plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture
         )
-        print(tour_report(route))
+        # The walk trusts this route instead of re-testing the walls as it
+        # goes, so the route has to be proved walkable here. See
+        # export/tour_json.verify.
+        print(tour_report(route, verify_tour(plan, route, furniture)))
 
     # Stage the furniture into the scene AFTER exporting, so the saved .blend
     # shows a furnished house while the exported models stay at the origin.

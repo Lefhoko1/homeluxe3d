@@ -36,8 +36,16 @@ const LuxeHomePage = () => {
   // Land on a room that actually has something in it. Without this the page
   // can open on a room the scene has never heard of and show "coming soon"
   // over a picture of the living room.
+  //
+  // ONLY ON FIRST LOAD. Left running, it fights the guided tour: the tour
+  // walks into the kitchen, which has nothing advertised in it, so this
+  // bounced the selection to the alphabetically first room with products --
+  // and the panel announced "Bathroom" while the visitor stood in the
+  // kitchen. Where the visitor IS beats where there is something to sell.
+  const landed = useRef(false);
   useEffect(() => {
-    if (!rooms.length) return;
+    if (!rooms.length || landed.current) return;
+    landed.current = true;
     if (!rooms.some((r) => r.code === currentRoom)) {
       setCurrentRoom(rooms[0].code);
       setCurrentIndex(0);

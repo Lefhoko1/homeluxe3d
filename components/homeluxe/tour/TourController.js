@@ -70,15 +70,17 @@ const COLLIDE_DISTANCE = 0.42;
  * a full cycle -- centre, right, centre, left, centre -- so the head travels
  * four times this arc in one pause:
  *
- *     4 x 0.80 rad over 9s  =  0.36 rad/s, about 20 degrees a second
+ *     4 x 0.55 rad over 10s  =  0.22 rad/s, about 13 degrees a second
  *
- * The first attempt was 4 x 1.05 over 6s, which is 40 degrees a second. That
- * is roughly twice as fast as a person turning to look at a room, and it
- * reads as the camera being whipped around rather than someone looking. If
- * this is changed, change DWELL in export/tour_json.py with it -- the two
+ * Two earlier attempts were too fast to watch: 4 x 1.05 over 6s gave 40
+ * degrees a second, and 4 x 0.80 over 9s gave 20. Someone scanning a room
+ * they have just walked into turns their head slowly; anything quicker reads
+ * as the camera being swung rather than a person looking.
+ *
+ * If this changes, change DWELL in export/tour_json.py with it -- the two
  * only mean something together.
  */
-const SURVEY_ARC = 0.8;   // radians, about 46 degrees either side
+const SURVEY_ARC = 0.55;   // radians, about 32 degrees either side
 
 /**
  * Heights at which the forward ray is fired.
@@ -191,6 +193,14 @@ export function createTourController(options = {}) {
     groundObjects = [],
     // Everything solid: walls, fences, hedges, tree trunks, furniture.
     obstacles = [],
+    /**
+     * The subset that can MOVE after the route was solved -- in practice the
+     * furniture, which an admin can drag anywhere at runtime.
+     *
+     * While following a solved route the walk collides with these and nothing
+     * else. See `blocked`.
+     */
+    movableObstacles = [],
     // What the CAMERA may not pass through. Structure only -- if the camera
     // dodged every sofa it would jitter constantly in a furnished room.
     cameraObstacles = [],
@@ -314,11 +324,27 @@ export function createTourController(options = {}) {
    * through a coffee table.
    */
   function blocked(origin, direction) {
-    if (!obstacles.length) return false;
+    // WHILE FOLLOWING A SOLVED ROUTE, THE WALLS ARE NOT TESTED.
+    //
+    // Not laziness -- the opposite. The route is solved against the plan's
+    // own walls and openings and then verified, leg by leg, against the true
+    // geometry at build time. It is known to be walkable. Testing it again at
+    // run time with a different collision model is not a second opinion, it
+    // is a disagreement, and the two models cannot be made to agree: one is a
+    // ray from a point, the other a padded 2D grid, and every attempt to
+    // reconcile them by tuning the reach moved the place where the tour stuck
+    // rather than removing it.
+    //
+    // What the route CANNOT know about is furniture moved since it was
+    // solved, because an admin can drag a sofa anywhere at run time. So that
+    // is exactly what stays tested.
+    const against = route ? movableObstacles : obstacles;
+    if (!against.length) return false;
+
     for (let i = 0; i < PROBE_HEIGHTS.length; i += 1) {
       probe.set(origin.x, lastGroundY + PROBE_HEIGHTS[i], origin.z);
       wallRay.set(probe, direction);
-      if (wallRay.intersectObjects(obstacles, true).length > 0) return true;
+      if (wallRay.intersectObjects(against, true).length > 0) return true;
     }
     return false;
   }
@@ -441,8 +467,14 @@ export function createTourController(options = {}) {
       // Match the collision reach to the clearance the route was solved with,
       // or the character stops short of its own waypoints. See
       // COLLIDE_DISTANCE.
+      //
+      // STRICTLY INSIDE the clearance, not equal to it. A ray of exactly the
+      // clearance fired straight at a wall the route runs alongside reports a
+      // hit -- the route's guarantee is that nothing is CLOSER than the
+      // clearance, which a ray of that exact length still touches. The margin
+      // is what makes the guarantee usable.
       wallRay.far = clearance
-        ? Math.min(COLLIDE_DISTANCE, clearance)
+        ? Math.min(COLLIDE_DISTANCE, clearance * 0.8)
         : COLLIDE_DISTANCE;
 
       // ALWAYS START AT THE BEGINNING. Snapping to the nearest waypoint looks
