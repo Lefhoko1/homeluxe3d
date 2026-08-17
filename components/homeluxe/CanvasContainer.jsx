@@ -531,6 +531,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       atmosphere.group.position.set(camera.position.x, 0, camera.position.z);
       // And the shadow frustum centred on what is being looked at.
       lighting.follow(orbitControls.target);
+      // Six lights serve sixteen fittings, so they follow the viewer. See
+      // lighting/roomLights.js.
+      houseRef.current?.userData.roomLights?.update(delta, camera);
 
       renderer.render(scene, camera);
     };
@@ -557,6 +560,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       tourRef.current = null;
       disposeCharacter(characterRef.current);
       characterRef.current = null;
+      houseRef.current?.userData.roomLights?.dispose();
       disposeProducts(productsRef.current);
       disposeHouse(houseRef.current);
       disposeHouseMaterials(houseMaterialsRef.current);

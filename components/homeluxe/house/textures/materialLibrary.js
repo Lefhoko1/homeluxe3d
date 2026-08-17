@@ -279,6 +279,36 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
     })
   );
 
+  // -- Ceiling lights -----------------------------------------------------
+  // The bezel is ordinary white plastic. The LENS is what sells it: an
+  // emissive material glows regardless of the light falling on it, so the
+  // fitting reads as switched on even though the point light beneath it
+  // cannot illuminate the fitting it is inside.
+  materials.set(
+    "light_fitting",
+    new THREE.MeshStandardMaterial({
+      name: "light_fitting",
+      color: 0xe6e9ee,
+      roughness: 0.35,
+      metalness: 0.1,
+    })
+  );
+
+  materials.set(
+    "light_lens",
+    new THREE.MeshStandardMaterial({
+      name: "light_lens",
+      color: 0xffffff,
+      emissive: 0xf4f7ff,      // the daylight colour from lights.json
+      emissiveIntensity: 1.6,
+      roughness: 0.9,
+      metalness: 0.0,
+      // Not lit by anything else: a lens that darkens when the sun moves off
+      // it looks switched off.
+      toneMapped: true,
+    })
+  );
+
   materials.set(
     "soil",
     new THREE.MeshStandardMaterial({

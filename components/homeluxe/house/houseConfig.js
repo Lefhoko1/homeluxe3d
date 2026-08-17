@@ -39,6 +39,10 @@ export const HOUSE_PARTS = [
   // did not, and the gap between them let the sun land on the furniture.
   // A ceiling is the surface that actually separates a room from the sky.
   { id: "ceiling",        file: "ceiling.glb",        label: "Ceiling",        visible: true,   castShadow: true,  receiveShadow: true },
+  // Fittings only -- the light they appear to cast comes from lights.json,
+  // read by lighting/roomLights.js. Neither casts a shadow: a downlight
+  // shadowing its own ceiling is both wrong and expensive.
+  { id: "lights",         file: "lights.glb",         label: "Ceiling lights", visible: true,  castShadow: false, receiveShadow: false },
   { id: "porch",          file: "porch.glb",          label: "Porch",          visible: true,  castShadow: true,  receiveShadow: true },
   { id: "roof",           file: "roof.glb",           label: "Roof",           visible: true,   castShadow: true,  receiveShadow: false },
 ];

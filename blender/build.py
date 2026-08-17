@@ -39,6 +39,10 @@ from houseluxe.export.catalog_json import (  # noqa: E402
     write_manifest,
 )
 from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
+from houseluxe.export.lights_json import (  # noqa: E402
+    report as lights_report,
+    write_manifest as write_lights_manifest,
+)
 from houseluxe.export.planting_json import (  # noqa: E402
     report as planting_report,
     write_manifest as write_planting_manifest,
@@ -58,6 +62,7 @@ TOUR_MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "tour")
 CATALOG_PATH = os.path.join(PRODUCT_MODEL_DIR, "catalog.json")
 TREES_PATH = os.path.join(SITE_MODEL_DIR, "trees.json")
 TOUR_PATH = os.path.join(TOUR_MODEL_DIR, "tour.json")
+LIGHTS_PATH = os.path.join(MODEL_DIR, "lights.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
@@ -168,6 +173,11 @@ def main(
         if products:
             manifest = write_manifest(CATALOG, CATALOG_PATH)
             print(catalog_report(manifest, CATALOG_PATH))
+
+        # Where the ceiling fittings are, so the app can hang a real light
+        # at each one rather than inventing coordinates.
+        lights = write_lights_manifest(plan, LIGHTS_PATH)
+        print(lights_report(lights))
 
         # Trees are placed from a manifest rather than built as geometry --
         # the app instances one real tree model at these points. See

@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "colour": "#f4f7ff",
+  "lights": [
+    {
+      "room": "master",
+      "label": "Master Bedroom",
+      "position": [
+        2.64,
+        2.312,
+        -3.03
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "master",
+      "label": "Master Bedroom",
+      "position": [
+        4.84,
+        2.312,
+        -3.03
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "ensuite",
+      "label": "Ensuite",
+      "position": [
+        1.03,
+        2.312,
+        -2.38
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "wir",
+      "label": "Walk-in Robe",
+      "position": [
+        1.03,
+        2.312,
+        -4.54
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "bed3",
+      "label": "Bedroom 3",
+      "position": [
+        0.93,
+        2.312,
+        -9.685
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "bed3",
+      "label": "Bedroom 3",
+      "position": [
+        2.7,
+        2.312,
+        -9.685
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "bathroom",
+      "label": "Bathroom",
+      "position": [
+        4.555,
+        2.312,
+        -10.3125
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "wc",
+      "label": "WC",
+      "position": [
+        6.255,
+        2.312,
+        -10.3125
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "bed2",
+      "label": "Bedroom 2",
+      "position": [
+        9.49,
+        2.312,
+        -8.9
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "bed2",
+      "label": "Bedroom 2",
+      "position": [
+        9.49,
+        2.312,
+        -10.47
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "kitchen",
+      "label": "Kitchen",
+      "position": [
+        6.35,
+        2.312,
+        -6.82
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "kitchen",
+      "label": "Kitchen",
+      "position": [
+        8.44,
+        2.312,
+        -6.82
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "laundry",
+      "label": "Laundry",
+      "position": [
+        12.055,
+        2.312,
+        -6.715
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "living",
+      "label": "Living",
+      "position": [
+        6.35,
+        2.312,
+        -2.23
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "living",
+      "label": "Living",
+      "position": [
+        7.9,
+        2.312,
+        -2.23
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "living",
+      "label": "Living",
+      "position": [
+        9.45,
+        2.312,
+        -2.23
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "dining",
+      "label": "Dining",
+      "position": [
+        11.56,
+        2.312,
+        -0.93
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "dining",
+      "label": "Dining",
+      "position": [
+        11.56,
+        2.312,
+        -3.53
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "hall",
+      "label": "Hallway",
+      "position": [
+        2.64,
+        2.312,
+        -6.515
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "hall",
+      "label": "Hallway",
+      "position": [
+        4.84,
+        2.312,
+        -6.515
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    }
+  ]
+}

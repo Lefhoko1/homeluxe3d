@@ -62,6 +62,13 @@ FINISHES: dict[str, Finish] = {
     "carpet":         Finish("carpet",         (0.451, 0.427, 0.396), roughness=0.95),
     "timber":         Finish("timber",         (0.478, 0.318, 0.180), roughness=0.40),
 
+    # -- Lighting ----------------------------------------------------------
+    # The rim is a plain white bezel. The lens is near-white and very smooth;
+    # three.js gives it the emissive that makes it read as switched on, since
+    # glTF emissive strength is not something this schedule carries.
+    "light_fitting":  Finish("light_fitting",  (0.898, 0.906, 0.918), roughness=0.35),
+    "light_lens":     Finish("light_lens",     (0.980, 0.988, 1.000), roughness=0.10),
+
     # -- Trim --------------------------------------------------------------
     "porch_column":   Finish("porch_column",   (0.937, 0.925, 0.898), roughness=0.60),
 

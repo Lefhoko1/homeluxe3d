@@ -23,6 +23,7 @@ import {
 import { createHouseMaterials } from "./textures/materialLibrary";
 import { addFarGround, fitLawnToYard } from "./siteGround";
 import { addTrees } from "./trees";
+import { addRoomLights } from "../lighting/roomLights";
 
 /**
  * Where the Draco decoder lives. Vendored into `public/draco/` from
@@ -229,6 +230,10 @@ export async function loadHouse(options = {}) {
 
   house.userData.parts = partMap;
   house.userData.bounds = bounds;
+
+  // A real light under each ceiling fitting. Parented to the house, so the
+  // manifest's coordinates need no offset applied.
+  house.userData.roomLights = await addRoomLights(house);
 
   // Both of these need the yard's real extent, so they can only run once it
   // has loaded and been recentred: one copy of the lawn photograph stretched
