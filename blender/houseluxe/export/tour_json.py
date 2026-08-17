@@ -459,10 +459,15 @@ def _solve(plan, order, clearance, furniture=()):
 #:
 #: Long enough to actually look. Three seconds was chosen as "a pause" and is
 #: not one: the visitor arrives, the room name appears, and they are moving
-#: again before they have found what is in it. The character spends this time
-#: sweeping its heading through the room -- see SURVEY_ARC in the controller
-#: -- so this is the length of a slow look around, not of standing still.
-DWELL = 6.0
+#: again before they have found what is in it.
+#:
+#: This is also the DENOMINATOR OF THE LOOK-AROUND SPEED. The character
+#: spends the whole pause sweeping its heading across the room, so the pause
+#: length and SURVEY_ARC in components/homeluxe/tour/TourController.js decide
+#: between them how fast the view turns. At 6s the sweep came out at about 40
+#: degrees a second, which reads as the camera being whipped round rather than
+#: someone looking; 9s brings it to about 20. Change one and check the other.
+DWELL = 9.0
 
 
 def build_manifest(plan, order=None, dwell: float = DWELL, furniture=()) -> dict:

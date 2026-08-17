@@ -63,8 +63,22 @@ export const GUIDED_TURN_SPEED = 1.1;
  */
 const COLLIDE_DISTANCE = 0.42;
 
-/** How far the character sweeps its heading while paused at a stop. */
-const SURVEY_ARC = 1.05;   // radians, about 60 degrees either side
+/**
+ * How far the character sweeps its heading while paused at a stop.
+ *
+ * THE RATE IS WHAT MATTERS, and it is this divided by the dwell. The sweep is
+ * a full cycle -- centre, right, centre, left, centre -- so the head travels
+ * four times this arc in one pause:
+ *
+ *     4 x 0.80 rad over 9s  =  0.36 rad/s, about 20 degrees a second
+ *
+ * The first attempt was 4 x 1.05 over 6s, which is 40 degrees a second. That
+ * is roughly twice as fast as a person turning to look at a room, and it
+ * reads as the camera being whipped around rather than someone looking. If
+ * this is changed, change DWELL in export/tour_json.py with it -- the two
+ * only mean something together.
+ */
+const SURVEY_ARC = 0.8;   // radians, about 46 degrees either side
 
 /**
  * Heights at which the forward ray is fired.
