@@ -3,7 +3,16 @@ import React from 'react';
 /**
  * On-screen walk controls.
  *
- * A four-way pad plus an exit button, shown only while the tour is running.
+ * TWO MODES, AND THEY SHOW DIFFERENT THINGS.
+ *
+ * Being driven and being given the controls are not the same, and the guided
+ * tour does not need a joypad: four large arrows steering nothing, laid over
+ * the room they exist to show you. While the tour runs this is one line of
+ * text and three buttons -- stop, camera, exit. Take over and the pad appears.
+ *
+ * Everything else that used to sit on the canvas went with it. The room
+ * title, the "360 View Active" badge and the five camera buttons all belong
+ * to orbiting, and four of those five had no click handler at all.
  *
  * Buttons fire on POINTER DOWN and release on pointer up/leave/cancel, so a
  * held button walks continuously rather than nudging once per click. The
@@ -80,15 +89,15 @@ const TourPad = ({
           marginBottom: 2,
         }}
       >
-        {/* The count matters: without it there is no way to tell a tour that
-            is working its way round from one that has quietly stopped. */}
+        {/* "LAUNDRY - 5 OF 14". The count matters: without it there is no way
+            to tell a tour working its way round from one that has quietly
+            stopped. Everything else that was on this line -- the words
+            "guided tour", and "any key to take over" -- went to the buttons'
+            tooltips, where it is available and not in the way. */}
         {guided
-          ? [
-              'Guided tour',
-              progress ? `room ${progress.at} of ${progress.total}` : null,
-              stopLabel,
-              'any key to take over',
-            ].filter(Boolean).join(' · ')
+          ? `${stopLabel ?? 'Guided tour'}${
+              progress ? ` · ${progress.at} of ${progress.total}` : ''
+            }`
           : 'Walking · arrow keys or WASD'}
       </div>
 
@@ -103,11 +112,11 @@ const TourPad = ({
           }}
           title={
             guided
-              ? 'Stop the guided tour and walk yourself'
+              ? 'Stop the tour and walk yourself — or just press any arrow key'
               : 'Walk the whole house automatically, stopping in every room'
           }
         >
-          {guided ? '⏸ Stop tour' : '▶ Guided tour'}
+          {guided ? '⏸ Stop' : '▶ Guided tour'}
         </button>
 
         {/* In a 2m bathroom no third-person camera can work at all, so being
@@ -122,25 +131,34 @@ const TourPad = ({
           }}
           title="Switch between over-the-shoulder and eye level"
         >
-          {view === 'first' ? '👁 Eye level' : '🎥 Follow'}
+          {view === 'first' ? 'Eye level' : 'Follow'}
         </button>
       </div>
 
-      <button type="button" style={button} title="Walk forward" {...hold('forward')}>
-        ▲
-      </button>
+      {/* THE PAD DISAPPEARS DURING THE GUIDED TOUR.
+          Four large arrows steering nothing, over the room they exist to show
+          you, when pressing any key or arrow takes over anyway. Being driven
+          and being given the controls are different modes, and only one of
+          them needs a joypad. */}
+      {!guided && (
+        <>
+          <button type="button" style={button} title="Walk forward" {...hold('forward')}>
+            ▲
+          </button>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" style={button} title="Turn left" {...hold('left')}>
-          ◀
-        </button>
-        <button type="button" style={button} title="Walk back" {...hold('back')}>
-          ▼
-        </button>
-        <button type="button" style={button} title="Turn right" {...hold('right')}>
-          ▶
-        </button>
-      </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" style={button} title="Turn left" {...hold('left')}>
+              ◀
+            </button>
+            <button type="button" style={button} title="Walk back" {...hold('back')}>
+              ▼
+            </button>
+            <button type="button" style={button} title="Turn right" {...hold('right')}>
+              ▶
+            </button>
+          </div>
+        </>
+      )}
 
       <button
         type="button"
@@ -148,7 +166,7 @@ const TourPad = ({
         style={{ ...wide, marginTop: 4 }}
         title="Leave the tour and go back to orbiting"
       >
-        ✕ Exit tour
+        ✕ Exit
       </button>
     </div>
   );

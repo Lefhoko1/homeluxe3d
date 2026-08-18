@@ -820,6 +820,17 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     setStopLabel(null);
   };
 
+  /** Back to the opening shot of the whole property. */
+  const resetView = () => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+    const view = HOUSE_VIEWS.overview;
+    camera.position.set(...view.position);
+    controls.target.set(...view.target);
+    controls.update();
+  };
+
   /**
    * Start or stop the guided walk.
    *
@@ -882,11 +893,21 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
   return (
     <div id="canvas-container" className={isAdmin ? 'admin' : undefined}>
-      <div className="canvas-overlay" id="canvas-title">Living Room - Click furniture to explore</div>
-      <div className="rotation-indicator">
-        <span className="rotation-icon">↻</span>
-        <span id="rotation-text">360° View Active</span>
-      </div>
+      {/* Both of these belong to orbiting. While the tour is walking, the
+          room name is already on the tour bar and "360 View Active" is
+          simply untrue -- so they go, along with everything else that was
+          competing with the house for attention. */}
+      {!touring && (
+        <>
+          <div className="canvas-overlay" id="canvas-title">
+            Living Room - Click furniture to explore
+          </div>
+          <div className="rotation-indicator">
+            <span className="rotation-icon">↻</span>
+            <span id="rotation-text">360° View Active</span>
+          </div>
+        </>
+      )}
       {/* The editing toolbar. Mounted only for someone who can actually
           change something -- it replaces three buttons that sat here with
           `display: none`, wired to nothing. */}
@@ -926,21 +947,35 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         />
       )}
 
-      <div className="camera-controls">
-        <button className="camera-btn" id="camera-front" title="Front View">👁️</button>
-        <button className="camera-btn" id="camera-side" title="Side View">👈</button>
-        <button className="camera-btn" id="camera-top" title="Top View">⬇️</button>
-        <button className="camera-btn" id="camera-reset" title="Reset View">🔄</button>
-        <button
-          className="camera-btn"
-          id="tour-mode"
-          title={touring ? 'Exit walk-through' : 'Walk through the property'}
-          onClick={startTour}
-          style={{ background: touring ? '#1f6feb' : undefined }}
-        >
-          🚶
-        </button>
-      </div>
+      {/* Two buttons, both of which do something.
+          There were five. Front View, Side View, Top View and Reset View had
+          no click handler at all -- they had never done anything, and four
+          emoji that ignore you are worse than no buttons, because they cost a
+          visitor the moment it takes to find that out. Reset is kept and
+          wired; the other three are gone.
+          Hidden entirely while walking: the tour has its own controls, and
+          these belong to orbiting. */}
+      {!touring && (
+        <div className="camera-controls">
+          <button
+            type="button"
+            className="camera-btn"
+            title="Back to the overview"
+            onClick={resetView}
+          >
+            🔄
+          </button>
+          <button
+            type="button"
+            className="camera-btn"
+            id="tour-mode"
+            title="Walk through the property"
+            onClick={startTour}
+          >
+            🚶
+          </button>
+        </div>
+      )}
 
       {touring && (
         <TourPad
