@@ -28,6 +28,8 @@ import {
   createGrassTexture,
   createJuteTexture,
   createLeatherTexture,
+  createQuiltedKnitTexture,
+  createUpholsteryWeaveTexture,
   createMulchTexture,
   createPavingTexture,
   createPlasterTexture,
@@ -505,6 +507,74 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
       name: "jute",
       map: color(createJuteTexture()),
       roughness: 0.95,
+    })
+  );
+
+  // -- Slumberland bedding, from the Bears photographs --------------------
+  //
+  // THE MESH ALONE IS NOT THE PRODUCT. A bed built as three tones of flat
+  // grey has the right silhouette and reads as a grey box, which is no use
+  // to a shop paying to advertise the fabric. What the close-ups actually
+  // show is a heathered charcoal weave with a fine woven pinstripe, and a
+  // white knit quilted in a damask -- so that is what goes on it.
+  //
+  // The same canvas serves as the bump map. A weave is a surface whose whole
+  // character is that it catches light unevenly, and a colour map with no
+  // relief still reads as a photograph of cloth stuck to a board. Generating
+  // a second, dedicated height map would be more correct and would look
+  // almost identical at the distance a visitor stands.
+
+  // The divan base. Darkest of the three, and unstriped -- the base carries
+  // its pleats as geometry, and stripes under pleats is a fabric nobody
+  // makes.
+  const baseWeave = createUpholsteryWeaveTexture({
+    warp: "#232528",
+    weft: "#3b3f44",
+    seed: 71,
+  });
+  materials.set(
+    "bed_base_slate",
+    new THREE.MeshStandardMaterial({
+      name: "bed_base_slate",
+      map: color(baseWeave),
+      bumpMap: data(baseWeave),
+      bumpScale: 0.16,
+      roughness: 0.94,
+      metalness: 0.0,
+    })
+  );
+
+  // The band round the mattress: a shade lighter, and this is the one that
+  // carries the pinstripe.
+  const bandWeave = createUpholsteryWeaveTexture({
+    warp: "#3d4045",
+    weft: "#5b5f65",
+    pinstripe: "#e6eaef",
+    pinstripePitchMm: 38,
+    seed: 72,
+  });
+  materials.set(
+    "bed_border_ash",
+    new THREE.MeshStandardMaterial({
+      name: "bed_border_ash",
+      map: color(bandWeave),
+      bumpMap: data(bandWeave),
+      bumpScale: 0.14,
+      roughness: 0.9,
+      metalness: 0.0,
+    })
+  );
+
+  const quiltKnit = createQuiltedKnitTexture();
+  materials.set(
+    "bed_quilt_pearl",
+    new THREE.MeshStandardMaterial({
+      name: "bed_quilt_pearl",
+      map: color(quiltKnit),
+      bumpMap: data(quiltKnit),
+      bumpScale: 0.1,
+      roughness: 0.88,
+      metalness: 0.0,
     })
   );
 
