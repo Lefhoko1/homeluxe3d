@@ -1,0 +1,202 @@
+/**
+ * The tour has to actually show what is being advertised.
+ *
+ *     node components/homeluxe/tour/showcase.test.mjs
+ *
+ * THIS IS THE PART OF THE TOUR THE BUSINESS IS PAYING FOR. A walk-through
+ * that visits every room and never turns to face the sofa has done the
+ * expensive half of the job and skipped the point of it. The failure is
+ * quiet, too: the tour still runs, still names the room, still looks busy.
+ *
+ * The list is built from the real catalogue, the real collision manifest and
+ * the real lights manifest, with the products stood up as boxes of their
+ * catalogued size -- so this checks the joins that actually break: a product
+ * whose room does not match the route's room name, a finish keyed by a
+ * material name rather than a surface, a room with no fitting.
+ *
+ * What it asserts:
+ *
+ *   1. Every advertised, placed product is shown somewhere on the tour.
+ *   2. Every room with a finish placed in it shows that finish.
+ *   3. No stop is over the maximum or under the minimum -- a room must never
+ *      be a two-second glance, and never a half-minute stand.
+ *   4. Nothing is aimed at somewhere impossible: below the floor or above the
+ *      ceiling.
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+import * as THREE from "three";
+
+import { createShowcase } from "./showcase.js";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const PUBLIC = join(HERE, "..", "..", "..", "public", "models");
+const read = (...parts) => JSON.parse(readFileSync(join(PUBLIC, ...parts), "utf8"));
+
+const collision = read("house", "collision.json");
+const lights = read("house", "lights.json");
+const catalog = read("products", "catalog.json");
+const route = read("tour", "tour.json");
+
+const placements = catalog.houses["3bed"];
+const products = new Map(
+  catalog.shops.flatMap((shop) => shop.products.map((p) => [p.id, p]))
+);
+
+// ---- Stand the furniture up ----------------------------------------------
+// Boxes of the catalogued size, in the catalogued place. The browser measures
+// the loaded models; a box of the same dimensions has the same bounding box,
+// which is all the showcase reads.
+const group = new THREE.Group();
+
+placements
+  .filter((placement) => !placement.isFinish && placement.position)
+  .forEach((placement) => {
+    const product = products.get(placement.product);
+    const size = product?.dimensions ?? { width: 500, depth: 500, height: 500 };
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        size.width / 1000, size.height / 1000, size.depth / 1000
+      )
+    );
+    mesh.position.fromArray(placement.position);
+    mesh.position.y += size.height / 2000;   // products stand ON the floor
+    mesh.rotation.y = THREE.MathUtils.degToRad(placement.rotationY ?? 0);
+    mesh.userData = {
+      productId: placement.product,
+      name: product?.name ?? placement.product,
+      room: placement.room,
+    };
+    group.add(mesh);
+  });
+
+// ---- The finishes, as CanvasContainer maps them --------------------------
+const finishes = placements
+  .filter((placement) => placement.isFinish && placement.room !== "exterior")
+  .map((placement) => ({
+    room: placement.room,
+    kind: /^wall/i.test(placement.surface ?? "") ? "wall" : "floor",
+    advert: {
+      productId: placement.product,
+      name: products.get(placement.product)?.name ?? placement.product,
+      isFinish: true,
+    },
+  }));
+
+const fittings = lights.lights.map((light) => ({
+  room: light.room,
+  point: new THREE.Vector3().fromArray(light.position),
+}));
+
+const rooms = collision.rooms.map((entry) => {
+  const [x0, z0, x1, z1] = entry.rect;
+  return {
+    room: entry.room,
+    label: entry.label,
+    type: entry.type,
+    x0, z0, x1, z1,
+    centre: new THREE.Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2),
+  };
+});
+
+const showcase = createShowcase({
+  products: group,
+  finishes,
+  fittings,
+  rooms,
+  ceiling: collision.ceiling_m,
+});
+
+// ---- Walk the route's stops ----------------------------------------------
+const stops = route.waypoints.filter((point) => point.room);
+assert.ok(stops.length > 0, "the route has no room stops at all");
+
+const shown = new Map();     // room -> targets
+let totalSeconds = 0;
+
+stops.forEach((stop) => {
+  const from = new THREE.Vector3(stop.position[0], 0, stop.position[1]);
+  const targets = showcase.forRoom(stop.room, from);
+  shown.set(stop.room, targets);
+  totalSeconds += targets.reduce((sum, target) => sum + target.dwell, 0);
+});
+
+// ---- 1. Every placed product is shown ------------------------------------
+{
+  const advertised = placements
+    .filter((placement) => !placement.isFinish && placement.position)
+    .map((placement) => placement.product);
+
+  const seen = new Set(
+    [...shown.values()].flat()
+      .filter((target) => target.kind === "product")
+      .map((target) => target.advert.productId)
+  );
+
+  const missed = [...new Set(advertised)].filter((id) => !seen.has(id));
+  assert.deepEqual(
+    missed, [],
+    `placed but never looked at: ${missed.join(", ")}`
+  );
+  console.log(`  products: all ${seen.size} placed item(s) are shown`);
+}
+
+// ---- 2. Every placed finish is shown -------------------------------------
+{
+  const missed = finishes.filter((finish) => {
+    const targets = shown.get(finish.room) ?? [];
+    return !targets.some((target) => target.kind === finish.kind);
+  });
+
+  assert.deepEqual(
+    missed.map((f) => `${f.advert.productId} in ${f.room}`), [],
+    "a finish was placed in a room the tour never shows it in"
+  );
+  console.log(`  finishes: all ${finishes.length} placed finish(es) are shown`);
+}
+
+// ---- 3. Every stop is a real pause, and none is a stand ------------------
+{
+  const wrong = [];
+  shown.forEach((targets, room) => {
+    const seconds = targets.reduce((sum, target) => sum + target.dwell, 0);
+    if (seconds < 8) wrong.push(`${room} stops for only ${seconds.toFixed(1)}s`);
+    if (seconds > 26) wrong.push(`${room} stands for ${seconds.toFixed(1)}s`);
+    if (!targets.length) wrong.push(`${room} has nothing to look at`);
+  });
+
+  assert.deepEqual(wrong, [], `badly sized stops:\n  ${wrong.join("\n  ")}`);
+  console.log(
+    `  stops: ${shown.size} room(s), ${totalSeconds.toFixed(0)}s of looking in total`
+  );
+}
+
+// ---- 4. Nothing is aimed through the floor or the roof -------------------
+{
+  const impossible = [];
+  shown.forEach((targets, room) => {
+    targets.forEach((target) => {
+      if (target.point.y < 0 || target.point.y > collision.ceiling_m) {
+        impossible.push(
+          `${room}: ${target.kind} "${target.caption}" at y=${target.point.y.toFixed(2)}`
+        );
+      }
+    });
+  });
+
+  assert.deepEqual(impossible, [], `aimed outside the room:\n  ${impossible.join("\n  ")}`);
+}
+
+// A useful thing to see when tuning the dwells.
+console.log("");
+shown.forEach((targets, room) => {
+  console.log(
+    `  ${room.padEnd(9)} ${targets.map((t) => t.caption).join(", ")}`
+  );
+});
+
+console.log("\nshowcase: ok");

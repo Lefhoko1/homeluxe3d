@@ -53,6 +53,7 @@ const TourPad = ({
   onPress, onRelease, onExit,
   onGuided, onToggleView,
   guided = false, view = 'third', stopLabel = null, progress = null,
+  showing = null,
 }) => {
   const hold = (dir) => ({
     onPointerDown: (e) => {
@@ -100,6 +101,29 @@ const TourPad = ({
             }`
           : 'Walking · arrow keys or WASD'}
       </div>
+
+      {/* WHAT IS BEING LOOKED AT, on its own line under the room.
+          The room name alone cannot answer the question a visitor actually
+          has while the character stands still turning towards something --
+          "why has it stopped, and what am I looking at?" -- and the advert
+          panel is on the other side of the screen. The count is what makes
+          the pause read as deliberate rather than as a stall. */}
+      {guided && showing && (
+        <div
+          style={{
+            color: '#cfe3ff',
+            fontSize: 11,
+            background: 'rgba(20,32,48,0.72)',
+            padding: '4px 10px',
+            borderRadius: 999,
+            marginBottom: 2,
+            maxWidth: 260,
+            textAlign: 'center',
+          }}
+        >
+          {`Looking at ${showing.caption} · ${showing.at}/${showing.of}`}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
         <button
