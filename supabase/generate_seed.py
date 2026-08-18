@@ -181,9 +181,10 @@ def main() -> int:
     # -- Products ----------------------------------------------------------
     w("-- Products")
     w("insert into products (shop_id, slug, sku, name, description, category_code,")
-    w("                      status, price_cents, currency, width_mm, depth_mm, height_mm)")
+    w("                      status, price_cents, currency, width_mm, depth_mm, height_mm,")
+    w("                      thumbnail_url)")
     w("select sh.id, v.slug, v.sku, v.name, v.descr, v.cat, 'published',")
-    w("       v.price, v.cur, v.w, v.d, v.h")
+    w("       v.price, v.cur, v.w, v.d, v.h, v.thumb")
     w("from shops sh join (values")
     rows = []
     for shop in catalog["shops"]:
@@ -195,15 +196,53 @@ def main() -> int:
                 f"  ({q(shop['id'])}, {q(slug)}, {q(p.get('sku'))}, {q(p['name'])},\n"
                 f"   {q(p.get('description'))}, {q(p['category'])}, {cents(p.get('price'))},"
                 f" {q(p.get('currency', 'BWP'))},\n"
-                f"   {q(dims.get('width'))}, {q(dims.get('depth'))}, {q(dims.get('height'))})"
+                f"   {q(dims.get('width'))}, {q(dims.get('depth'))}, {q(dims.get('height'))},"
+                f" {q(p.get('thumbnail'))})"
             )
     w(",\n".join(rows))
-    w(") as v(shop, slug, sku, name, descr, cat, price, cur, w, d, h)")
+    w(") as v(shop, slug, sku, name, descr, cat, price, cur, w, d, h, thumb)")
     w("  on sh.slug = v.shop")
     w("on conflict (shop_id, slug) do update set")
     w("  name = excluded.name, description = excluded.description,")
-    w("  price_cents = excluded.price_cents, status = 'published';")
+    w("  price_cents = excluded.price_cents, status = 'published',")
+    w("  thumbnail_url = excluded.thumbnail_url;")
     w("")
+
+    # -- Product photographs ------------------------------------------------
+    #
+    # THE DATABASE PATH WAS SHOWING NO PICTURES AT ALL. `v_live_placements`
+    # selects `p.thumbnail_url` and every row of `product_media`, and the
+    # advert panel reads both -- but this generator wrote neither, so a
+    # product carried its photographs in catalog.json and arrived from
+    # Supabase with none.
+    #
+    # The two sources are meant to be interchangeable. That is the entire
+    # reason this seed is DERIVED from the catalogue instead of hand-written,
+    # and a field the catalogue has and the seed drops defeats it silently:
+    # everything still works, the pictures are just missing, and only in
+    # production.
+    photos = []
+    for shop in catalog["shops"]:
+        for product in shop["products"]:
+            slug = product["id"].split(".", 1)[1]
+            for order, url in enumerate(product.get("media") or []):
+                photos.append(f"  ({q(shop['id'])}, {q(slug)}, {q(url)}, {order})")
+
+    if photos:
+        w("-- Product photographs, thumbnail first. What a buyer actually looks")
+        w("-- at -- the generated model is for judging scale by.")
+        w("insert into product_media (product_id, url, kind, sort_order)")
+        w("select p.id, v.url, 'image', v.ord")
+        w("from products p")
+        w("join shops sh on sh.id = p.shop_id")
+        w("join (values")
+        w(",\n".join(photos))
+        w(") as v(shop, slug, url, ord)")
+        w("  on sh.slug = v.shop and p.slug = v.slug")
+        w("where not exists (")
+        w("  select 1 from product_media m where m.product_id = p.id and m.url = v.url")
+        w(");")
+        w("")
 
     # -- Variants ----------------------------------------------------------
     w("-- Default variant per product. Objects carry a model; finishes carry a")

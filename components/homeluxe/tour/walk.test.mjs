@@ -85,6 +85,37 @@ function insideSolid(x, z, rects) {
 }
 
 // ---------------------------------------------------------------------------
+// 0. Everything placed and solid has to be something you can walk into.
+//
+// The walker steps OVER anything under 150mm, which is how it crosses a rug
+// instead of being fenced in by one. That threshold is the only thing between
+// "a rug is not an obstacle" and "a bed is not an obstacle", and getting it
+// wrong is invisible: the tour still runs, the product is still shown, the
+// character simply walks through it.
+//
+// So every placed product tall enough to be furniture must produce a
+// footprint, and everything flat must not.
+// ---------------------------------------------------------------------------
+{
+  const solidProducts = catalog.houses["3bed"].filter((placement) => {
+    if (placement.isFinish || !placement.position) return false;
+    return (sizes.get(placement.product)?.height ?? 0) >= 150;
+  });
+
+  assert.equal(
+    furnitureRects.length, solidProducts.length,
+    `${solidProducts.length} placed product(s) stand over 150mm tall but only ` +
+    `${furnitureRects.length} produced a collision footprint -- something ` +
+    `placed in the house can be walked through`
+  );
+
+  // Name them, so a reader can see at a glance what the tour collides with.
+  console.log(
+    `  solid: ${solidProducts.map((p) => p.product.split(".").pop()).join(", ")}`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // 1. Every waypoint has to be somewhere the walker can actually get to.
 //
 // The route is solved by one program and the collision model built by another,

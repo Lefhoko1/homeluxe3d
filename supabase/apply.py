@@ -22,8 +22,27 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-MIGRATION = os.path.join(HERE, "migrations", "0001_init.sql")
+MIGRATIONS_DIR = os.path.join(HERE, "migrations")
 SEED = os.path.join(HERE, "seed.sql")
+
+
+def migrations() -> list[str]:
+    """Every migration, in order.
+
+    FOUND BY LISTING, NOT BY NAMING. This pointed at `0001_init.sql` alone,
+    which was true when there was one migration and quietly false from the
+    day there were two: a database built with this script got the tables and
+    none of the scoping, promotions, batches or views added since, and the
+    failure only shows up later as an empty catalogue.
+
+    The numeric prefix is what orders them, so a new migration needs nothing
+    here but a filename.
+    """
+    return [
+        os.path.join(MIGRATIONS_DIR, name)
+        for name in sorted(os.listdir(MIGRATIONS_DIR))
+        if name.endswith(".sql")
+    ]
 
 # Tables the verify step expects to find, with what they mean.
 EXPECTED = [
@@ -125,8 +144,9 @@ def main() -> int:
                 return 1 if verify(cur) else 0
 
             if not args.seed_only:
-                print(f"applying {os.path.relpath(MIGRATION, HERE)} ...")
-                run_file(cur, MIGRATION)
+                for path in migrations():
+                    print(f"applying {os.path.relpath(path, HERE)} ...")
+                    run_file(cur, path)
                 print("  schema created")
 
             print(f"applying {os.path.relpath(SEED, HERE)} ...")
