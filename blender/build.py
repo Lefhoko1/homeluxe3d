@@ -38,6 +38,10 @@ from houseluxe.export.catalog_json import (  # noqa: E402
     report as catalog_report,
     write_manifest,
 )
+from houseluxe.export.collision_json import (  # noqa: E402
+    report as collision_report,
+    write_manifest as write_collision_manifest,
+)
 from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
 from houseluxe.export.lights_json import (  # noqa: E402
     report as lights_report,
@@ -63,6 +67,7 @@ CATALOG_PATH = os.path.join(PRODUCT_MODEL_DIR, "catalog.json")
 TREES_PATH = os.path.join(SITE_MODEL_DIR, "trees.json")
 TOUR_PATH = os.path.join(TOUR_MODEL_DIR, "tour.json")
 LIGHTS_PATH = os.path.join(MODEL_DIR, "lights.json")
+COLLISION_PATH = os.path.join(MODEL_DIR, "collision.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
@@ -186,6 +191,13 @@ def main(
             trees = write_planting_manifest(site_spec, TREES_PATH)
             print(planting_report(trees))
 
+        # WHERE THE WALLS ARE, as flat rectangles the walk can test itself
+        # against. The browser cannot work this out from the GLBs -- a wall is
+        # exported as one joined object, so its bounding box swallows its own
+        # doorway. See export/collision_json.py.
+        collision = write_collision_manifest(plan, COLLISION_PATH)
+        print(collision_report(collision, COLLISION_PATH))
+
         # The guided walk-through, solved over the plan's own walls and
         # doorways so it cannot route through one. See export/tour_json.py.
         # The route must avoid the furniture as well as the walls: the walk
@@ -204,8 +216,10 @@ def main(
         route = write_tour_manifest(
             plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture
         )
-        # The walk trusts this route instead of re-testing the walls as it
-        # goes, so the route has to be proved walkable here. See
+        # The browser collides with the walls itself, so this no longer has to
+        # hold for the tour to be SAFE -- but a route that scrapes along a
+        # wall makes for a bad tour long before it makes for a wrong one, and
+        # that is much easier to catch here than in a two-minute walk. See
         # export/tour_json.verify.
         print(tour_report(route, verify_tour(plan, route, furniture)))
 

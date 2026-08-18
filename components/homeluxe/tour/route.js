@@ -25,7 +25,14 @@ export const TOUR_ROUTE_URL = "/models/tour/tour.json";
  */
 export async function loadRoute(house, url = TOUR_ROUTE_URL) {
   try {
-    const response = await fetch(url);
+    // ALWAYS REVALIDATE. `/models/*` is served stale-while-revalidate for a
+    // week, which is right for a 3MB sofa and wrong for this: the route and
+    // the collision model are solved from the same plan and only mean
+    // anything together. A cache that can hand out a fresh one and a stale
+    // one steers the walk down a route the walls no longer agree with, and
+    // the tour stops in the wrong place until the visitor happens to reload.
+    // These are a few KB and a 304 costs one round trip.
+    const response = await fetch(url, { cache: "no-cache" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const manifest = await response.json();
 

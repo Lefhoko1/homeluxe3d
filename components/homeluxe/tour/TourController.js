@@ -14,17 +14,30 @@
  *     underfoot, so the character walks up the step without being told the
  *     step exists.
  *
- *  2. WALLS. A short ray fired along the direction of travel stops the
- *     character before it reaches a wall. Because walls were built as piers,
- *     sills and lintels rather than solid panels with holes cut in them,
- *     doorways are REAL GAPS in the geometry -- so walking through a doorway
- *     needs no door logic at all. The ray simply finds nothing.
+ *  2. WALLS AND FURNITURE. Not a raycast -- a VOLUME. The character is a
+ *     circle on the floor plan, and it is pushed out of the solid rectangles
+ *     given by `collision.json`. A ray could be stepped over in one long
+ *     frame, could thread a doorway the shoulder does not fit through, and
+ *     could only ever refuse to move rather than slide; none of those are
+ *     true of a circle. See tour/collision.js, which is where the walls now
+ *     live.
+ *
+ *     Because walls were built as piers, sills and lintels rather than solid
+ *     panels with holes cut in them, doorways are REAL GAPS -- so walking
+ *     through a doorway still needs no door logic at all. At walking height
+ *     there is simply no rectangle there.
  *
  *  3. FALLING. If a downward ray finds nothing (off the edge of the site),
  *     the character keeps its previous height instead of dropping forever.
  *
  * Door leaves are deliberately NOT collided with: every door is treated as
  * open. A tour that requires you to work out which doors open is a worse tour.
+ *
+ * AND THE TOUR STOPS TO SHOW YOU THINGS. Arriving in a room, the character
+ * works through a list of what is advertised there -- each piece of furniture,
+ * the floor, the walls, the ceiling light -- turning to face each one and
+ * holding still while its advert is on screen. That list is read off the
+ * scene, not written down here; see tour/showcase.js.
  *
  * THE HOUSE NEVER MOVES. Turning rotates the CHARACTER on the spot and swings
  * the CAMERA to stay behind it. Nothing in here touches the scene or the house
@@ -52,14 +65,12 @@ export const GUIDED_WALK_SPEED = 1.05;
 export const GUIDED_TURN_SPEED = 1.1;
 
 /**
- * How far ahead to check for obstacles.
+ * How far ahead to check for the things that are NOT in the collision
+ * manifest: the yard's fences, hedges and tree trunks.
  *
- * MUST NOT EXCEED THE ROUTE'S CLEARANCE. The solved route keeps 300mm from
- * every wall; a ray reaching 420mm finds a wall the route considers clear, so
- * the character stops short of waypoints in tight rooms, slides, and
- * eventually sticks -- which is why the guided tour appeared to skip rooms.
- * While following a route this drops to the clearance the route was solved
- * with; steering yourself it stays at the wider, safer value.
+ * The building is a volume test now, so this no longer has anything to do
+ * with walls or with the route's clearance. It is only ever used while the
+ * visitor is steering themselves around the garden.
  */
 const COLLIDE_DISTANCE = 0.42;
 
@@ -81,6 +92,27 @@ const COLLIDE_DISTANCE = 0.42;
  * only mean something together.
  */
 const SURVEY_ARC = 0.55;   // radians, about 32 degrees either side
+
+/**
+ * How fast the character turns to face something it is being shown.
+ *
+ * Slower than steering and faster than the fallback sweep. The showcase sorts
+ * a room's items nearest-first, so most turns are small; this only has to
+ * cover the occasional half-turn inside the seconds allotted to one item, and
+ * 1.6 rad/s crosses a full half-turn in about two.
+ */
+const SHOWCASE_TURN_SPEED = 1.6;
+
+/**
+ * How quickly the camera's aim catches up with where it is being pointed.
+ *
+ * Two rates, because they are two different jobs. Walking, the aim point is
+ * fixed ahead of a moving character and has to keep up or the view lags
+ * behind the walk. Being shown something, the whole value is in the slowness:
+ * the camera drifts onto the sofa rather than snapping to it.
+ */
+const AIM_LERP_WALK = 0.25;
+const AIM_LERP_SHOW = 0.055;
 
 /**
  * Heights at which the forward ray is fired.
@@ -114,7 +146,7 @@ const MAX_STEP = 0.45;
  * Solved routes are kept 300mm clear of walls, so arriving has to be tighter
  * than that or the clearance buys nothing.
  */
-const ARRIVE_RADIUS = 0.22;
+export const ARRIVE_RADIUS = 0.22;
 
 /**
  * THE CAMERA RIG, AND WHY THE OLD ONE COULD NOT WORK INDOORS
@@ -191,18 +223,22 @@ export function createTourController(options = {}) {
     camera,
     controls,
     groundObjects = [],
-    // Everything solid: walls, fences, hedges, tree trunks, furniture.
-    obstacles = [],
     /**
-     * The subset that can MOVE after the route was solved -- in practice the
-     * furniture, which an admin can drag anywhere at runtime.
-     *
-     * While following a solved route the walk collides with these and nothing
-     * else. See `blocked`.
+     * THE BUILDING AND ITS CONTENTS, as a volume. Walls from the collision
+     * manifest, furniture from its own bounding boxes; see tour/collision.js.
+     * This is what stops the character walking through a wall, and it applies
+     * whether the visitor is steering or being driven.
      */
-    movableObstacles = [],
-    // What the CAMERA may not pass through. Structure only -- if the camera
-    // dodged every sofa it would jitter constantly in a furnished room.
+    walkVolume = null,
+    /**
+     * The yard: fences, hedges, tree trunks, the porch. Geometry the plan
+     * knows nothing about, so it cannot be in the manifest -- these stay a
+     * raycast. Only tested while the visitor is steering, since the guided
+     * route never leaves the paved approach.
+     */
+    obstacles = [],
+    // What the CAMERA may not pass through. Structure and ceiling -- if the
+    // camera dodged every sofa it would jitter constantly in a furnished room.
     cameraObstacles = [],
     start = [0, 0],
     startHeading = 0,
@@ -226,6 +262,16 @@ export function createTourController(options = {}) {
   let surveyFrom = 0;
   let onArrive = null;
 
+  // -- The showcase -------------------------------------------------------
+  // What is being advertised in the room the tour has just walked into, and
+  // which of those things the character is looking at right now. Empty
+  // whenever the tour is between rooms. See tour/showcase.js.
+  let showcase = null;
+  let onShow = null;
+  let showTargets = [];
+  let showIndex = 0;
+  let showLeft = 0;
+
   /** Shortest signed angle from a to b. */
   const angleTo = (from, to) => {
     let diff = (to - from) % (Math.PI * 2);
@@ -247,7 +293,12 @@ export function createTourController(options = {}) {
   const forward = new THREE.Vector3();
   const desired = new THREE.Vector3();
   const camTarget = new THREE.Vector3();
-  const lookTarget = new THREE.Vector3();
+  // Where the camera is pointed, and where it is being pointed. Two vectors
+  // rather than one so the aim can EASE onto a target instead of snapping to
+  // it, which is the difference between a person looking at a sofa and a
+  // camera being swung at one.
+  const aim = new THREE.Vector3();
+  const aimTarget = new THREE.Vector3();
   const head = new THREE.Vector3();
   const camDir = new THREE.Vector3();
 
@@ -324,29 +375,52 @@ export function createTourController(options = {}) {
    * through a coffee table.
    */
   function blocked(origin, direction) {
-    // WHILE FOLLOWING A SOLVED ROUTE, THE WALLS ARE NOT TESTED.
+    // THE WALLS AND THE FURNITURE ARE NOT TESTED HERE. They are a volume now,
+    // resolved by `walkVolume` in `update` -- a circle pushed out of solid
+    // rectangles, which cannot be stepped over in a long frame and cannot
+    // stick. See tour/collision.js for why a ray could never do that job.
     //
-    // Not laziness -- the opposite. The route is solved against the plan's
-    // own walls and openings and then verified, leg by leg, against the true
-    // geometry at build time. It is known to be walkable. Testing it again at
-    // run time with a different collision model is not a second opinion, it
-    // is a disagreement, and the two models cannot be made to agree: one is a
-    // ray from a point, the other a padded 2D grid, and every attempt to
-    // reconcile them by tuning the reach moved the place where the tour stuck
-    // rather than removing it.
-    //
-    // What the route CANNOT know about is furniture moved since it was
-    // solved, because an admin can drag a sofa anywhere at run time. So that
-    // is exactly what stays tested.
-    const against = route ? movableObstacles : obstacles;
-    if (!against.length) return false;
+    // What is left is the yard: fences, hedges, tree trunks. That geometry is
+    // not in the plan, so it cannot be in the manifest, and it is only ever
+    // in the way when the visitor is steering -- the guided route walks up
+    // the drive and goes indoors.
+    if (route || !obstacles.length) return false;
 
     for (let i = 0; i < PROBE_HEIGHTS.length; i += 1) {
       probe.set(origin.x, lastGroundY + PROBE_HEIGHTS[i], origin.z);
       wallRay.set(probe, direction);
-      if (wallRay.intersectObjects(against, true).length > 0) return true;
+      if (wallRay.intersectObjects(obstacles, true).length > 0) return true;
     }
     return false;
+  }
+
+  /**
+   * Turn towards a point and point the camera at it.
+   *
+   * Used by the showcase: the character rotates on the spot to face whatever
+   * it is being shown, and the camera aims at the thing itself rather than at
+   * the character's eye level -- which is what makes looking UP at a ceiling
+   * light or DOWN at a floor tile possible at all.
+   */
+  function aimAt(point, step) {
+    const dx = point.x - position.x;
+    const dz = point.z - position.z;
+
+    if (dx * dx + dz * dz > 1e-4) {
+      const wanted = Math.atan2(dx, -dz);
+      const diff = angleTo(heading, wanted);
+      const maxTurn = SHOWCASE_TURN_SPEED * step;
+      heading += Math.abs(diff) < maxTurn ? diff : Math.sign(diff) * maxTurn;
+    }
+
+    aimTarget.copy(point);
+  }
+
+  /** Drop whatever the tour was showing. */
+  function clearShowcase() {
+    showTargets = [];
+    showIndex = 0;
+    showLeft = 0;
   }
 
   /**
@@ -360,6 +434,35 @@ export function createTourController(options = {}) {
     const y = groundAt(x, z);
     if (y === null) return true;
     return Math.abs(y - lastGroundY) <= MAX_STEP;
+  }
+
+  /**
+   * Move to (x, z) if anything solid there allows it.
+   *
+   * The volume gets first say and answers with the nearest position that is
+   * NOT inside a wall or a piece of furniture -- so a walker pressed into a
+   * wall is displaced along it rather than stopped. Only the height test can
+   * refuse outright, because there is no sensible way to push someone out of
+   * a 2m drop.
+   *
+   * @returns {boolean} whether the character moved
+   */
+  function moveTo(x, z) {
+    let px = x;
+    let pz = z;
+
+    if (walkVolume) {
+      const solved = walkVolume.resolve(px, pz);
+      px = solved.x;
+      pz = solved.z;
+    }
+
+    if (!standable(px, pz)) return false;
+
+    const moved = Math.abs(px - position.x) > 1e-6 || Math.abs(pz - position.z) > 1e-6;
+    position.x = px;
+    position.z = pz;
+    return moved;
   }
 
   return {
@@ -398,11 +501,16 @@ export function createTourController(options = {}) {
         position.y + view.up,
         position.z - forward.z * view.back
       );
-      camera.lookAt(
+      // Seed the aim rather than letting it ease in from wherever the orbit
+      // camera happened to be pointed, which would start every tour with an
+      // unexplained pan across the garden.
+      aimTarget.set(
         position.x + forward.x * view.lookAhead,
         position.y + view.lookHeight,
         position.z + forward.z * view.lookAhead
       );
+      aim.copy(aimTarget);
+      camera.lookAt(aim);
     },
 
     /** Leave walk mode and hand the camera back to OrbitControls. */
@@ -411,6 +519,7 @@ export function createTourController(options = {}) {
       active = false;
       keys.clear();
       route = null;
+      clearShowcase();
       character.visible = false;
       restoreFov();
       if (controls) {
@@ -455,27 +564,24 @@ export function createTourController(options = {}) {
      *        house group, so the caller adds the house offset.
      * @param {(stop:object, index:number) => void} [arrived] called on reaching
      *        a stop, so the panels can follow the visitor from room to room.
+     * @param {object} [options]
+     * @param {{forRoom: Function}} [options.showcase] what is advertised in
+     *        each room; see tour/showcase.js. Without one the tour falls back
+     *        to sweeping its head around each room.
+     * @param {(target:object, index:number, total:number) => void} [options.onShow]
+     *        called as each advertised thing is turned to, so the advert on
+     *        screen is the one being looked at.
      */
-    followRoute(waypoints, arrived = null, { clearance = null } = {}) {
+    followRoute(waypoints, arrived = null, { showcase: showing = null, onShow: shown = null } = {}) {
       if (!waypoints?.length) return;
       if (!active) this.enter();
 
       route = waypoints.map((point) => ({ ...point, done: false }));
       dwellLeft = 0;
+      clearShowcase();
       onArrive = arrived;
-
-      // Match the collision reach to the clearance the route was solved with,
-      // or the character stops short of its own waypoints. See
-      // COLLIDE_DISTANCE.
-      //
-      // STRICTLY INSIDE the clearance, not equal to it. A ray of exactly the
-      // clearance fired straight at a wall the route runs alongside reports a
-      // hit -- the route's guarantee is that nothing is CLOSER than the
-      // clearance, which a ray of that exact length still touches. The margin
-      // is what makes the guarantee usable.
-      wallRay.far = clearance
-        ? Math.min(COLLIDE_DISTANCE, clearance * 0.8)
-        : COLLIDE_DISTANCE;
+      showcase = showing;
+      onShow = shown;
 
       // ALWAYS START AT THE BEGINNING. Snapping to the nearest waypoint looks
       // like a saving and is a trap: every waypoint is indoors, the visitor
@@ -492,7 +598,10 @@ export function createTourController(options = {}) {
     stopRoute() {
       route = null;
       onArrive = null;
-      wallRay.far = COLLIDE_DISTANCE;   // back to the safer manual reach
+      onShow = null;
+      showcase = null;
+      clearShowcase();
+      wallRay.far = COLLIDE_DISTANCE;
     },
 
     /** Progress through the stops, for the UI: {at, total}. */
@@ -589,27 +698,58 @@ export function createTourController(options = {}) {
           }
 
           if (distance < ARRIVE_RADIUS || passed) {
-            if (dwellLeft > 0) {
+            if (showTargets.length) {
+              // BEING SHOWN THE ROOM. The character turns to face each
+              // advertised thing in turn and holds still on it while its
+              // advert is on screen. This is the reason the tour exists, so
+              // it takes precedence over every other way of spending a pause.
+              showLeft -= step;
+              aimAt(showTargets[showIndex].point, step);
+
+              if (showLeft <= 0) {
+                showIndex += 1;
+                if (showIndex >= showTargets.length) {
+                  clearShowcase();
+                  dwellLeft = 0;
+                } else {
+                  showLeft = showTargets[showIndex].dwell;
+                  onShow?.(showTargets[showIndex], showIndex, showTargets.length);
+                }
+              }
+            } else if (dwellLeft > 0) {
               dwellLeft -= step;
-              // LOOK AROUND. Standing still facing one way shows a visitor
-              // one wall of the room they were brought to see. Sweeping the
-              // heading through a slow full cycle -- right, back, left, back
-              // -- takes in the whole room in the time the tour was pausing
-              // anyway, and leaves the character facing where it came in so
-              // the next leg starts pointed sensibly.
+              // NOTHING ADVERTISED HERE. A hallway, or a room whose products
+              // have all been withdrawn. Sweeping the heading through a slow
+              // full cycle -- right, back, left, back -- still takes the room
+              // in, and leaves the character facing where it came in so the
+              // next leg starts pointed sensibly.
               const t = 1 - dwellLeft / Math.max(dwellTotal, 0.001);
               heading = surveyFrom + Math.sin(t * Math.PI * 2) * SURVEY_ARC;
-            } else if (target.dwell && dwellLeft === 0 && !target.done) {
-              // Reached a stop: pause, and tell whoever is listening so the
-              // room lists can follow the visitor through the house.
+            } else if (target.dwell && !target.done) {
+              // Reached a stop: tell whoever is listening, so the room lists
+              // can follow the visitor through the house, then work out what
+              // there is to show here.
               target.done = true;
-              dwellLeft = target.dwell;
-              dwellTotal = target.dwell;
-              surveyFrom = heading;
               onArrive?.(target, routeIndex);
+
+              const showing = target.room && showcase
+                ? showcase.forRoom(target.room, position)
+                : [];
+
+              if (showing.length) {
+                showTargets = showing;
+                showIndex = 0;
+                showLeft = showing[0].dwell;
+                onShow?.(showing[0], 0, showing.length);
+              } else {
+                dwellLeft = target.dwell;
+                dwellTotal = target.dwell;
+                surveyFrom = heading;
+              }
             } else {
               routeIndex += 1;
               dwellLeft = 0;
+              clearShowcase();
               if (routeIndex >= route.length) {
                 // Loop: the route ends where it began.
                 routeIndex = 0;
@@ -650,30 +790,40 @@ export function createTourController(options = {}) {
         const nextX = position.x + forward.x * distance;
         const nextZ = position.z + forward.z * distance;
 
-        if (!blocked(position, desired) && standable(nextX, nextZ)) {
-          position.x = nextX;
-          position.z = nextZ;
+        if (!blocked(position, desired)) {
+          // The building resolves itself: `moveTo` asks the volume where the
+          // character may actually stand, which is why walking into a wall at
+          // an angle slides along it with no special case for sliding.
+          if (!moveTo(nextX, nextZ)) {
+            // Refused for HEIGHT, not for a wall -- the pool edge, the slab
+            // step. Try each axis alone so a glancing approach still moves.
+            if (!moveTo(nextX, position.z)) moveTo(position.x, nextZ);
+          }
         } else {
-          // Slide along the obstacle rather than sticking to it: try each
-          // axis alone, so walking into a wall at an angle still moves you.
-          // Each candidate is checked for a standable landing too, or you
-          // could slide sideways off a ledge.
+          // A fence or a hedge. The ray can only refuse, so sliding has to be
+          // asked for one axis at a time.
           const tryX = desired.clone().setZ(0);
           const tryZ = desired.clone().setX(0);
 
-          if (
-            tryX.lengthSq() > 1e-6 &&
-            !blocked(position, tryX.normalize()) &&
-            standable(nextX, position.z)
-          ) {
-            position.x = nextX;
-          } else if (
-            tryZ.lengthSq() > 1e-6 &&
-            !blocked(position, tryZ.normalize()) &&
-            standable(position.x, nextZ)
-          ) {
-            position.z = nextZ;
+          if (tryX.lengthSq() > 1e-6 && !blocked(position, tryX.normalize())) {
+            moveTo(nextX, position.z);
+          } else if (tryZ.lengthSq() > 1e-6 && !blocked(position, tryZ.normalize())) {
+            moveTo(position.x, nextZ);
           }
+        }
+      }
+
+      // RECOVERY. Everything above resolves where the character is GOING; this
+      // resolves where it IS. It matters because the world can move while the
+      // character stands still -- an admin drags a sofa onto them, a placement
+      // loads late -- and because a walk that can only ever test its next step
+      // has no way back out of a wall it somehow ended up inside. A position
+      // test does.
+      if (walkVolume) {
+        const freed = walkVolume.resolve(position.x, position.z);
+        if (freed.hit && standable(freed.x, freed.z)) {
+          position.x = freed.x;
+          position.z = freed.z;
         }
       }
 
@@ -717,14 +867,23 @@ export function createTourController(options = {}) {
 
       camera.position.lerp(camTarget, CAMERA_LERP);
 
-      // LOOK AHEAD, NOT AT THE CHARACTER. This is the difference between a
-      // walk-through of a house and a video of someone's back.
-      lookTarget.set(
-        position.x + forward.x * view.lookAhead,
-        position.y + view.lookHeight,
-        position.z + forward.z * view.lookAhead
-      );
-      camera.lookAt(lookTarget);
+      // WHERE THE CAMERA IS POINTED.
+      //
+      // Walking, it is AHEAD of the character and not AT them -- the
+      // difference between a walk-through of a house and a video of someone's
+      // back. Standing in a room being shown something, it is pointed at that
+      // thing instead, which is what lets the view tilt down to a floor tile
+      // or up to a ceiling light rather than being pinned at eye level.
+      const showing = showTargets.length > 0;
+      if (!showing) {
+        aimTarget.set(
+          position.x + forward.x * view.lookAhead,
+          position.y + view.lookHeight,
+          position.z + forward.z * view.lookAhead
+        );
+      }
+      aim.lerp(aimTarget, showing ? AIM_LERP_SHOW : AIM_LERP_WALK);
+      camera.lookAt(aim);
     },
   };
 }
