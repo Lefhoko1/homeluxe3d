@@ -59,6 +59,21 @@ CLEARANCE = 280.0
 
 CLEARANCE_LADDER = (380.0, 340.0, 300.0, 280.0, 250.0, 220.0, 200.0, 170.0)
 
+#: How wide the walker is, in millimetres -- the radius of the circle the
+#: browser pushes out of the walls.
+#:
+#: KEEP IN STEP WITH `WALK_RADIUS` in components/homeluxe/tour/collision.js.
+#: The two are the same number in two languages and they have to agree, or the
+#: route steers the character towards places the collision model then pushes
+#: it out of. That is a jam, and a quiet one -- the tour simply stops arriving
+#: somewhere. `walk.test.mjs` asserts they agree.
+#:
+#: It matters HERE, and only here, because of doorways. Everywhere else the
+#: clearance band already keeps the route further from a wall than this; a
+#: doorway is the one place the route is deliberately allowed to squeeze
+#: through the padding, and it must not squeeze closer than the shoulders fit.
+WALKER_RADIUS = 260.0
+
 #: Openings you can walk through. A window has a sill and is not one of them.
 WALKABLE_OPENINGS = {
     OpeningKind.DOOR_INTERNAL,
@@ -152,12 +167,23 @@ def _opening_rect(wall, opening, pad: float) -> tuple[float, float, float, float
 
     ux, uy = (ex - sx) / length, (ey - sy) / length
 
-    # CLAMP TO THE WALL. Several openings in this plan run off the end of the
-    # wall they are declared on -- the servery is 2400 wide at offset 1800 on
-    # a 3600 wall, so it claims 600mm of nothing. Unclamped, the gap is punched
-    # into whatever is beyond, which is usually the wall that meets this one.
-    start = max(0.0, opening.offset)
-    end = min(length, opening.offset + opening.width)
+    # AN OPENING IS POSITIONED BY ITS CENTRE, not by its left edge.
+    #
+    # `Opening.offset` is the distance from the wall's start to the MIDDLE of
+    # the hole -- that is what `plan.Wall.validate` checks and what
+    # `core.wallmath.solid_spans` builds the real geometry from. Reading it as
+    # a left edge here put every doorway in this grid half a door-width along
+    # the wall from the doorway that actually exists: half of the punched gap
+    # lay in solid brickwork and half of the real opening stayed blocked.
+    #
+    # That is why the tour walked through walls. The route was solved through
+    # a hole in the grid that is a wall in the house, and the walk trusted it.
+    #
+    # Clamped to the wall as well, so an opening that overruns its wall cannot
+    # punch a gap into whatever is beyond it.
+    half = opening.width / 2.0
+    start = max(0.0, opening.offset - half)
+    end = min(length, opening.offset + half)
     if end <= start:
         return (0.0, 0.0, 0.0, 0.0)
 
@@ -191,8 +217,10 @@ def _opening_core(wall, opening) -> tuple[float, float, float, float]:
         return (0.0, 0.0, 0.0, 0.0)
 
     ux, uy = (ex - sx) / length, (ey - sy) / length
-    start = max(0.0, opening.offset)
-    end = min(length, opening.offset + opening.width)
+    # Centre-positioned, exactly as in `_opening_rect` and `solid_spans`.
+    half = opening.width / 2.0
+    start = max(0.0, opening.offset - half)
+    end = min(length, opening.offset + half)
     if end <= start:
         return (0.0, 0.0, 0.0, 0.0)
 
@@ -255,7 +283,17 @@ def build_grid(plan, furniture=()) -> Grid:
         for opening in wall.openings:
             if opening.kind not in WALKABLE_OPENINGS:
                 continue
-            rect = _opening_rect(wall, opening, CLEARANCE * 0.5)
+            # A DOORWAY IS THE ONE PLACE THE WALKER PASSES CLOSE TO A WALL,
+            # so it is the one place the pad has to be the walker's own width
+            # rather than a fraction of the clearance. Half of a 380mm
+            # clearance let the route run 195mm from a 770mm door's jamb,
+            # which a 260mm-wide walker cannot do: it gets pushed sideways off
+            # its own waypoint on the way through. Padding by the radius
+            # instead leaves a 250mm corridor up the middle of the door, which
+            # is where a person walks through one anyway.
+            rect = _opening_rect(
+                wall, opening, max(CLEARANCE * 0.5, WALKER_RADIUS)
+            )
             grid.paint(*rect, 0)
 
             ax, ay = grid.to_cell(rect[0], rect[1])
@@ -683,14 +721,24 @@ def _point(grid: Grid, cell) -> dict:
 def verify(plan, manifest: dict, furniture=()) -> list[str]:
     """Check every leg against the TRUE geometry, not the padded grid.
 
-    THIS IS THE GUARANTEE THE WALK RELIES ON. While following a route the
-    controller no longer tests the walls at all -- it cannot, because a ray
-    from a point and a padded 2D grid disagree about what "clear" means, and
-    every attempt to reconcile them moved where the tour stuck rather than
-    removing it. Instead the route is asserted walkable here, once, against
-    the real wall and furniture footprints with no padding at all.
+    THE WALK NO LONGER DEPENDS ON THIS FOR ITS SAFETY, and that is a change
+    worth understanding rather than a reason to delete it. The controller used
+    to stop testing the walls while it followed a route, on the grounds that
+    the route had been proved walkable here -- so this check was the only
+    thing standing between a visitor and a wall. It was not enough: it was
+    solved from the same mistaken doorway geometry as the route it was
+    checking, agreed with it, and passed a route with six legs through solid
+    brickwork.
 
-    So this is not a nicety. If it ever fails, the tour walks into a wall.
+    A check that can only ever agree with the thing it is checking is not a
+    check. So the browser now collides with the walls itself, as a volume --
+    see components/homeluxe/tour/collision.js -- and cannot walk through one
+    whatever this says.
+
+    What this is FOR, now, is the other failure: a route that is walkable but
+    obstructed grinds the character along a wall instead of visiting a room,
+    and that is far easier to catch here than to notice in a two-minute tour.
+    A failure means the tour will be ugly, not that it will be wrong.
     """
     global CLEARANCE
     remembered = CLEARANCE

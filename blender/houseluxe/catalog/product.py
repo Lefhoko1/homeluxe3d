@@ -27,9 +27,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
-import bpy
+if TYPE_CHECKING:                       # pragma: no cover
+    # Only ever used in an annotation, and `from __future__ import
+    # annotations` leaves those as strings -- so importing Blender at runtime
+    # buys nothing and costs the catalogue its independence. Keeping it out
+    # means the placements can be read by the plain-Python tools that solve
+    # the route and the collision model. See blender/tools/export_navigation.py.
+    import bpy
 
 
 class RoomType(str, Enum):
