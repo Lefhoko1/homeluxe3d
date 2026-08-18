@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from .placements import house_3bed
 from .product import Catalog
-from .shops import bradlows, tubod
+from .shops import bears, bradlows, tubod
 
 CATALOG = Catalog()
 
 # -- Shops ------------------------------------------------------------------
 CATALOG.add_shop(bradlows.SHOP, bradlows.PRODUCTS)
+CATALOG.add_shop(bears.SHOP, bears.PRODUCTS)
 CATALOG.add_shop(tubod.SHOP, tubod.PRODUCTS)
 
 # -- Placements per house ---------------------------------------------------

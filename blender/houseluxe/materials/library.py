@@ -98,6 +98,15 @@ FINISHES: dict[str, Finish] = {
     "cushion_sage":    Finish("cushion_sage",    (0.353, 0.412, 0.310), roughness=0.85),
     "jute":            Finish("jute",            (0.706, 0.588, 0.404), roughness=0.95),
 
+    # Slumberland bedding, from the Bears showroom photographs. Three fabrics
+    # and they have to stay distinct, because the whole shape of a pillow-top
+    # bed reads as the boundaries between them: a pale quilted crown, a darker
+    # damask band round the mattress, and a charcoal pleated base under both.
+    # Model it in one colour and it is a grey box.
+    "bed_quilt_pearl": Finish("bed_quilt_pearl", (0.878, 0.882, 0.878), roughness=0.88),
+    "bed_border_ash":  Finish("bed_border_ash",  (0.376, 0.388, 0.408), roughness=0.86),
+    "bed_base_slate":  Finish("bed_base_slate",  (0.204, 0.216, 0.235), roughness=0.92),
+
     # -- Tubod wall finishes -----------------------------------------------
     # Fallback colours only. The textured coating is generated in three.js and
     # tinted per variant; these keep a Blender render honest.

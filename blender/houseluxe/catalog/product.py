@@ -256,6 +256,21 @@ class Product:
     #: as the swatch a shop panel would show.
     texture: str = ""
 
+    #: The shop's own photograph of the thing, and any further shots.
+    #:
+    #: THE MODEL IS NOT THE PRODUCT. A generated sofa is close enough to place
+    #: in a room and judge the scale of, and it is not what a buyer wants to
+    #: look at before spending nine thousand pula. The advert panel has always
+    #: been able to show a photograph -- `advertFor` in ProductLoader.js reads
+    #: `thumbnail` and `media` -- but nothing in the static catalogue ever
+    #: supplied one, so the database path showed pictures and the file path
+    #: showed none. That is exactly the kind of difference that only turns up
+    #: in production.
+    #:
+    #: Paths are site-absolute, served straight out of `public/`.
+    thumbnail: str = ""
+    media: tuple[str, ...] = ()
+
     #: Room types this may be placed in. EMPTY MEANS ANY -- a rug goes
     #: anywhere, a bath does not. Scoping is what stops a shop advertising a
     #: bath in the living room.
@@ -344,6 +359,10 @@ class Product:
             data["material"] = self.material
         if self.texture:
             data["texture"] = self.texture
+        if self.thumbnail:
+            data["thumbnail"] = self.thumbnail
+        if self.media:
+            data["media"] = list(self.media)
         return data
 
 

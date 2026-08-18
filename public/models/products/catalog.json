@@ -172,6 +172,53 @@
       ]
     },
     {
+      "id": "bears",
+      "name": "Bears",
+      "tagline": "Beds, bedroom and home",
+      "currency": "BWP",
+      "website": "",
+      "products": [
+        {
+          "id": "bears.slumberland-maharani-queen",
+          "shop": "bears",
+          "category": "bed",
+          "name": "Slumberland Maharani Queen 152cm Pillow-Top Medium Bed Set",
+          "description": "Pillow-top queen bed set for sleepers up to 120kg, built for people who want to sink in without losing support underneath. The quilted pillow top relieves pressure and softens the surface the moment you lie down, while the Firmalator support system keeps the mattress stable and the eco-friendly BioRenew layer eases pressure points without giving up sustainability. Active Edge support keeps the sides firm so the whole surface stays usable and the edges do not sag, and it reduces motion transfer night after night. The cover is soft but hard-wearing and holds its shape, with Active Shield treatment to keep allergens and bacteria out of the sleep surface. No flipping needed -- rotate it occasionally and that is the whole of the care routine.",
+          "colour": "Charcoal base, pearl pillow top",
+          "sku": "711479",
+          "price": 8999.99,
+          "effectivePrice": 8999.99,
+          "currency": "BWP",
+          "roomTypes": [
+            "bedroom"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Firmalator support system",
+            "BioRenew comfort layer",
+            "Active Edge perimeter support",
+            "Active Shield treated cover"
+          ],
+          "dimensions": {
+            "width": 1520.0,
+            "depth": 1880.0,
+            "height": 750.0
+          },
+          "model": "/models/products/bears/slumberland-maharani-queen.glb",
+          "thumbnail": "/bearsFurnitures/Beds/BedFull.png",
+          "media": [
+            "/bearsFurnitures/Beds/BedFull.png",
+            "/bearsFurnitures/Beds/1.png",
+            "/bearsFurnitures/Beds/2.png",
+            "/bearsFurnitures/Beds/3.png",
+            "/bearsFurnitures/Beds/4.png",
+            "/bearsFurnitures/Beds/5.png"
+          ]
+        }
+      ]
+    },
+    {
       "id": "tubod",
       "name": "Tubod Enterprises",
       "tagline": "Tiles, sanitaryware and building supplies",
@@ -627,6 +674,18 @@
           7.7,
           0.0,
           -2.35
+        ],
+        "rotationY": 0.0
+      },
+      {
+        "product": "bears.slumberland-maharani-queen",
+        "room": "master",
+        "note": "Head to the north wall, centred between the ensuite and the door.",
+        "isFinish": false,
+        "position": [
+          3.74,
+          0.0,
+          -3.89
         ],
         "rotationY": 0.0
       },

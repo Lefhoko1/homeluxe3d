@@ -61,7 +61,36 @@ LIVING_ROOM = [
     ),
 ]
 
-PLACEMENTS = LIVING_ROOM
+
+# --------------------------------------------------------------------------
+# Master bedroom.
+#
+# Clear extents, from config/plan_3bed.py:
+#     x 1,940 .. 5,540    (3.6m wide)
+#     y 1,230 .. 4,830    (3.6m deep)
+#
+# HEAD AGAINST THE NORTH WALL, and the reason is the other three. The east
+# wall carries the door into the room at y 4,315, the west wall carries the
+# ensuite door and the walk-in robe opening, and the south wall is the window.
+# The north wall is the only unbroken one in the room, which is exactly why a
+# bed goes there and why saying so is worth a line: change the plan and put a
+# door in it, and this placement has to move.
+#
+# The queen is 1,520 x 1,880, so headed north it runs y 2,950..4,830 and
+# leaves 1,720mm of floor at the foot -- enough for the guided tour to stand
+# at the end of the bed and look back along it, which is the shot that sells a
+# bed.
+# --------------------------------------------------------------------------
+MASTER_BEDROOM = [
+    Placement(
+        product_id="bears.slumberland-maharani-queen",
+        house=HOUSE, room="master",
+        x=3740.0, y=3890.0, rotation=0.0,
+        note="Head to the north wall, centred between the ensuite and the door.",
+    ),
+]
+
+PLACEMENTS = LIVING_ROOM + MASTER_BEDROOM
 
 
 # --------------------------------------------------------------------------
@@ -107,4 +136,4 @@ WALL_FINISHES = [
               note="Bathroom walls in satin white tile."),
 ]
 
-PLACEMENTS = LIVING_ROOM + FLOOR_FINISHES + WALL_FINISHES
+PLACEMENTS = LIVING_ROOM + MASTER_BEDROOM + FLOOR_FINISHES + WALL_FINISHES
