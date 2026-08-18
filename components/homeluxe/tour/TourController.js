@@ -149,6 +149,30 @@ const MAX_STEP = 0.45;
 export const ARRIVE_RADIUS = 0.22;
 
 /**
+ * How long the walk may make no progress before it gives up on a waypoint.
+ *
+ * THIS IS A BUSINESS REQUIREMENT, not a nicety. The house is an advertising
+ * space whose stock rotates from a database with nobody watching: batches go
+ * live overnight, a shop uploads a wardrobe and drops it somewhere awkward,
+ * a promotion ends and a sofa vanishes. `settleRoute` moves waypoints out of
+ * whatever has appeared on top of them, and handles the ordinary case -- but
+ * it cannot promise there is still a way THROUGH. Something can be placed
+ * across a doorway.
+ *
+ * Without a guard the tour then stands still for as long as the page is open,
+ * which on a showroom site is indistinguishable from the site being broken.
+ * With one, the worst case is a tour that takes a slightly odd line through
+ * one room. Degraded beats dead.
+ *
+ * Four seconds is longer than any legitimate manoeuvre: the walk turns before
+ * it moves, so a full half-turn on the spot at the guided rate is under three.
+ */
+const STALL_SECONDS = 4.0;
+
+/** Progress smaller than this, over that time, is not progress. */
+const STALL_PROGRESS = 0.05;
+
+/**
  * THE CAMERA RIG, AND WHY THE OLD ONE COULD NOT WORK INDOORS
  *
  * It sat 4.2m behind the character and 2.4m up, looking AT the character's
@@ -271,6 +295,13 @@ export function createTourController(options = {}) {
   let showTargets = [];
   let showIndex = 0;
   let showLeft = 0;
+
+  // -- The stall guard ----------------------------------------------------
+  // How long the walk has been failing to get closer to the waypoint it is
+  // heading for, and the closest it has managed. See STALL_SECONDS.
+  let stallFor = 0;
+  let closestSoFar = Infinity;
+  let skipped = 0;
 
   /** Shortest signed angle from a to b. */
   const angleTo = (from, to) => {
@@ -421,6 +452,27 @@ export function createTourController(options = {}) {
     showTargets = [];
     showIndex = 0;
     showLeft = 0;
+  }
+
+  /**
+   * Move on to the next waypoint, looping at the end.
+   *
+   * The stall counters reset here and nowhere else, so every way of leaving a
+   * waypoint -- arriving at it, or giving up on it -- starts the next one
+   * with a clean slate.
+   */
+  function advance() {
+    routeIndex += 1;
+    dwellLeft = 0;
+    stallFor = 0;
+    closestSoFar = Infinity;
+    clearShowcase();
+
+    if (routeIndex >= route.length) {
+      // Loop: the route ends where it began.
+      routeIndex = 0;
+      route.forEach((point) => { point.done = false; });
+    }
   }
 
   /**
@@ -747,16 +799,36 @@ export function createTourController(options = {}) {
                 surveyFrom = heading;
               }
             } else {
-              routeIndex += 1;
-              dwellLeft = 0;
-              clearShowcase();
-              if (routeIndex >= route.length) {
-                // Loop: the route ends where it began.
-                routeIndex = 0;
-                route.forEach((point) => { point.done = false; });
-              }
+              advance();
             }
           } else {
+            // STALL GUARD. Something placed since the route was solved can
+            // block the way through rather than merely stand on a waypoint,
+            // and `settleRoute` cannot move a waypoint past a wardrobe across
+            // a doorway. Giving up on the waypoint and trying the next one
+            // walks around the obstruction often enough to be worth it, and
+            // when it does not, the tour at least keeps moving. See
+            // STALL_SECONDS.
+            if (distance < closestSoFar - STALL_PROGRESS) {
+              closestSoFar = distance;
+              stallFor = 0;
+            } else {
+              stallFor += step;
+              if (stallFor >= STALL_SECONDS) {
+                skipped += 1;
+                if (skipped <= 3 || skipped % 25 === 0) {
+                  console.warn(
+                    `[tour] cannot reach waypoint ${routeIndex}` +
+                    `${target.label ? ` (${target.label})` : ''} -- something is ` +
+                    `in the way that was not there when the route was solved. ` +
+                    `Skipping it.`
+                  );
+                }
+                advance();
+                return;
+              }
+            }
+
             const wanted = Math.atan2(dx, -dz);
             const diff = angleTo(heading, wanted);
             const maxTurn = GUIDED_TURN_SPEED * step;

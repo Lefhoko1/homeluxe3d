@@ -152,6 +152,131 @@ export function footprintsOf(group) {
 }
 
 /**
+ * Move a stop that something is now standing on.
+ *
+ * THE ROUTE IS SOLVED AT BUILD TIME; THE FURNITURE IS NOT. `tour.json` is
+ * computed in Blender against the catalogue as it stood when the house was
+ * last exported, and every room's stop is that room's centre nudged to
+ * somewhere a person could stand GIVEN THAT FURNITURE. But products rotate:
+ * a batch goes live, a promotion ends, a shop's queen bed appears in the
+ * master bedroom this morning and is gone on Friday. None of that rebuilds
+ * the route.
+ *
+ * So a stop can end up inside a bed that did not exist when it was solved.
+ * The walker is then pushed out of the bed -- correctly -- and if it is
+ * pushed further than `arriveRadius` it can never register as having arrived.
+ * The tour stands next to the bed forever. That is the one way rotating
+ * stock can break the walk, and it is silent.
+ *
+ * The fix is small because the WALLS have not moved: the route's legs are
+ * still valid, and only the endpoint needs to shift a little. So each stop is
+ * tested against the live world and, if occupied, walked outward in rings
+ * until a free spot inside the same room is found.
+ *
+ * EVERY WAYPOINT IS SETTLED, not only the stops. The first version of this
+ * did only the stops, on the reasoning that an intermediate corner the walker
+ * is pushed off is just a corner cut slightly wide. That is true of a SMALL
+ * push and false of a large one, and the distinction is exactly the arrival
+ * radius: a leg point 360mm inside a wardrobe can no more be arrived at than
+ * a stop can, and the walk waits at it just the same. The wardrobe test in
+ * rotation.test.mjs is that failure, kept.
+ *
+ * The two are settled differently, though. A stop names a room and has to
+ * stay in it -- announcing "Master Bedroom" from the corridor is worse than
+ * standing slightly off centre. A leg names nothing and only has to be
+ * somewhere walkable, so it is allowed to move wherever is nearest.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO is re-solve the path. Re-implementing
+ * the grid solver in the browser would be a second pathfinder that has to
+ * agree with the first -- the mistake this codebase already made once with
+ * the collision model. Nudging the points the existing path is made of is a
+ * much smaller claim, and `TourController`'s stall guard covers what it
+ * cannot reach.
+ *
+ * @param {Array} waypoints    the route, world metres
+ * @param {object} volume      the live walk volume
+ * @param {Array} rooms        room extents from the collision manifest
+ * @param {number} arriveRadius  how close counts as arriving
+ * @returns {{waypoints: Array, moved: Array, stranded: Array}}
+ */
+export function settleRoute(waypoints, volume, rooms = [], arriveRadius = 0.22) {
+  if (!waypoints?.length || !volume) {
+    return { waypoints: waypoints ?? [], moved: [], stranded: [] };
+  }
+
+  const byRoom = new Map(rooms.map((room) => [room.room, room]));
+  const moved = [];
+  const stranded = [];
+
+  /** How far the volume displaces a walker standing here. */
+  const displacement = (x, z) => {
+    const solved = volume.resolve(x, z);
+    return Math.hypot(solved.x - x, solved.z - z);
+  };
+
+  const settled = waypoints.map((point) => {
+    const [x, z] = point.position;
+    if (displacement(x, z) <= arriveRadius) return point;
+
+    // A stop must stay in the room it names. A leg names nothing, so it may
+    // go wherever is nearest and walkable -- and it should not go far, or the
+    // straight line into it starts cutting through something else.
+    const room = point.label ? byRoom.get(point.room) : null;
+    const rings = point.label ? 14 : 8;
+
+    // Outward in rings. Coarse enough to be quick -- this runs once, when the
+    // tour starts -- and fine enough to find the gap beside a bed.
+    for (let ring = 1; ring <= rings; ring += 1) {
+      const radius = ring * 0.18;
+      const steps = Math.max(8, ring * 6);
+      let best = null;
+      let bestDrop = Infinity;
+
+      for (let i = 0; i < steps; i += 1) {
+        const angle = (i / steps) * Math.PI * 2;
+        const cx = x + Math.cos(angle) * radius;
+        const cz = z + Math.sin(angle) * radius;
+
+        // Stay in the room the stop belongs to. Wandering into the hallway to
+        // find space would mean announcing "Master Bedroom" from the corridor.
+        if (room && (cx < room.x0 || cx > room.x1 || cz < room.z0 || cz > room.z1)) {
+          continue;
+        }
+
+        const drop = displacement(cx, cz);
+        if (drop < bestDrop) {
+          bestDrop = drop;
+          best = [cx, cz];
+        }
+        if (drop <= 0.001) break;
+      }
+
+      if (best && bestDrop <= arriveRadius * 0.5) {
+        moved.push({
+          label: point.label,
+          room: point.room,
+          by: radius,
+        });
+        return { ...point, position: best };
+      }
+    }
+
+    // Nothing walkable within reach.
+    //
+    // Only a STOP is worth reporting. A stop that cannot be re-seated means a
+    // room has been filled wall to wall and the tour will not be able to show
+    // it -- which somebody needs to know about. An unsettleable leg point is
+    // not news: it is one corner of a path, the stall guard walks past it,
+    // and reporting it would bury the one message that matters under a dozen
+    // that do not.
+    if (point.label) stranded.push({ label: point.label, room: point.room });
+    return point;
+  });
+
+  return { waypoints: settled, moved, stranded };
+}
+
+/**
  * A solid world the walker is pushed out of.
  *
  * `fixed` are the walls, which never move. `dynamic` are the furniture

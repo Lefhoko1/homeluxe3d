@@ -18,6 +18,7 @@ import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import { createLighting } from './lighting/Lighting';
 import {
+  ARRIVE_RADIUS,
   createTourController,
   createShowcase,
   createWalkVolume,
@@ -26,6 +27,7 @@ import {
   loadCharacter,
   loadCollision,
   loadRoute,
+  settleRoute,
   TourPad,
   TOUR_START,
 } from './tour';
@@ -55,6 +57,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // the animation loop and never drawn by React.
   const walkVolumeRef = useRef(null);
   const showcaseRef = useRef(null);
+  // Room extents, so a stop displaced by new furniture is re-seated inside
+  // its own room rather than in the corridor outside it.
+  const collisionRoomsRef = useRef([]);
   const [touring, setTouring] = useState(false);
   const [advert, setAdvert] = useState(null);
   // Guided-tour state, mirrored into React so the pad can draw itself.
@@ -425,6 +430,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         const walkVolume = createWalkVolume({ fixed: collision?.walls ?? [] });
         walkVolume.setDynamic(footprintsOf(group));
         walkVolumeRef.current = walkVolume;
+        collisionRoomsRef.current = collision?.rooms ?? [];
 
         // The yard: geometry the plan knows nothing about, so it cannot be in
         // the manifest and stays a raycast. Planting is included for its tree
@@ -626,6 +632,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       tourRef.current = null;
       walkVolumeRef.current = null;
       showcaseRef.current = null;
+      collisionRoomsRef.current = [];
       disposeCharacter(characterRef.current);
       characterRef.current = null;
       houseRef.current?.userData.roomLights?.dispose();
@@ -934,8 +941,37 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     }
     if (!route?.waypoints?.length) return;
 
-    tour.followRoute(
+    // ---- Move any stop something is now standing on --------------------
+    // The route was solved in Blender against the catalogue as it stood at
+    // the last export. Products rotate -- a batch goes live, a promotion
+    // ends, a bed appears in the master bedroom -- and none of that rebuilds
+    // the route. A stop inside a bed is one the walk can never arrive at, so
+    // it is re-seated against the scene as it is RIGHT NOW, every time the
+    // tour starts. See settleRoute.
+    walkVolumeRef.current?.setDynamic(footprintsOf(productsRef.current));
+    const { waypoints, moved, stranded } = settleRoute(
       route.waypoints,
+      walkVolumeRef.current,
+      collisionRoomsRef.current,
+      ARRIVE_RADIUS
+    );
+    if (moved.length) {
+      console.info(
+        '[tour] re-seated %d stop(s) around furniture placed since the route ' +
+        'was solved:', moved.length,
+        moved.map((m) => `${m.label} (+${(m.by * 1000).toFixed(0)}mm)`).join(', ')
+      );
+    }
+    if (stranded.length) {
+      console.warn(
+        '[tour] no standable spot in:',
+        stranded.map((s) => s.label).join(', '),
+        '-- something is placed across the whole room'
+      );
+    }
+
+    tour.followRoute(
+      waypoints,
       (stop) => {
         setStopLabel(stop.label ?? null);
         setProgress(tour.progress);

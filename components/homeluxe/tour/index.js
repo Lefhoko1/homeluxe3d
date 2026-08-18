@@ -11,6 +11,7 @@ export {
   loadCollision,
   createWalkVolume,
   footprintsOf,
+  settleRoute,
   COLLISION_URL,
   WALK_RADIUS,
 } from "./collision";
