@@ -20,20 +20,16 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
 
-import {
-  fetchSceneCatalog,
-  STATIC_CATALOG_URL,
-} from "../../../lib/catalog/repository";
-
-export const CATALOG_URL = STATIC_CATALOG_URL;
+import { fetchSceneCatalog } from "../../../lib/catalog/repository";
 
 /**
  * Fetch the catalogue.
  *
- * Goes through the repository, so this reads from Supabase when a database is
- * configured and from the Blender-generated catalog.json when it is not. The
- * shape is identical either way, which is the whole point -- nothing below
- * this line knows or cares where the data came from.
+ * Goes through the repository, which reads the database and THROWS if it
+ * cannot. There is no static fallback any more: a house dressed from a file
+ * while the database sits unseeded looks exactly like a working house, which
+ * is how a missing shop, a missing bed and a missing set of photographs all
+ * went unnoticed. See the note at the top of lib/catalog/repository.js.
  */
 export async function fetchCatalog(scene = "3bed") {
   return fetchSceneCatalog({ scene });

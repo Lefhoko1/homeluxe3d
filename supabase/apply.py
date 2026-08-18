@@ -70,6 +70,43 @@ def connect(url: str):
     return psycopg2.connect(url)
 
 
+ENV_LOCAL = os.path.join(os.path.dirname(HERE), ".env.local")
+
+
+def db_url() -> str | None:
+    """The connection string, from the environment or from `.env.local`.
+
+    THE FILE IS THE POINT. A database password cannot go in the repo and
+    should not go in a shell history or a chat window either, but it has to
+    reach this script somehow, and `export` does not survive between separate
+    commands. `.env.local` is already gitignored and already holds this
+    project's other credentials, so one line in it lets the seed be applied
+    repeatably by whoever -- or whatever -- is driving, without the password
+    being typed anywhere it will be kept.
+
+    The environment still wins, so CI can set it and never touch a file.
+    """
+    from_env = os.environ.get("SUPABASE_DB_URL")
+    if from_env:
+        return from_env
+
+    try:
+        with open(ENV_LOCAL, "r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                if key.strip() == "SUPABASE_DB_URL":
+                    # Quotes are how everyone writes a value with punctuation
+                    # in it, and this password has plenty.
+                    return value.strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+
+    return None
+
+
 def run_file(cur, path: str) -> None:
     """Execute a whole .sql file in one go.
 
@@ -129,11 +166,15 @@ def main() -> int:
     parser.add_argument("--seed-only", action="store_true")
     args = parser.parse_args()
 
-    url = os.environ.get("SUPABASE_DB_URL")
+    url = db_url()
     if not url:
         print("SUPABASE_DB_URL is not set.\n")
         print("  Supabase dashboard -> Project Settings -> Database -> Connection string")
-        print("  export SUPABASE_DB_URL='postgresql://postgres:PASSWORD@db.<ref>.supabase.co:5432/postgres'")
+        print("  Use the SESSION POOLER host (port 5432) -- see CONNECTING.md.\n")
+        print("  Either export it:")
+        print("    export SUPABASE_DB_URL='postgresql://USER:PASSWORD@HOST:5432/postgres'\n")
+        print("  Or add one line to .env.local, which is gitignored:")
+        print("    SUPABASE_DB_URL=postgresql://USER:PASSWORD@HOST:5432/postgres")
         return 2
 
     conn = connect(url)

@@ -1224,3 +1224,59 @@
   pointer-events: none;
   z-index: 5;
 }
+
+/* ---------------------------------------------------------------------------
+   THE CATALOGUE FAILED
+   ---------------------------------------------------------------------------
+   Loud on purpose. The catalogue used to fall back to the file the Blender
+   build writes, so a database that had never been seeded produced a house
+   that looked completely normal -- and the missing shop read as a bug in the
+   3D scene rather than as a database nobody had told.
+
+   So this sits across the top of the window, in front of everything, and does
+   not go away on its own. A quiet indicator would be the same failure again.
+--------------------------------------------------------------------------- */
+.catalog-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #7f1d1d;
+  color: #fee2e2;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.catalog-error strong {
+  color: #fff;
+}
+
+.catalog-error span {
+  /* The error text names the fix -- the seed command, or the missing
+     environment variables -- so it has to be readable, not truncated. */
+  flex: 1 1 320px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.catalog-error button {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.catalog-error button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}

@@ -18,7 +18,7 @@ const LuxeHomePage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shopFilter, setShopFilter] = useState(null);
 
-  const { shops, productsByRoom, rooms, source, loading, refresh } =
+  const { shops, productsByRoom, rooms, source, loading, error, refresh } =
     useCatalog({ scene: '3bed', shopFilter });
 
   // Real identity, not `?admin=true`. The old parameter showed the admin
@@ -183,10 +183,27 @@ const LuxeHomePage = () => {
         />
       )}
 
-      {/* Where the catalogue came from. Worth showing: "supabase" means live
-          edits are in effect, "static" means the app is reading the file the
-          Blender build wrote and nothing here can be saved. */}
-      {source && <div className="catalog-source">catalogue: {source}</div>}
+      {/* THE CATALOGUE FAILED, AND THE PAGE SAYS SO.
+          This used to fall back to the file the Blender build writes, so a
+          database that had never been seeded produced a house that looked
+          completely normal -- and a missing shop read as a bug in the 3D
+          scene rather than as a database nobody had told. The banner is
+          deliberately hard to miss and quotes the actual error, which names
+          the fix. */}
+      {error && (
+        <div className="catalog-error" role="alert">
+          <strong>The catalogue could not be loaded.</strong>
+          <span>{error.message}</span>
+          <button type="button" onClick={refresh}>Try again</button>
+        </div>
+      )}
+
+      {/* Where the catalogue came from. Always "supabase" now -- there is no
+          other source -- so this is a positive confirmation that the page is
+          showing live data rather than a choice between two. */}
+      {source && !error && (
+        <div className="catalog-source">catalogue: {source}</div>
+      )}
     </div>
   );
 };

@@ -28,13 +28,33 @@ migrations need. Use 5432.
 ## Applying
 
 ```
-python supabase/apply.py            # migrations + seed, then verify
-python supabase/apply.py --verify   # report only
+python supabase/apply.py             # migrations + seed, then verify
+python supabase/apply.py --seed-only # seed only, schema already applied
+python supabase/apply.py --verify    # report only
 ```
 
-`SUPABASE_DB_URL` is read from the environment. The password contains `+`
-and `=`, which are not URL-safe, so pass discrete parameters rather than a
-URI if you hit auth errors that look like a wrong password.
+`SUPABASE_DB_URL` comes from the environment, or -- if it is not set there --
+from a line in `.env.local`:
+
+```
+SUPABASE_DB_URL=postgresql://postgres.<ref>:PASSWORD@aws-0-eu-north-1.pooler.supabase.com:5432/postgres
+```
+
+`.env.local` is gitignored and already holds this project's other
+credentials. Putting it there rather than exporting it means the seed can be
+applied repeatably by whoever is driving, without the password living in a
+shell history.
+
+The password contains `+` and `=`, which are not URL-safe, so pass discrete
+parameters rather than a URI if you hit auth errors that look like a wrong
+password.
+
+## There is no fallback
+
+The app reads the catalogue from this database and from nowhere else. If the
+seed has not been applied, the page says so across the top of the window
+rather than quietly dressing the house from `catalog.json`. See the note at
+the top of `lib/catalog/repository.js`.
 
 ## Migrations are idempotent
 
