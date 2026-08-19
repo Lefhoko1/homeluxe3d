@@ -61,6 +61,50 @@ const furnitureRects = catalog.houses["3bed"]
   });
 
 // ---------------------------------------------------------------------------
+// 0. Every door in the manifest has geometry the browser can actually find.
+//
+// THIS IS THE TEST THAT WOULD HAVE CAUGHT THE DOORS NOT MOVING AT ALL. The
+// first version looked its objects up by the name in the manifest, and
+// three.js strips '.' from every GLB node name as it loads -- so
+// `doors.master.door.leaf` arrives as `doorsmasterdoorleaf` and matched
+// nothing. Everything else was right: the leaves were built, the origins were
+// on the hinges, the manifest was correct, and not one door ever moved.
+//
+// So the objects carry their door's label as glTF `extras`, and this reads
+// the shipped GLBs to prove the tags are there and cover every door. It also
+// catches the second half of that bug: the pool slider is built by the
+// WINDOWS component, so it ships in windows.glb and a scan of doors.glb alone
+// silently misses it.
+// ---------------------------------------------------------------------------
+{
+  const tagged = new Map();
+
+  for (const file of ["doors", "windows"]) {
+    const buf = readFileSync(join(PUBLIC, "house", `${file}.glb`));
+    const gltf = JSON.parse(
+      buf.slice(20, 20 + buf.readUInt32LE(12)).toString("utf8")
+    );
+    for (const node of gltf.nodes ?? []) {
+      const label = node.extras?.door;
+      if (!label) continue;
+      if (node.extras.door_part === "fixed") continue;
+      tagged.set(label, (tagged.get(label) ?? 0) + 1);
+    }
+  }
+
+  const untagged = doorsManifest.doors.filter((d) => !tagged.has(d.label));
+  assert.deepEqual(
+    untagged.map((d) => d.label), [],
+    "these doors have no tagged geometry in any GLB, so nothing can move them"
+  );
+
+  console.log(
+    `  tags: ${tagged.size} door(s) carry moving geometry ` +
+    `(${[...tagged.values()].reduce((a, b) => a + b, 0)} parts)`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // 1. Every door in the manifest is a door the walk can get through.
 //
 // A leaf is only passable once it has swung clear, so the OPENING it leaves
@@ -68,7 +112,9 @@ const furnitureRects = catalog.houses["3bed"]
 // catches a door made too narrow for the plan before anyone walks into it.
 // ---------------------------------------------------------------------------
 {
-  const tight = doorsManifest.doors.filter((d) => d.width_m < WALK_RADIUS * 2);
+  const tight = doorsManifest.doors.filter(
+    (d) => (d.motion === "slide" ? d.travel_m : d.width_m) < WALK_RADIUS * 2
+  );
   assert.deepEqual(
     tight.map((d) => `${d.label} is ${(d.width_m * 1000).toFixed(0)}mm`), [],
     `a walker is ${(WALK_RADIUS * 2000).toFixed(0)}mm across and cannot fit`
@@ -83,14 +129,14 @@ const furnitureRects = catalog.houses["3bed"]
 // 2. A door opens away from whoever is at it, and never into them.
 // ---------------------------------------------------------------------------
 {
-  const entry = doorsManifest.doors[0];
+  const entry = doorsManifest.doors.find((d) => d.motion === "swing");
 
   for (const side of [1, -1]) {
     const set = createDoorSet([entry]);
     const door = set.doors[0];
     // Stand a metre off the middle of the leaf, on one side then the other.
-    const cx = door.hingeX + door.alongX * door.width * 0.5;
-    const cz = door.hingeZ + door.alongZ * door.width * 0.5;
+    const cx = door.anchorX + door.alongX * door.width * 0.5;
+    const cz = door.anchorZ + door.alongZ * door.width * 0.5;
     const viewer = {
       x: cx + door.alongZ * side * 1.0,
       z: cz - door.alongX * side * 1.0,
@@ -102,10 +148,10 @@ const furnitureRects = catalog.houses["3bed"]
 
     // The free end after swinging, and whether it moved towards the visitor.
     const a = door.angle;
-    const endX = door.hingeX + (door.alongX * Math.cos(a) + door.alongZ * Math.sin(a)) * door.width;
-    const endZ = door.hingeZ + (-door.alongX * Math.sin(a) + door.alongZ * Math.cos(a)) * door.width;
-    const closedEndX = door.hingeX + door.alongX * door.width;
-    const closedEndZ = door.hingeZ + door.alongZ * door.width;
+    const endX = door.anchorX + (door.alongX * Math.cos(a) + door.alongZ * Math.sin(a)) * door.width;
+    const endZ = door.anchorZ + (-door.alongX * Math.sin(a) + door.alongZ * Math.cos(a)) * door.width;
+    const closedEndX = door.anchorX + door.alongX * door.width;
+    const closedEndZ = door.anchorZ + door.alongZ * door.width;
 
     const movedToward =
       Math.hypot(endX - viewer.x, endZ - viewer.z) <
@@ -192,8 +238,8 @@ const furnitureRects = catalog.houses["3bed"]
   volume.setDynamic(doors.footprints());
 
   const door = doors.doors[0];
-  const cx = door.hingeX + door.alongX * door.width * 0.5;
-  const cz = door.hingeZ + door.alongZ * door.width * 0.5;
+  const cx = door.anchorX + door.alongX * door.width * 0.5;
+  const cz = door.anchorZ + door.alongZ * door.width * 0.5;
 
   // Approach along the leaf's normal, from 0.8m out, with the door frozen
   // shut -- `update` is simply not called, so nothing opens.

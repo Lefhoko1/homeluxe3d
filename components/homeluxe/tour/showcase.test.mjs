@@ -96,9 +96,12 @@ const finishes = placements
   }));
 
 // Where the hinges are, so a door-hardware advert has something to aim at.
-const doorPoints = doorsManifest.doors.map((d) => ({
-  label: d.label, x: d.hinge[0], y: 1.04, z: d.hinge[1],
-}));
+// HINGED DOORS ONLY: a slider runs on a track and has no hinge to show, which
+// is exactly why `points()` filters them out in doors.js. Reading `hinge` off
+// every entry threw the moment the slider joined the manifest.
+const doorPoints = doorsManifest.doors
+  .filter((d) => d.motion === "swing")
+  .map((d) => ({ label: d.label, x: d.hinge[0], y: 1.04, z: d.hinge[1] }));
 
 const fittings = lights.lights.map((light) => ({
   room: light.room,

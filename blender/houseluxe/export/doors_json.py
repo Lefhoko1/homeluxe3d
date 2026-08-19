@@ -18,9 +18,20 @@ wrong for whoever is walking through -- the browser opens each door AWAY from
 whoever is approaching it. Nobody is ever met by a door swinging into their
 face, and no visitor has ever noticed a door that opens both ways.
 
-Doorways carry no leaf and are not listed: there is nothing to open. Sliding
-doors are not listed either -- they slide rather than swing, and nothing here
-would describe them correctly.
+Doorways carry no leaf and are not listed: there is nothing to open.
+
+SLIDING DOORS ARE LISTED TOO, with a `motion` of "slide" instead of "swing".
+A slider has no hinge and no angle -- it has a travel, along the wall, of one
+sash width -- so it carries a direction and a distance where a hinged door
+carries an axis. Same trigger, same manifest, different verb.
+
+HOW THE BROWSER FINDS THE MOVING PARTS. Not by name: three.js strips '.' from
+every node name as it loads a GLB, so `doors.master.door.leaf` arrives as
+`doorsmasterdoorleaf` and a lookup by the recorded name finds nothing. The
+objects carry the door's label as a custom property instead, which survives
+as glTF `extras` and lands in `userData` untouched -- see `_hang` and
+`SlidingDoorFactory` in components/openings.py. This manifest names the door;
+the objects say which door they belong to.
 """
 
 from __future__ import annotations
@@ -33,7 +44,10 @@ from ..config.plan import OpeningKind
 #: Openings with a leaf on hinges.
 HINGED = {OpeningKind.DOOR_INTERNAL, OpeningKind.DOOR_EXTERNAL}
 
-from ..config.joinery import AXIS_OFFSET, FRAME_FACE, LINING_FACE
+#: And the one that runs sideways instead.
+SLIDING = {OpeningKind.SLIDING_DOOR}
+
+from ..config.joinery import AXIS_OFFSET, FRAME_FACE, LINING_FACE, SASH_FACE
 
 
 def _face_for(kind: OpeningKind) -> float:
@@ -54,6 +68,32 @@ def build_manifest(plan) -> dict:
         px, py = -uy, ux
 
         for opening in wall.openings:
+            if opening.kind in SLIDING:
+                half = opening.width / 2.0
+                s0 = opening.offset - half
+                s1 = opening.offset + half
+                mid = (s0 + s1) / 2.0
+                # The moving sash spans the first half of the opening and
+                # runs the length of itself to end up behind the fixed one.
+                travel = (mid + SASH_FACE / 2.0) - (s0 + FRAME_FACE)
+                label = opening.name or f"{wall.name}.{int(opening.offset)}"
+                # Middle of the moving sash when shut, for the trigger.
+                cs = (s0 + FRAME_FACE + mid + SASH_FACE / 2.0) / 2.0
+                cx = sx + ux * cs
+                cy = sy + uy * cs
+                doors.append({
+                    "label": label,
+                    "motion": "slide",
+                    "kind": opening.kind.value,
+                    "exterior": bool(wall.exterior),
+                    "centre": [round(cx / 1000.0, 4), round(-cy / 1000.0, 4)],
+                    # Which way the sash runs, and how far.
+                    "along": [round(ux, 6), round(-uy, 6)],
+                    "travel_m": round(travel / 1000.0, 4),
+                    "width_m": round(travel / 1000.0, 4),
+                })
+                continue
+
             if opening.kind not in HINGED:
                 continue
 
@@ -73,11 +113,8 @@ def build_manifest(plan) -> dict:
             label = opening.name or f"{wall.name}.{int(opening.offset)}"
 
             doors.append({
-                # The object names in doors.glb. `leaf` swings; `hinges` are
-                # the plates screwed to it and swing with it.
-                "leaf": f"doors.{label}.leaf",
-                "hinge_prefix": f"doors.{label}.hinge",
                 "label": label,
+                "motion": "swing",
                 "kind": opening.kind.value,
                 "exterior": bool(wall.exterior),
                 # three.js house-local metres, converted here as everything
@@ -108,11 +145,9 @@ def write_manifest(plan, path: str) -> dict:
 
 def report(manifest: dict, path: str = "") -> str:
     doors = manifest.get("doors", [])
-    external = sum(1 for d in doors if d["kind"] == "door_external")
-    line = (
-        f"doors: {len(doors)} hinged leaf/leaves "
-        f"({external} external, {len(doors) - external} internal)"
-    )
+    swinging = sum(1 for d in doors if d.get("motion") == "swing")
+    sliding = len(doors) - swinging
+    line = f"doors: {swinging} hinged, {sliding} sliding"
     if path:
         line += f"\n  {path}"
     return line

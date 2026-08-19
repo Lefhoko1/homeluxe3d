@@ -33,8 +33,16 @@ import * as THREE from "three";
 
 export const DOORS_MANIFEST_URL = "/models/house/doors.json";
 
-/** How far away a visitor has to be for a door to start opening, in metres. */
-const OPEN_WITHIN = 2.2;
+/**
+ * How far away a visitor has to be for a door to start opening, in metres.
+ *
+ * MEASURED AGAINST THE ROUTE, not chosen. The tour's first stop is the
+ * approach point in front of the entrance -- `tour_json.APPROACH`, 2,600mm
+ * out -- and it is labelled "Front door". At 2.2m the visitor stood at a stop
+ * called Front door, looking at a shut one, for the whole dwell. Anything the
+ * tour deliberately stops at has to be open by the time it gets there.
+ */
+const OPEN_WITHIN = 3.0;
 
 /**
  * And how far away before it closes again.
@@ -43,7 +51,7 @@ const OPEN_WITHIN = 2.2;
  * on the threshold makes the door flutter between states as they shift about;
  * the gap between the two is what stops that.
  */
-const CLOSE_BEYOND = 3.0;
+const CLOSE_BEYOND = 3.9;
 
 /** How far a door opens. A little past square, as a door pushed open rests. */
 const OPEN_ANGLE = THREE.MathUtils.degToRad(96);
@@ -87,21 +95,28 @@ const HINGE_LOOK_HEIGHT = 1.04;
  * into rotations on the objects.
  */
 export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
-  const doors = entries.map((entry) => ({
-    label: entry.label,
+  const doors = entries.map((entry) => {
+    const sliding = entry.motion === "slide";
     // WORLD metres. The character lives in the scene, not in the house group,
     // so the recentring offset goes on here exactly as it does for the route
     // and the collision model.
-    hingeX: entry.hinge[0] + offsetX,
-    hingeZ: entry.hinge[1] + offsetZ,
-    alongX: entry.along[0],
-    alongZ: entry.along[1],
-    width: entry.width_m,
-    openness: 0,      // 0 shut, 1 fully open
-    sign: 1,          // which way it is swinging, latched while it moves
-    wanted: 0,
-    angle: 0,
-  }));
+    const anchor = sliding ? entry.centre : entry.hinge;
+    return {
+      label: entry.label,
+      sliding,
+      anchorX: anchor[0] + offsetX,
+      anchorZ: anchor[1] + offsetZ,
+      alongX: entry.along[0],
+      alongZ: entry.along[1],
+      width: entry.width_m,
+      travel: entry.travel_m ?? 0,
+      openness: 0,    // 0 shut, 1 fully open
+      sign: 1,        // which way a hinged leaf swings; latched while moving
+      wanted: 0,
+      angle: 0,       // radians, hinged
+      slide: 0,       // metres along the wall, sliding
+    };
+  });
 
   return {
     get count() {
@@ -125,8 +140,13 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
       doors.forEach((door) => {
         // The middle of the leaf, which is what you walk at -- measuring to
         // the hinge makes a door open late when you come at the latch side.
-        const cx = door.hingeX + door.alongX * door.width * 0.5;
-        const cz = door.hingeZ + door.alongZ * door.width * 0.5;
+        // A slider is anchored on its middle already.
+        const cx = door.sliding
+          ? door.anchorX
+          : door.anchorX + door.alongX * door.width * 0.5;
+        const cz = door.sliding
+          ? door.anchorZ
+          : door.anchorZ + door.alongZ * door.width * 0.5;
         const distance = Math.hypot(viewer.x - cx, viewer.z - cz);
 
         if (distance < OPEN_WITHIN) door.wanted = 1;
@@ -134,9 +154,9 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
 
         // Latch the direction as it leaves the frame, so it cannot reverse
         // while somebody is standing in the opening.
-        if (door.wanted === 1 && door.openness < 0.02) {
-          const toX = viewer.x - door.hingeX;
-          const toZ = viewer.z - door.hingeZ;
+        if (!door.sliding && door.wanted === 1 && door.openness < 0.02) {
+          const toX = viewer.x - door.anchorX;
+          const toZ = viewer.z - door.anchorZ;
           // Rotating the leaf by +angle sweeps its free end towards
           // (along.z, -along.x). Away from the visitor is the opposite sign
           // to whichever side of that line they are standing on.
@@ -150,7 +170,8 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
 
         // Ease, so a door does not start and stop like a garage shutter.
         const eased = next * next * (3 - 2 * next);
-        door.angle = door.sign * eased * OPEN_ANGLE;
+        if (door.sliding) door.slide = eased * door.travel;
+        else door.angle = door.sign * eased * OPEN_ANGLE;
       });
     },
 
@@ -164,8 +185,14 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
       const rects = [];
       doors.forEach((door) => {
         if (door.openness >= BLOCKS_BELOW) return;
-        const x0 = door.hingeX;
-        const z0 = door.hingeZ;
+        // A shut slider covers the half of the opening its sash spans; a shut
+        // hinged leaf covers the whole of its own width from the hinge.
+        const x0 = door.sliding
+          ? door.anchorX - door.alongX * door.width * 0.5
+          : door.anchorX;
+        const z0 = door.sliding
+          ? door.anchorZ - door.alongZ * door.width * 0.5
+          : door.anchorZ;
         const x1 = x0 + door.alongX * door.width;
         const z1 = z0 + door.alongZ * door.width;
         const pad = LEAF_THICKNESS / 2;
@@ -186,10 +213,10 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
      * than stood somewhere.
      */
     points() {
-      return doors.map((door) => ({
+      return doors.filter((door) => !door.sliding).map((door) => ({
         label: door.label,
-        x: door.hingeX,
-        z: door.hingeZ,
+        x: door.anchorX,
+        z: door.anchorZ,
         // The middle hinge, which is the one at a comfortable height to look
         // at rather than the one by the floor.
         y: HINGE_LOOK_HEIGHT,
@@ -202,6 +229,7 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
         door.wanted = 0;
         door.openness = 0;
         door.angle = 0;
+        door.slide = 0;
       });
     },
   };
@@ -227,48 +255,58 @@ export async function loadDoors(house, url = DOORS_MANIFEST_URL) {
     return null;
   }
 
-  const part = house.userData?.parts?.doors;
-  if (!part) {
-    console.warn("[doors] the house has no doors part");
-    return null;
-  }
-
   const entries = manifest.doors ?? [];
   const set = createDoorSet(entries, {
     offsetX: house.position?.x ?? 0,
     offsetZ: house.position?.z ?? 0,
   });
 
-  // What each door has to turn: the leaf, and the hinge plates screwed to it.
-  // They were given the same origin in Blender, so they take the same angle
-  // and nothing has to be reparented here.
-  const missing = [];
-  const moving = entries.map((entry) => {
-    const leaf = part.getObjectByName(entry.leaf);
-    if (!leaf) {
-      missing.push(entry.leaf);
-      return [];
-    }
-    const objects = [leaf];
-    part.traverse((child) => {
-      if (child === leaf) return;
-      if (!child.name.startsWith(entry.hinge_prefix)) return;
-      // The plate screwed to the door, and its countersunk dishes.
-      if (child.name.endsWith("leaf_plate") || child.name.includes(".leaf_hole")) {
-        objects.push(child);
-      }
-    });
-    return objects;
+  // ---- Find the moving parts, BY TAG -----------------------------------
+  //
+  // NOT BY NAME. three.js runs every GLB node name through
+  // `PropertyBinding.sanitizeNodeName`, which strips '.' -- so the object
+  // Blender called `doors.master.door.leaf` arrives as
+  // `doorsmasterdoorleaf`, and looking it up by the name the manifest
+  // records finds nothing at all. That is exactly what happened: the doors
+  // were modelled, exported, manifested and driven by code that could never
+  // locate them, and the only symptom was that no door ever moved.
+  //
+  // Every moving object instead carries the door's label as a custom
+  // property, exported as glTF `extras` and landing in `userData` untouched.
+  // No loader is entitled to rewrite that.
+  // THE WHOLE HOUSE, not just the doors part. The pool slider is built by the
+  // WINDOWS component -- `SlidingDoorFactory` is registered under glazing,
+  // because that is what a slider mostly is -- so it ships in windows.glb.
+  // Scanning only `parts.doors` found eight doors and silently missed the one
+  // the pool terrace is reached through.
+  const byDoor = new Map();
+  house.traverse((child) => {
+    const label = child.userData?.door;
+    if (!label) return;
+    if (child.userData.door_part === "fixed") return;   // the static sash
+    if (!byDoor.has(label)) byDoor.set(label, []);
+    byDoor.get(label).push(child);
   });
 
+  const moving = entries.map((entry) => byDoor.get(entry.label) ?? []);
+  const missing = entries.filter((entry, i) => moving[i].length === 0);
+
   if (missing.length) {
-    // Loud: a renamed object silently leaves a door that never opens, which
-    // looks exactly like the feature not working at all.
+    // Loud: a door with nothing to move looks exactly like the feature not
+    // working, and that is a whole rebuild to discover otherwise.
     console.error(
-      `[doors] ${missing.length} leaf/leaves named in the manifest are not in ` +
-      `doors.glb and will not open:`, missing.join(", ")
+      `[doors] ${missing.length} door(s) in the manifest have no tagged ` +
+      `geometry in doors.glb and will not move:`,
+      missing.map((d) => d.label).join(", "),
+      "-- rebuild the house so the objects carry their 'door' property."
     );
   }
+
+  // Where each moving part started, so a slide is an offset from it rather
+  // than an absolute position this would otherwise have to know.
+  const rest = moving.map((objects) =>
+    objects.map((obj) => obj.position.clone())
+  );
 
   console.info(
     `[doors] ${set.count} door(s) will open on approach, ` +
@@ -277,7 +315,18 @@ export async function loadDoors(house, url = DOORS_MANIFEST_URL) {
 
   const apply = () => {
     set.doors.forEach((door, i) => {
-      moving[i].forEach((obj) => { obj.rotation.y = door.angle; });
+      moving[i].forEach((obj, j) => {
+        if (door.sliding) {
+          // Along the wall, from where it was built.
+          obj.position.set(
+            rest[i][j].x + door.alongX * door.slide,
+            rest[i][j].y,
+            rest[i][j].z + door.alongZ * door.slide
+          );
+        } else {
+          obj.rotation.y = door.angle;
+        }
+      });
     });
   };
 

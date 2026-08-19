@@ -15,8 +15,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import bpy
+from mathutils import Vector
 
 from ..core import mesh as meshutil
+from ..core.units import m
 from ..core.component import BuildContext, Component
 from ..core.wallmath import WallFrame
 from ..config.plan import Opening, OpeningKind, Wall
@@ -130,35 +132,56 @@ class SlidingDoorFactory(OpeningFactory):
     def build(self, name, wall, opening, frame, materials):
         s0, s1, z0, z1 = self._extents(opening)
         depth = min(FRAME_DEPTH, wall.thickness - 20.0)
+        label = opening.name or name
 
-        members = [_ring(f"{name}.outer", frame, s0, s1, z0, z1,
-                         FRAME_FACE, depth, include_sill=True)]
+        outer = _ring(f"{name}.outer", frame, s0, s1, z0, z1,
+                      FRAME_FACE, depth, include_sill=True)
+        materials.assign(outer, self.frame_finish)
+        objects = [outer]
 
-        # Two sashes meeting at the centre, offset across the wall so they
-        # read as sliding past one another rather than as one fixed pane.
+        # ONE SASH PER OBJECT, so one of them can move.
+        #
+        # These used to be joined into the outer frame with a single sheet of
+        # glass across the whole opening -- correct-looking and completely
+        # static, which was fine while nothing opened. A slider that slides
+        # needs the moving leaf to be its own object, with its own glass, and
+        # the two sashes offset across the wall so they pass one another
+        # rather than collide.
         mid = (s0 + s1) / 2.0
-        for index, (a, b) in enumerate(((s0 + FRAME_FACE, mid + SASH_FACE / 2.0),
-                                        (mid - SASH_FACE / 2.0, s1 - FRAME_FACE))):
-            members.append(
-                _ring(f"{name}.sash{index}", frame, a, b,
-                      z0 + FRAME_FACE, z1 - FRAME_FACE, SASH_FACE, depth / 2.0)
-            )
-
-        joinery = meshutil.join(members, f"{name}.frame")
-        materials.assign(joinery, self.frame_finish)
-
-        glass = _piece(
-            f"{name}.glass", frame,
-            s0 + FRAME_FACE, s1 - FRAME_FACE,
-            z0 + FRAME_FACE, z1 - FRAME_FACE,
-            GLASS_THICKNESS,
+        spans = (
+            (s0 + FRAME_FACE, mid + SASH_FACE / 2.0),
+            (mid - SASH_FACE / 2.0, s1 - FRAME_FACE),
         )
-        materials.assign(glass, "glass")
 
-        return [joinery, glass]
+        for index, (a, b) in enumerate(spans):
+            # Front sash sits proud of the back one, as a real slider does.
+            across = depth / 2.0
+            offset = (index - 0.5) * across * 0.9
+
+            sash = _ring(f"{name}.sash{index}", frame, a, b,
+                         z0 + FRAME_FACE, z1 - FRAME_FACE, SASH_FACE, across)
+            pane = _piece(f"{name}.sash{index}.glass", frame,
+                          a + SASH_FACE, b - SASH_FACE,
+                          z0 + FRAME_FACE + SASH_FACE, z1 - FRAME_FACE - SASH_FACE,
+                          GLASS_THICKNESS)
+            materials.assign(sash, self.frame_finish)
+            materials.assign(pane, "glass")
+
+            for obj in (sash, pane):
+                obj.location = obj.location + Vector((
+                    frame.across[0] * m(offset), frame.across[1] * m(offset), 0.0
+                ))
+                # Only sash 0 travels. See export/doors_json.py: a two-panel
+                # slider has one fixed light and one that runs behind it.
+                obj["door"] = label
+                obj["door_part"] = "sliding" if index == 0 else "fixed"
+
+            objects.extend((sash, pane))
+
+        return objects
 
 
-def _hang(name, wall, frame, s0, s1, z0, z1, face, leaf_finish, materials):
+def _hang(name, label, wall, frame, s0, s1, z0, z1, face, leaf_finish, materials):
     """Build a leaf, hang it on three hinges, and pivot it about them.
 
     THE ORIGIN IS THE HINGE AXIS, and that is the whole reason this exists.
@@ -207,6 +230,21 @@ def _hang(name, wall, frame, s0, s1, z0, z1, face, leaf_finish, materials):
     for obj in swinging:
         meshutil.set_origin(obj, ax, ay, 0.0)
 
+    # TAGGED, NOT NAMED. three.js strips '.' from every node name when it
+    # loads a GLB -- `PropertyBinding.sanitizeNodeName` -- so
+    # `doors.master.door.leaf` arrives as `doorsmasterdoorleaf` and looking a
+    # leaf up by the name the manifest records finds nothing at all. The
+    # doors were built, exported and swung by code that could never find
+    # them, and the only symptom was that no door ever moved.
+    #
+    # A custom property survives as glTF `extras` and lands in three.js as
+    # `userData`, untouched. `export_extras` is already on. So the manifest
+    # names a door and the objects carry that name as data, which no loader
+    # is entitled to rewrite.
+    for obj in swinging:
+        obj["door"] = label
+        obj["door_part"] = "swinging"
+
     return fixed, swinging
 
 
@@ -224,7 +262,8 @@ class ExternalDoorFactory(OpeningFactory):
                         FRAME_FACE, depth, include_sill=False)
         materials.assign(joinery, self.frame_finish)
 
-        fixed, swinging = _hang(name, wall, frame, s0, s1, z0, z1,
+        fixed, swinging = _hang(name, opening.name or name, wall, frame,
+                                s0, s1, z0, z1,
                                 FRAME_FACE, self.leaf_finish, materials)
 
         return [joinery, *fixed, *swinging]
@@ -244,7 +283,8 @@ class InternalDoorFactory(OpeningFactory):
                        LINING_FACE, depth, include_sill=False)
         materials.assign(lining, self.frame_finish)
 
-        fixed, swinging = _hang(name, wall, frame, s0, s1, z0, z1,
+        fixed, swinging = _hang(name, opening.name or name, wall, frame,
+                                s0, s1, z0, z1,
                                 LINING_FACE, self.leaf_finish, materials)
 
         return [lining, *fixed, *swinging]
