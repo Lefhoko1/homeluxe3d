@@ -18,12 +18,14 @@ const LuxeHomePage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shopFilter, setShopFilter] = useState(null);
 
-  const { shops, productsByRoom, rooms, source, loading, error, refresh } =
-    useCatalog({ scene: '3bed', shopFilter });
-
   // Real identity, not `?admin=true`. The old parameter showed the admin
   // chrome to anyone who guessed it and granted nothing when they used it --
   // every write policy in the database resolves through auth.uid().
+  //
+  // READ BEFORE THE CATALOGUE, because it decides which catalogue. An admin
+  // sees the draft so their own edits appear as they make them; a visitor
+  // sees the last published snapshot, which is a house somebody decided to
+  // show them rather than whatever state a rearrangement is halfway through.
   const {
     isAdmin,
     isSignedIn,
@@ -32,6 +34,9 @@ const LuxeHomePage = () => {
     signIn,
     signOut,
   } = useAdmin();
+
+  const { shops, productsByRoom, rooms, source, loading, error, refresh } =
+    useCatalog({ scene: '3bed', shopFilter, live: isAdmin });
 
   // Land on a room that actually has something in it. Without this the page
   // can open on a room the scene has never heard of and show "coming soon"

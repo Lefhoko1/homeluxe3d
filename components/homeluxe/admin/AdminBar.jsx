@@ -32,6 +32,8 @@ const AdminBar = ({
   onDelete,
   onUpload,
   onManage,
+  onPublish,
+  publishing = false,
 }) => {
   const { mode, snap, lockY, hasSelection, isDirty, transform, advert } = state;
 
@@ -42,6 +44,20 @@ const AdminBar = ({
 
         <button type="button" className="admin-btn primary" onClick={onUpload}>
           ＋ Upload model
+        </button>
+        {/* PUBLISH. An admin sees the draft -- their own edits appear as they
+            make them -- and a visitor sees the last published snapshot. This
+            is the step between the two, and without a button for it the
+            separation is just a way of hiding an admin's work from everyone
+            including themselves. */}
+        <button
+          type="button"
+          className="admin-btn primary"
+          onClick={onPublish}
+          disabled={publishing}
+          title="Freeze the current layout as a new published version that visitors will see"
+        >
+          {publishing ? '⏳ Publishing…' : '🚀 Publish'}
         </button>
         <button type="button" className="admin-btn" onClick={onManage}>
           ☰ Manage

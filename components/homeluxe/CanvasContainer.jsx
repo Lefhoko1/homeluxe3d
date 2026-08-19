@@ -14,7 +14,7 @@ import {
 } from './house';
 import { loadProducts, loadOneProduct, disposeProducts, advertFor } from './products';
 import { applyFinishes } from './house/textures/finishOverrides';
-import { recordEvent } from '../../lib/catalog/repository';
+import { publishScene, recordEvent } from '../../lib/catalog/repository';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import { createLighting } from './lighting/Lighting';
@@ -814,6 +814,31 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     if (tone !== 'bad') setTimeout(() => setAdminMessage(null), 3500);
   }, []);
 
+  /**
+   * Freeze the draft as a new published version.
+   *
+   * The database checks the permission -- `publish_scene` is security definer
+   * and asks for `scene.publish` itself -- so this only has to report what
+   * happened. It also refuses to publish an empty house, which surfaces here
+   * as a plain error rather than as a blank house for every visitor.
+   */
+  const [publishing, setPublishing] = useState(false);
+  const handlePublish = useCallback(async () => {
+    setPublishing(true);
+    try {
+      const row = await publishScene('3bed');
+      say(
+        `Published version ${row?.version ?? '?'} — ` +
+        `${row?.placement_count ?? 0} item(s) now live for visitors.`
+      );
+    } catch (error) {
+      say(`Could not publish: ${error.message}`, 'bad');
+    } finally {
+      setPublishing(false);
+    }
+  }, [say]);
+
+
   const handleSave = useCallback(async () => {
     const editor = editorRef.current;
     const node = pickedNodeRef.current;
@@ -1123,6 +1148,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           onDelete={handleDelete}
           onUpload={() => setShowUpload(true)}
           onManage={() => setShowList(true)}
+          onPublish={handlePublish}
+          publishing={publishing}
         />
       </AdminGate>
 
