@@ -75,6 +75,7 @@ CATEGORIES = [
     ("roofing", "Roofing", "finish", 240),
     ("window", "Windows", "object", 250),
     ("door", "Doors", "object", 260),
+    ("hardware", "Door & Window Hardware", "object", 270),
 ]
 
 PLANS = [
@@ -487,6 +488,52 @@ def main() -> int:
     w(f"from scenes sc where sc.slug = {q(SCENE_SLUG)}")
     w("on conflict (scene_id, code) do nothing;")
     w("")
+
+    # -- Any other surface the catalogue dresses ---------------------------
+    #
+    # Floors and walls above are derived from the PLAN, because those surfaces
+    # exist whether or not anybody sells something for them. This covers the
+    # rest: a finish placement naming a surface that is neither, which today
+    # means door hardware.
+    #
+    # DERIVED FROM THE CATALOGUE RATHER THAN LISTED. The first version of this
+    # seeded floors and walls and nothing else, so adding the hinge produced a
+    # product in the database, a variant supplying `hinge_black`, and no slot
+    # for it to fill -- the placement count did not move and the hinge never
+    # appeared. A new KIND of finish should not need a new section here.
+    other = {}
+    for pl in all_placements:
+        if not pl.get("isFinish"):
+            continue
+        surface = pl.get("surface")
+        if not surface or surface.startswith("wall.") or surface.startswith("tile_"):
+            continue
+        product = by_product.get(pl["product"], {})
+        other[(pl["room"], surface)] = product.get("category", "decor")
+
+    if other:
+        w("-- Fitting slots: surfaces the catalogue dresses that are neither a")
+        w("-- floor nor a wall. Door hardware, today.")
+        w("insert into placement_slots (scene_id, room_id, code, label,"
+          " category_code,")
+        w("                             kind, room_type, material_name)")
+        w("select sc.id, r.id, v.code, v.label, v.cat,")
+        w("       'finish'::product_kind, r.room_type, v.material")
+        w("from scenes sc")
+        w("join (values")
+        rows = []
+        for (room, surface), category in sorted(other.items()):
+            rows.append(
+                f"  ({q(room)}, {q('fitting-' + room + '-' + surface)}, "
+                f"{q(surface.replace('_', ' ').title())}, {q(category)}, {q(surface)})"
+            )
+        w(",\n".join(rows))
+        w(") as v(room_code, code, label, cat, material) on true")
+        w("join rooms r on r.scene_id = sc.id and r.code = v.room_code")
+        w(f"where sc.slug = {q(SCENE_SLUG)}")
+        w("on conflict (scene_id, code) do update set"
+          " material_name = excluded.material_name;")
+        w("")
 
     # -- Finish placements -------------------------------------------------
     # A finish slot names a MATERIAL; a finish product SUPPLIES one. Matching

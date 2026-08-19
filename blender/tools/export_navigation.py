@@ -32,6 +32,10 @@ from houseluxe.export.collision_json import (               # noqa: E402
     report as collision_report,
     write_manifest as write_collision_manifest,
 )
+from houseluxe.export.doors_json import (                   # noqa: E402
+    report as doors_report,
+    write_manifest as write_doors_manifest,
+)
 from houseluxe.export.tour_json import (                    # noqa: E402
     report as tour_report,
     verify as verify_tour,
@@ -40,6 +44,7 @@ from houseluxe.export.tour_json import (                    # noqa: E402
 
 COLLISION_PATH = os.path.join(_REPO, "public", "models", "house", "collision.json")
 TOUR_PATH = os.path.join(_REPO, "public", "models", "tour", "tour.json")
+DOORS_PATH = os.path.join(_REPO, "public", "models", "house", "doors.json")
 CATALOG_PATH = os.path.join(_REPO, "public", "models", "products", "catalog.json")
 
 
@@ -96,6 +101,9 @@ def main() -> int:
 
     collision = write_collision_manifest(plan, COLLISION_PATH)
     print(collision_report(collision, COLLISION_PATH))
+
+    doors = write_doors_manifest(plan, DOORS_PATH)
+    print(doors_report(doors, DOORS_PATH))
 
     route = write_tour_manifest(
         plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture

@@ -9,6 +9,7 @@ import {
   disposeDracoLoader,
   createHouseMaterials,
   disposeHouseMaterials,
+  loadDoors,
   HOUSE_VIEWS,
 } from './house';
 import { loadProducts, loadOneProduct, disposeProducts, advertFor } from './products';
@@ -57,6 +58,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // the animation loop and never drawn by React.
   const walkVolumeRef = useRef(null);
   const showcaseRef = useRef(null);
+  const doorsRef = useRef(null);
+  // Cached because it only changes when an admin moves something.
+  const furnitureRectsRef = useRef([]);
   // Room extents, so a stop displaced by new furniture is re-seated inside
   // its own room rather than in the corridor outside it.
   const collisionRoomsRef = useRef([]);
@@ -272,9 +276,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           }
         });
 
-        // Surfaces worth testing. Floors today; walls once paint is sold and
-        // the wall meshes are split per room.
-        const surfaces = ['floors', 'wall_finishes']
+        // Surfaces worth testing. Floors, walls -- and DOORS, because the
+        // hinges hung on them wear a material Tubod sells, so a click on any
+        // hinge in the house has to trace back to that product the same way a
+        // click on a floor traces back to the tile.
+        const surfaces = ['floors', 'wall_finishes', 'doors']
           .map((id) => house.userData.parts?.[id])
           .filter(Boolean);
 
@@ -428,8 +434,26 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // the one part an admin can move after the fact.
         const collision = await loadCollision(house);
         const walkVolume = createWalkVolume({ fixed: collision?.walls ?? [] });
-        walkVolume.setDynamic(footprintsOf(group));
         walkVolumeRef.current = walkVolume;
+
+        // ---- Doors that open ---------------------------------------------
+        // Every hinged leaf is exported with its origin on its own hinge
+        // axis, so opening one is a rotation and nothing has to be rebuilt
+        // here. A leaf that is still shut is SOLID -- it joins the walk
+        // volume alongside the furniture -- which is what stops the tour
+        // walking through a closed door. See house/doors.js.
+        const doors = await loadDoors(house);
+        doorsRef.current = doors;
+
+        // The furniture is measured when it moves; the doors are measured
+        // every frame, because they are moving. Keeping the two apart means
+        // a Box3 per sofa is not recomputed sixty times a second to get the
+        // same answer.
+        furnitureRectsRef.current = footprintsOf(group);
+        walkVolume.setDynamic([
+          ...furnitureRectsRef.current,
+          ...(doors?.footprints() ?? []),
+        ]);
         collisionRoomsRef.current = collision?.rooms ?? [];
 
         // The yard: geometry the plan knows nothing about, so it cannot be in
@@ -493,11 +517,20 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // can never be found by pointing at something -- which is exactly why
         // it has to be listed here, or the tiles and the paint would be the
         // one advertised thing a walk-through never shows.
+        // A finish is advertised on a surface, and WHICH surface decides where
+        // the tour has to look. Paint is on a wall, tile is underfoot, and a
+        // hinge is on a door at chest height -- aiming the camera at the floor
+        // for a hinge would show a visitor the one thing it is not on.
+        const finishKind = (spec) => {
+          if (spec.category === 'hardware') return 'fitting';
+          return /^wall/i.test(spec.surface ?? '') ? 'wall' : 'floor';
+        };
+
         const finishAdverts = finishSpecs
           .filter((spec) => spec.product && spec.room && spec.room !== 'exterior')
           .map((spec) => ({
             room: spec.room,
-            kind: /^wall/i.test(spec.surface ?? '') ? 'wall' : 'floor',
+            kind: finishKind(spec),
             advert: {
               ...advertFor(spec.product, { room: spec.room }),
               isFinish: true,
@@ -519,6 +552,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           fittings,
           rooms: collision?.rooms ?? [],
           ceiling: collision?.ceiling ?? 2.4,
+          // Where the hinges are: on the doors. Taken from the same manifest
+          // that swings them, in world metres.
+          doors: (doors?.points?.() ?? []),
         });
 
         // The solved route through the house. House-local in the manifest,
@@ -597,6 +633,26 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         clampCameraToInterior();
       }
 
+      // ---- Doors ---------------------------------------------------------
+      // Whoever is "at" the door is the character while the tour is walking,
+      // and what the camera is looking at while it is not -- orbit close to a
+      // doorway and it should open, or the house reads as sealed.
+      //
+      // The volume is refreshed from them every frame because a door that has
+      // just swung clear has to stop blocking on the SAME frame the walk sees
+      // it. A door is four numbers; the furniture is cached beside it.
+      const doorsNow = doorsRef.current;
+      if (doorsNow) {
+        doorsNow.update(
+          delta,
+          tourRef.current?.active ? tourRef.current.position : orbitControls.target
+        );
+        walkVolumeRef.current?.setDynamic([
+          ...furnitureRectsRef.current,
+          ...doorsNow.footprints(),
+        ]);
+      }
+
       atmosphere.update(delta);
 
       // Keep the sky centred on the viewer so it can never be reached.
@@ -632,6 +688,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       tourRef.current = null;
       walkVolumeRef.current = null;
       showcaseRef.current = null;
+      doorsRef.current = null;
+      furnitureRectsRef.current = [];
       collisionRoomsRef.current = [];
       disposeCharacter(characterRef.current);
       characterRef.current = null;
@@ -740,7 +798,14 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
    * and, worse, is blocked by empty floor where it used to be.
    */
   const remeasureFurniture = useCallback(() => {
-    walkVolumeRef.current?.setDynamic(footprintsOf(productsRef.current));
+    furnitureRectsRef.current = footprintsOf(productsRef.current);
+    walkVolumeRef.current?.setDynamic([
+      ...furnitureRectsRef.current,
+      // The doors go back in with them. Rebuilding the dynamic list from the
+      // furniture alone would quietly leave every closed door walk-through
+      // until the next frame put them back.
+      ...(doorsRef.current?.footprints() ?? []),
+    ]);
   }, []);
 
   /** Transient toolbar message. Errors stay; confirmations fade. */

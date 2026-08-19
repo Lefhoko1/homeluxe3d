@@ -75,11 +75,42 @@ const WALL_LOOK_HEIGHT = 1.5;
  * showing is the one they are NOT already next to, and the patch of floor
  * worth showing is the one in front of them rather than under their feet.
  */
-function surfaceTargets(room, from, finishes, fittings, ceiling) {
+function surfaceTargets(room, from, finishes, fittings, ceiling, doors) {
   const targets = [];
 
   const floorFinish = finishes.find((f) => f.kind === "floor");
   const wallFinish = finishes.find((f) => f.kind === "wall");
+  const fitting = finishes.find((f) => f.kind === "fitting");
+
+  // ---- Door hardware ----------------------------------------------------
+  // A hinge is 100mm of black metal on the edge of a door. It is advertised
+  // like a finish -- it dresses something the house already has -- but unlike
+  // paint it is not on a wall and unlike tile it is not underfoot, so it
+  // needs its own aim or the tour shows a visitor the floor and calls it a
+  // hinge. The nearest door to where the visitor is standing is the one they
+  // can actually see.
+  if (fitting && doors?.length) {
+    let nearest = null;
+    let bestD = Infinity;
+    doors.forEach((door) => {
+      const d = (door.x - from.x) ** 2 + (door.z - from.z) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        nearest = door;
+      }
+    });
+    if (nearest) {
+      targets.push({
+        kind: "fitting",
+        point: new THREE.Vector3(nearest.x, nearest.y, nearest.z),
+        // Longer than a surface: it is a small object and the camera has to
+        // travel before it is worth looking at.
+        dwell: PRODUCT_DWELL,
+        advert: fitting.advert,
+        caption: fitting.advert?.name ?? "Door hardware",
+      });
+    }
+  }
 
   // ---- The floor -------------------------------------------------------
   // Aimed a stride ahead rather than at the feet: looking straight down is
@@ -139,11 +170,11 @@ function surfaceTargets(room, from, finishes, fittings, ceiling) {
   // way the visitor looks UP, which is the one direction a walk-through
   // otherwise never shows -- and the ceiling and its lights are part of what
   // the house is offering.
-  const fitting = fittings.find((light) => light.room === room?.room);
-  if (fitting) {
+  const lightFitting = fittings.find((light) => light.room === room?.room);
+  if (lightFitting) {
     targets.push({
       kind: "light",
-      point: fitting.point.clone(),
+      point: lightFitting.point.clone(),
       dwell: SURFACE_DWELL,
       advert: null,
       caption: "Ceiling light",
@@ -172,6 +203,8 @@ function surfaceTargets(room, from, finishes, fittings, ceiling) {
  * @param {Array} options.fittings  `{room, point}` in WORLD metres
  * @param {Array} options.rooms     from the collision manifest, world metres
  * @param {number} options.ceiling  ceiling height, metres
+ * @param {Array} options.doors     `{label, x, y, z}` hinge positions, world
+ *        metres -- where a door-hardware advert is aimed
  */
 export function createShowcase({
   products = null,
@@ -179,6 +212,7 @@ export function createShowcase({
   fittings = [],
   rooms = [],
   ceiling = 2.4,
+  doors = [],
 } = {}) {
   const roomsByName = new Map(rooms.map((room) => [room.room, room]));
 
@@ -233,7 +267,7 @@ export function createShowcase({
       const roomFinishes = finishes.filter((f) => f.room === roomName);
       const targets = [
         ...objects,
-        ...surfaceTargets(room, here, roomFinishes, fittings, ceiling),
+        ...surfaceTargets(room, here, roomFinishes, fittings, ceiling, doors),
       ];
 
       // Trim rather than rush. See MAX_STOP_SECONDS.

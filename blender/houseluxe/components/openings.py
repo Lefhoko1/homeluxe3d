@@ -23,12 +23,17 @@ from ..config.plan import Opening, OpeningKind, Wall
 from ..materials.library import MaterialLibrary
 
 # Joinery dimensions. Millimetres, as everywhere.
-FRAME_FACE = 60.0        # visible width of a frame member
-FRAME_DEPTH = 120.0      # how far the frame reaches through the wall
-GLASS_THICKNESS = 8.0
-LEAF_THICKNESS = 40.0
-LINING_FACE = 30.0
-SASH_FACE = 45.0
+# One home for these, because the door exporter needs them too and cannot
+# import this module -- it has to run without Blender. See config/joinery.py.
+from ..config.joinery import (  # noqa: F401
+    AXIS_OFFSET,
+    FRAME_DEPTH,
+    FRAME_FACE,
+    GLASS_THICKNESS,
+    LEAF_THICKNESS,
+    LINING_FACE,
+    SASH_FACE,
+)
 
 
 def _piece(
@@ -153,6 +158,58 @@ class SlidingDoorFactory(OpeningFactory):
         return [joinery, glass]
 
 
+def _hang(name, wall, frame, s0, s1, z0, z1, face, leaf_finish, materials):
+    """Build a leaf, hang it on three hinges, and pivot it about them.
+
+    THE ORIGIN IS THE HINGE AXIS, and that is the whole reason this exists.
+    Every other object in this house is built in world millimetres with its
+    origin left at zero, because nothing else moves. A door does: three.js
+    swings it, and it can only swing about its own origin. Put the origin
+    anywhere else and the leaf orbits a point in the middle of the room.
+
+    THE HINGE SIDE IS THE s0 END, always. Which side a real door is hung on is
+    a decision made on site and recorded nowhere in this plan, so picking the
+    same end every time is the only answer that cannot silently disagree with
+    the manifest the browser reads. `doors_json` derives the axis the same way
+    from the same numbers.
+
+    @returns (fixed, swinging) -- objects for the frame, objects for the leaf
+    """
+    from .hardware import build_hinge, hinge_points
+
+    leaf_s0 = s0 + face
+    leaf_s1 = s1 - face
+    leaf_z1 = z1 - face
+
+    leaf = _piece(f"{name}.leaf", frame, leaf_s0, leaf_s1, z0, leaf_z1,
+                  LEAF_THICKNESS)
+    materials.assign(leaf, leaf_finish)
+
+    # The axis: on the hinge-side edge of the leaf, set out from the face of
+    # the door by the knuckle so the leaf can swing clear of the lining.
+    axis_s = leaf_s0
+    axis_t = AXIS_OFFSET
+    ax, ay = frame.point(axis_s, axis_t)
+
+    fixed = []
+    swinging = [leaf]
+
+    for z in hinge_points(z0, leaf_z1):
+        frame_side, leaf_side = build_hinge(
+            f"{name}.hinge{int(z)}", ax, ay, z,
+            along=frame.along, across=frame.across, materials=materials,
+        )
+        fixed.extend(frame_side)
+        swinging.extend(leaf_side)
+
+    # Everything that swings pivots about the same point, so the leaf and the
+    # hinge plates screwed to it stay together when three.js turns them.
+    for obj in swinging:
+        meshutil.set_origin(obj, ax, ay, 0.0)
+
+    return fixed, swinging
+
+
 class ExternalDoorFactory(OpeningFactory):
     """Solid timber entry door in an aluminium frame."""
 
@@ -167,15 +224,10 @@ class ExternalDoorFactory(OpeningFactory):
                         FRAME_FACE, depth, include_sill=False)
         materials.assign(joinery, self.frame_finish)
 
-        leaf = _piece(
-            f"{name}.leaf", frame,
-            s0 + FRAME_FACE, s1 - FRAME_FACE,
-            z0, z1 - FRAME_FACE,
-            LEAF_THICKNESS,
-        )
-        materials.assign(leaf, self.leaf_finish)
+        fixed, swinging = _hang(name, wall, frame, s0, s1, z0, z1,
+                                FRAME_FACE, self.leaf_finish, materials)
 
-        return [joinery, leaf]
+        return [joinery, *fixed, *swinging]
 
 
 class InternalDoorFactory(OpeningFactory):
@@ -192,15 +244,10 @@ class InternalDoorFactory(OpeningFactory):
                        LINING_FACE, depth, include_sill=False)
         materials.assign(lining, self.frame_finish)
 
-        leaf = _piece(
-            f"{name}.leaf", frame,
-            s0 + LINING_FACE, s1 - LINING_FACE,
-            z0, z1 - LINING_FACE,
-            LEAF_THICKNESS,
-        )
-        materials.assign(leaf, self.leaf_finish)
+        fixed, swinging = _hang(name, wall, frame, s0, s1, z0, z1,
+                                LINING_FACE, self.leaf_finish, materials)
 
-        return [lining, leaf]
+        return [lining, *fixed, *swinging]
 
 
 class DoorwayFactory(OpeningFactory):

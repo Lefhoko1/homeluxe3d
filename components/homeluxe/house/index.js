@@ -27,3 +27,5 @@ export {
   createHouseMaterials,
   disposeHouseMaterials,
 } from "./textures/materialLibrary";
+
+export { loadDoors, DOORS_MANIFEST_URL } from "./doors";

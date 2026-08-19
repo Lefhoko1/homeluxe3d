@@ -16,6 +16,10 @@ manifest with its price, SKU and swatch.
 
 from __future__ import annotations
 
+from ....components.hardware import (
+    LEAF_HEIGHT as HINGE_HEIGHT,
+    LEAF_WIDTH as HINGE_LEAF_WIDTH,
+)
 from ...product import (
     Dimensions,
     Product,
@@ -24,6 +28,7 @@ from ...product import (
     Shop,
     Variant,
 )
+
 
 SHOP = Shop(
     id="tubod",
@@ -230,5 +235,42 @@ PRODUCTS += [
             )
             for slug, label, hex_colour in PAINT_COLOURS
         ),
+    ),
+    Product(
+        id="door-hinge",
+        shop=SHOP,
+        category=ProductCategory.HARDWARE,
+        name="100mm Stainless Butt Hinge, Matte Black",
+        description=(
+            "Four-knuckle 100x75mm butt hinge with a fixed pin, in a matte "
+            "black powder coat. Stainless steel throughout, so it will not "
+            "rust in a bathroom or on an exterior door, and the coating is "
+            "cured rather than sprayed -- it does not chip off the knuckle "
+            "the first time a door is slammed. Countersunk for 8g screws, "
+            "four per leaf. Three per door leaf is the standard hang; two "
+            "will do for a light internal door under 2.1m."
+        ),
+        colour="Matte Black",
+        materials=("304 stainless steel", "Powder coat"),
+        price=89.0,                 # each
+        sku="TUBOD-HNG-100MB",
+        dimensions=Dimensions(HINGE_LEAF_WIDTH * 2, 12.0, HINGE_HEIGHT),
+        # A hinge belongs to a door, and every room in the house has one.
+        room_types=(),
+        thumbnail="/DoorHinge.png",
+        media=("/DoorHinge.png",),
+        # NO MODEL OF ITS OWN, and that is the same decision the tiles make.
+        # A hinge is not stood somewhere: it is screwed to a door, and
+        # `components/openings.py` fits three to every leaf in the house using
+        # `components/hardware.build_hinge`. Exporting a second, standalone
+        # hinge would be a copy that can drift from the ones actually hung --
+        # and, worse, a product carrying BOTH a model and a material reads as
+        # an object to the app, which would stand one at the house origin.
+        build=None,
+        # THE LINK THAT MAKES EVERY HINGE IN THE HOUSE AN ADVERT. Each hinge
+        # hung on each door wears this material, so a click on any of them
+        # traces back to this product -- the same mechanism that makes a floor
+        # tile answerable to the shop that supplied it.
+        material="hinge_black",
     ),
 ]

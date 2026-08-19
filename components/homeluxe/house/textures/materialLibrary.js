@@ -565,6 +565,18 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
     })
   );
 
+  // Tubod's butt hinge. Powder coat, so it scatters: a mirror finish in a
+  // doorway catches every light in the house and reads as a mistake.
+  materials.set(
+    "hinge_black",
+    new THREE.MeshStandardMaterial({
+      name: "hinge_black",
+      color: 0x0e1013,
+      roughness: 0.52,
+      metalness: 0.55,
+    })
+  );
+
   const quiltKnit = createQuiltedKnitTexture();
   materials.set(
     "bed_quilt_pearl",

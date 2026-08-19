@@ -39,6 +39,7 @@ const read = (...parts) => JSON.parse(readFileSync(join(PUBLIC, ...parts), "utf8
 
 const collision = read("house", "collision.json");
 const lights = read("house", "lights.json");
+const doorsManifest = read("house", "doors.json");
 const catalog = read("products", "catalog.json");
 const route = read("tour", "tour.json");
 
@@ -75,17 +76,29 @@ placements
   });
 
 // ---- The finishes, as CanvasContainer maps them --------------------------
+// Same classification, and it has to STAY the same: a finish aimed at the
+// wrong surface shows a visitor the floor and calls it a hinge.
+const finishKind = (placement) => {
+  if (products.get(placement.product)?.category === "hardware") return "fitting";
+  return /^wall/i.test(placement.surface ?? "") ? "wall" : "floor";
+};
+
 const finishes = placements
   .filter((placement) => placement.isFinish && placement.room !== "exterior")
   .map((placement) => ({
     room: placement.room,
-    kind: /^wall/i.test(placement.surface ?? "") ? "wall" : "floor",
+    kind: finishKind(placement),
     advert: {
       productId: placement.product,
       name: products.get(placement.product)?.name ?? placement.product,
       isFinish: true,
     },
   }));
+
+// Where the hinges are, so a door-hardware advert has something to aim at.
+const doorPoints = doorsManifest.doors.map((d) => ({
+  label: d.label, x: d.hinge[0], y: 1.04, z: d.hinge[1],
+}));
 
 const fittings = lights.lights.map((light) => ({
   room: light.room,
@@ -109,6 +122,7 @@ const showcase = createShowcase({
   fittings,
   rooms,
   ceiling: collision.ceiling_m,
+  doors: doorPoints,
 });
 
 // ---- Walk the route's stops ----------------------------------------------
@@ -156,7 +170,25 @@ stops.forEach((stop) => {
     missed.map((f) => `${f.advert.productId} in ${f.room}`), [],
     "a finish was placed in a room the tour never shows it in"
   );
-  console.log(`  finishes: all ${finishes.length} placed finish(es) are shown`);
+
+  // Door hardware has to be aimed AT A DOOR. Falling back to the floor aim
+  // would still count as "shown" above while showing the wrong thing.
+  const fittings = [...shown.values()].flat().filter((t) => t.kind === "fitting");
+  fittings.forEach((target) => {
+    const onADoor = doorPoints.some(
+      (d) => Math.hypot(d.x - target.point.x, d.z - target.point.z) < 0.01
+    );
+    assert.ok(
+      onADoor,
+      `${target.caption} is aimed at ${target.point.x.toFixed(2)}, ` +
+      `${target.point.z.toFixed(2)}, which is not a door`
+    );
+  });
+
+  console.log(
+    `  finishes: all ${finishes.length} placed finish(es) are shown ` +
+    `(${fittings.length} aimed at a door)`
+  );
 }
 
 // ---- 3. Every stop is a real pause, and none is a stand ------------------

@@ -124,6 +124,9 @@ class ProductCategory(str, Enum):
     DECOR = "decor"
     RUG = "rug"
 
+    # Fittings screwed to the building rather than standing in it
+    HARDWARE = "hardware"
+
     # Fixtures plumbed or built in
     BATH = "bath"
     BASIN = "basin"

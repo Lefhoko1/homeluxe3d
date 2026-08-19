@@ -42,6 +42,10 @@ from houseluxe.export.collision_json import (  # noqa: E402
     report as collision_report,
     write_manifest as write_collision_manifest,
 )
+from houseluxe.export.doors_json import (  # noqa: E402
+    report as doors_report,
+    write_manifest as write_doors_manifest,
+)
 from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
 from houseluxe.export.lights_json import (  # noqa: E402
     report as lights_report,
@@ -68,6 +72,7 @@ TREES_PATH = os.path.join(SITE_MODEL_DIR, "trees.json")
 TOUR_PATH = os.path.join(TOUR_MODEL_DIR, "tour.json")
 LIGHTS_PATH = os.path.join(MODEL_DIR, "lights.json")
 COLLISION_PATH = os.path.join(MODEL_DIR, "collision.json")
+DOORS_PATH = os.path.join(MODEL_DIR, "doors.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
@@ -197,6 +202,12 @@ def main(
         # doorway. See export/collision_json.py.
         collision = write_collision_manifest(plan, COLLISION_PATH)
         print(collision_report(collision, COLLISION_PATH))
+
+        # Which leaf swings about which axis. The GLB cannot say -- a door is
+        # a slab of geometry like any other -- so the plan says instead. See
+        # export/doors_json.py.
+        doors = write_doors_manifest(plan, DOORS_PATH)
+        print(doors_report(doors, DOORS_PATH))
 
         # The guided walk-through, solved over the plan's own walls and
         # doorways so it cannot route through one. See export/tour_json.py.

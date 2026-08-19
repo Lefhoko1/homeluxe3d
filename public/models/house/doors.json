@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "scene": "3bed",
+  "doors": [
+    {
+      "leaf": "doors.entry.front_door.leaf",
+      "hinge_prefix": "doors.entry.front_door.hinge",
+      "label": "entry.front_door",
+      "kind": "door_external",
+      "exterior": true,
+      "hinge": [
+        6.04,
+        -0.089
+      ],
+      "along": [
+        -1.0,
+        -0.0
+      ],
+      "width_m": 0.88,
+      "height_m": 2.04
+    },
+    {
+      "leaf": "doors.ensuite.door.leaf",
+      "hinge_prefix": "doors.ensuite.door.hinge",
+      "label": "ensuite.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        1.859,
+        -2.545
+      ],
+      "along": [
+        0.0,
+        -1.0
+      ],
+      "width_m": 0.71,
+      "height_m": 2.07
+    },
+    {
+      "leaf": "doors.master.door.leaf",
+      "hinge_prefix": "doors.master.door.hinge",
+      "label": "master.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        5.569,
+        -3.935
+      ],
+      "along": [
+        0.0,
+        -1.0
+      ],
+      "width_m": 0.76,
+      "height_m": 2.07
+    },
+    {
+      "leaf": "doors.bed3.door.leaf",
+      "hinge_prefix": "doors.bed3.door.hinge",
+      "label": "bed3.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        2.22,
+        -8.171
+      ],
+      "along": [
+        1.0,
+        -0.0
+      ],
+      "width_m": 0.76,
+      "height_m": 2.07
+    },
+    {
+      "leaf": "doors.bathroom.door.leaf",
+      "hinge_prefix": "doors.bathroom.door.hinge",
+      "label": "bathroom.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        3.645,
+        -8.171
+      ],
+      "along": [
+        1.0,
+        -0.0
+      ],
+      "width_m": 0.71,
+      "height_m": 2.07
+    },
+    {
+      "leaf": "doors.wc.door.leaf",
+      "hinge_prefix": "doors.wc.door.hinge",
+      "label": "wc.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        5.945,
+        -8.171
+      ],
+      "along": [
+        1.0,
+        -0.0
+      ],
+      "width_m": 0.71,
+      "height_m": 2.07
+    },
+    {
+      "leaf": "doors.bed2.door.leaf",
+      "hinge_prefix": "doors.bed2.door.hinge",
+      "label": "bed2.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        7.929,
+        -8.565
+      ],
+      "along": [
+        0.0,
+        -1.0
+      ],
+      "width_m": 0.76,
+      "height_m": 2.07
+    },
+    {
+      "leaf": "doors.laundry.door.leaf",
+      "hinge_prefix": "doors.laundry.door.hinge",
+      "label": "laundry.door",
+      "kind": "door_internal",
+      "exterior": false,
+      "hinge": [
+        11.059,
+        -6.36
+      ],
+      "along": [
+        0.0,
+        -1.0
+      ],
+      "width_m": 0.71,
+      "height_m": 2.07
+    }
+  ]
+}

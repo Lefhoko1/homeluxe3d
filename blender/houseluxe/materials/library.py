@@ -107,6 +107,13 @@ FINISHES: dict[str, Finish] = {
     "bed_border_ash":  Finish("bed_border_ash",  (0.376, 0.388, 0.408), roughness=0.86),
     "bed_base_slate":  Finish("bed_base_slate",  (0.204, 0.216, 0.235), roughness=0.92),
 
+    # Tubod's butt hinge. Matte black powder coat, not chrome -- the
+    # photograph shows a finish that scatters rather than mirrors, and a
+    # metallic hinge in a doorway catches every light in the house and reads
+    # as a mistake.
+    "hinge_black":     Finish("hinge_black",     (0.055, 0.058, 0.063),
+                              roughness=0.52, metallic=0.55),
+
     # -- Tubod wall finishes -----------------------------------------------
     # Fallback colours only. The textured coating is generated in three.js and
     # tinted per variant; these keep a Blender render honest.

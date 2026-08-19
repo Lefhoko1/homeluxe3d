@@ -136,4 +136,27 @@ WALL_FINISHES = [
               note="Bathroom walls in satin white tile."),
 ]
 
-PLACEMENTS = LIVING_ROOM + MASTER_BEDROOM + FLOOR_FINISHES + WALL_FINISHES
+# --------------------------------------------------------------------------
+# Door hardware.
+#
+# A hinge is not placed the way a sofa is. It is screwed to a door, every door
+# has three, and `components/openings.py` fits them as part of the joinery --
+# so there is nothing here to position.
+#
+# It is advertised the way a TILE is instead: the product names the material
+# its geometry wears, a click on any hinge in the house traces back to it, and
+# it appears in the room list for the room whose door it hangs. The hall is
+# where a visitor meets the most of them.
+# --------------------------------------------------------------------------
+DOOR_HARDWARE = [
+    Placement(
+        product_id="tubod.door-hinge",
+        house=HOUSE, room="hall",
+        surface="hinge_black",
+        note="Three per leaf on every hinged door in the house.",
+    ),
+]
+
+PLACEMENTS = (
+    LIVING_ROOM + MASTER_BEDROOM + FLOOR_FINISHES + WALL_FINISHES + DOOR_HARDWARE
+)

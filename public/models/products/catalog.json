@@ -611,6 +611,35 @@
           ],
           "defaultVariant": "chalk",
           "material": "paint_interior"
+        },
+        {
+          "id": "tubod.door-hinge",
+          "shop": "tubod",
+          "category": "hardware",
+          "name": "100mm Stainless Butt Hinge, Matte Black",
+          "description": "Four-knuckle 100x75mm butt hinge with a fixed pin, in a matte black powder coat. Stainless steel throughout, so it will not rust in a bathroom or on an exterior door, and the coating is cured rather than sprayed -- it does not chip off the knuckle the first time a door is slammed. Countersunk for 8g screws, four per leaf. Three per door leaf is the standard hang; two will do for a light internal door under 2.1m.",
+          "colour": "Matte Black",
+          "sku": "TUBOD-HNG-100MB",
+          "price": 89.0,
+          "effectivePrice": 89.0,
+          "currency": "BWP",
+          "roomTypes": [],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "304 stainless steel",
+            "Powder coat"
+          ],
+          "dimensions": {
+            "width": 88.0,
+            "depth": 12.0,
+            "height": 100.0
+          },
+          "material": "hinge_black",
+          "thumbnail": "/DoorHinge.png",
+          "media": [
+            "/DoorHinge.png"
+          ]
         }
       ]
     }
@@ -785,6 +814,15 @@
         "note": "Bathroom walls in satin white tile.",
         "isFinish": true,
         "surface": "wall.bathroom",
+        "variant": null,
+        "position": null
+      },
+      {
+        "product": "tubod.door-hinge",
+        "room": "hall",
+        "note": "Three per leaf on every hinged door in the house.",
+        "isFinish": true,
+        "surface": "hinge_black",
         "variant": null,
         "position": null
       }
