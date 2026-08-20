@@ -709,14 +709,14 @@
       {
         "product": "bears.slumberland-maharani-queen",
         "room": "master",
-        "note": "Head to the north wall, centred between the ensuite and the door.",
+        "note": "Head to the south wall, away from the door's swing.",
         "isFinish": false,
         "position": [
           3.74,
           0.0,
-          -3.89
+          -2.17
         ],
-        "rotationY": 0.0
+        "rotationY": 180.0
       },
       {
         "product": "tubod.pyc61001",

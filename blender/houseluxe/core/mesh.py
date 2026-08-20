@@ -10,9 +10,23 @@ from __future__ import annotations
 
 import math
 
-import bpy
-import bmesh
-from mathutils import Vector
+try:
+    import bpy
+    import bmesh
+    from mathutils import Vector
+except ModuleNotFoundError:                 # pragma: no cover
+    # THE DATA HALF OF THE CATALOGUE HAS TO BE READABLE WITHOUT BLENDER.
+    # `catalog/product.py` says so already and keeps bpy behind TYPE_CHECKING
+    # for exactly that reason: the plain-Python tools that solve the route and
+    # the collision model read the placements, and a module-level Blender
+    # import anywhere in the chain puts the whole catalogue out of their reach.
+    # It did -- `export_navigation.py` had to read the SHIPPED catalog.json
+    # instead of the catalogue, so moving a sofa in the source and re-solving
+    # the route without opening Blender quietly used the old position.
+    #
+    # Every function below needs Blender and will fail loudly without it.
+    # Being IMPORTABLE costs nothing.
+    bpy = bmesh = Vector = None
 
 from .units import m
 

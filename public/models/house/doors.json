@@ -3,38 +3,6 @@
   "scene": "3bed",
   "doors": [
     {
-      "label": "entry.front_door",
-      "motion": "swing",
-      "kind": "door_external",
-      "exterior": true,
-      "hinge": [
-        6.74,
-        -0.089
-      ],
-      "along": [
-        -1.0,
-        -0.0
-      ],
-      "width_m": 0.88,
-      "height_m": 2.04
-    },
-    {
-      "label": "garage.door",
-      "motion": "swing",
-      "kind": "door_internal",
-      "exterior": true,
-      "hinge": [
-        0.089,
-        -6.445
-      ],
-      "along": [
-        0.0,
-        -1.0
-      ],
-      "width_m": 0.71,
-      "height_m": 2.07
-    },
-    {
       "label": "dining.slider",
       "motion": "slide",
       "kind": "sliding_door",
@@ -51,6 +19,42 @@
       "width_m": 1.1625
     },
     {
+      "label": "entry.front_door",
+      "motion": "swing",
+      "kind": "door_external",
+      "exterior": true,
+      "hinge": [
+        6.74,
+        -0.089
+      ],
+      "along": [
+        -1.0,
+        -0.0
+      ],
+      "swing": -1,
+      "into": "living",
+      "width_m": 0.88,
+      "height_m": 2.04
+    },
+    {
+      "label": "garage.door",
+      "motion": "swing",
+      "kind": "door_internal",
+      "exterior": true,
+      "hinge": [
+        0.089,
+        -6.445
+      ],
+      "along": [
+        0.0,
+        -1.0
+      ],
+      "swing": 1,
+      "into": "garage",
+      "width_m": 0.71,
+      "height_m": 2.07
+    },
+    {
       "label": "ensuite.door",
       "motion": "swing",
       "kind": "door_internal",
@@ -63,6 +67,8 @@
         0.0,
         -1.0
       ],
+      "swing": 1,
+      "into": "ensuite",
       "width_m": 0.71,
       "height_m": 2.07
     },
@@ -79,6 +85,8 @@
         0.0,
         -1.0
       ],
+      "swing": 1,
+      "into": "master",
       "width_m": 0.76,
       "height_m": 2.07
     },
@@ -95,6 +103,8 @@
         1.0,
         -0.0
       ],
+      "swing": 1,
+      "into": "bed3",
       "width_m": 0.76,
       "height_m": 2.07
     },
@@ -111,6 +121,8 @@
         1.0,
         -0.0
       ],
+      "swing": 1,
+      "into": "bathroom",
       "width_m": 0.71,
       "height_m": 2.07
     },
@@ -127,6 +139,8 @@
         1.0,
         -0.0
       ],
+      "swing": 1,
+      "into": "wc",
       "width_m": 0.71,
       "height_m": 2.07
     },
@@ -143,6 +157,8 @@
         0.0,
         -1.0
       ],
+      "swing": -1,
+      "into": "bed2",
       "width_m": 0.76,
       "height_m": 2.07
     },
@@ -159,6 +175,8 @@
         0.0,
         -1.0
       ],
+      "swing": -1,
+      "into": "laundry",
       "width_m": 0.71,
       "height_m": 2.07
     }

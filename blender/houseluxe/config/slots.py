@@ -29,9 +29,11 @@ been wrong before the file was saved.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, replace
 
 from .plan import Room
+from .swing import swings as door_swings
 
 #: Which way a slot faces, by the wall it stands against. Rotation is degrees
 #: counter-clockwise about Z with 0 facing +Y (north), matching Placement.
@@ -213,6 +215,115 @@ def surfaces(room: Room, ceiling: float = 2400.0) -> list[Slot]:
              width=600.0, depth=600.0, height=300.0,
              priority=45, label=f"{room.label} ceiling light"),
     ]
+
+
+#: Slot kinds that are the room itself rather than a thing standing in it.
+SURFACE_KINDS = ("floor_surface", "wall_surface", "ceiling_light")
+
+
+def _facing(rotation: float) -> tuple[tuple[float, float], tuple[float, float]]:
+    """A slot's outward normal and the direction of the wall it backs onto.
+
+    Rotation is degrees about Z with 0 facing +Y, which works out as
+    `(sin, cos)` rather than the counter-clockwise `(-sin, cos)` -- check it
+    against FACING: a slot on the WEST wall is given 90 and has to face EAST,
+    into the room, and only one of the two conventions does that.
+    """
+    rad = math.radians(rotation)
+    normal = (math.sin(rad), math.cos(rad))
+    return normal, (normal[1], -normal[0])
+
+
+def avoid_swings(
+    slots: list[Slot],
+    plan,
+    step: float = 50.0,
+    limit: float = 2500.0,
+) -> tuple[list[Slot], list[str]]:
+    """Slide slots out of the quarter-circle any door sweeps through.
+
+    A DOOR SWING IS FLOOR THAT CANNOT BE SOLD, and it is precisely the floor a
+    run of slots wants: beside the doorway, backs to the wall. Every one of
+    this house's nine doors opened through something the first time the swings
+    were resolved -- a shower, two wardrobes, a bed, a WC pan, both laundry
+    appliances -- because nothing had ever asked.
+
+    Slots move ALONG THE WALL THEY BACK ONTO, never off it. A wardrobe pushed
+    into the middle of the room to dodge a door is not a wardrobe position; a
+    wardrobe 600mm further down the same wall still is. The smallest move that
+    works is taken, and a slot that cannot be cleared without leaving its wall
+    or climbing onto its neighbour is left where it is and REPORTED -- that is
+    a plan to fix, not an arithmetic problem to solve here.
+    """
+    leaves = [sw for sw in door_swings(plan) if sw.sign != 0]
+    if not leaves:
+        return list(slots), []
+
+    rooms = {r.name: r for r in plan.rooms}
+    settled: list[Slot] = []
+    problems: list[str] = []
+
+    def clear_of_doors(slot: Slot) -> bool:
+        return not any(sw.hits(slot.footprint) for sw in leaves)
+
+    def inside_room(slot: Slot) -> bool:
+        room = rooms.get(slot.room)
+        if room is None:
+            return True
+        x0, y0, x1, y1 = slot.footprint
+        return (x0 >= room.x0 - 1 and y0 >= room.y0 - 1
+                and x1 <= room.x1 + 1 and y1 <= room.y1 + 1)
+
+    def clashes(slot: Slot, others: list[Slot]) -> bool:
+        x0, y0, x1, y1 = slot.footprint
+        for other in others:
+            if other.id == slot.id or other.room != slot.room:
+                continue
+            if other.slot_type in SURFACE_KINDS:
+                continue
+            ox0, oy0, ox1, oy1 = other.footprint
+            if x0 < ox1 - 1 and ox0 < x1 - 1 and y0 < oy1 - 1 and oy0 < y1 - 1:
+                return True
+        return False
+
+    for slot in slots:
+        if slot.slot_type in SURFACE_KINDS or not slot.room:
+            settled.append(slot)
+            continue
+        if clear_of_doors(slot):
+            settled.append(slot)
+            continue
+
+        _, along = _facing(slot.rotation)
+        rest = [s for s in slots if s.id != slot.id]
+        moved = None
+
+        for k in range(1, int(limit / step) + 1):
+            for sign in (1, -1):
+                shift = step * k * sign
+                candidate = replace(
+                    slot,
+                    x=slot.x + along[0] * shift,
+                    y=slot.y + along[1] * shift,
+                )
+                if (clear_of_doors(candidate) and inside_room(candidate)
+                        and not clashes(candidate, rest)):
+                    moved = candidate
+                    break
+            if moved is not None:
+                break
+
+        if moved is None:
+            problems.append(
+                f"{slot.id}: a door sweeps through it and it cannot slide "
+                f"clear along its own wall -- move it in the plan, or hang "
+                f"that door the other way with Opening.swings_into"
+            )
+            settled.append(slot)
+        else:
+            settled.append(moved)
+
+    return settled, problems
 
 
 def check(slots: list[Slot], rooms: dict[str, Room]) -> list[str]:

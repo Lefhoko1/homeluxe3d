@@ -76,6 +76,22 @@ LIVING_ROOM = [
 # bed goes there and why saying so is worth a line: change the plan and put a
 # door in it, and this placement has to move.
 #
+# AND IT DID. The bedroom door used to open into the hall -- doors were hung
+# at run time, away from whoever approached them -- and now it opens into the
+# bedroom, which is where a bedroom door belongs and where the bed is. Fully
+# open, the leaf stands square to the east wall reaching to x 4,813, and the
+# bed's east edge was at 4,500: a 313mm gap, in a house whose walking
+# character is 520mm across. The whole west half of the room, the ensuite and
+# the walk-in robe were unreachable, and the route solver said so.
+#
+# Sliding it west only traded one pinch for another -- 780mm to the wardrobe
+# wall on the far side. The bed heads the SOUTH wall now, which is the wall
+# furthest from the door, and the room opens up: the same 1,720mm of clear
+# floor at the foot, measured from the other end, and the tour still stands at
+# the foot and looks back along the bed. `slots._head_wall` picks that wall
+# from the plan rather than from this comment, so the arrangement and the
+# inventory cannot drift apart. See config/swing.py.
+#
 # The queen is 1,520 x 1,880, so headed north it runs y 2,950..4,830 and
 # leaves 1,720mm of floor at the foot -- enough for the guided tour to stand
 # at the end of the bed and look back along it, which is the shot that sells a
@@ -85,8 +101,8 @@ MASTER_BEDROOM = [
     Placement(
         product_id="bears.slumberland-maharani-queen",
         house=HOUSE, room="master",
-        x=3740.0, y=3890.0, rotation=0.0,
-        note="Head to the north wall, centred between the ensuite and the door.",
+        x=3740.0, y=2170.0, rotation=180.0,
+        note="Head to the south wall, away from the door's swing.",
     ),
 ]
 

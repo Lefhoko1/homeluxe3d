@@ -40,7 +40,7 @@ from __future__ import annotations
 import json
 import os
 
-from ..config.kitchen import joinery_footprints
+from ..config.kitchen import all_joinery_footprints
 from ..core.wallmath import WallFrame, solid_spans
 
 #: The band of heights a walker occupies, in millimetres above floor level.
@@ -101,15 +101,12 @@ def joinery_rects(plan) -> list[dict]:
     across two walls of the densest room in the building.
     """
     rects = []
-    for room in plan.rooms:
-        if room.name != "kitchen":
-            continue
-        for i, (x0, y0, x1, y1) in enumerate(joinery_footprints(plan, room)):
-            rects.append({
-                "wall": f"kitchen.run{i}",
-                "part": "joinery",
-                "rect": _rect_mm_to_three(x0, y0, x1, y1),
-            })
+    for i, (x0, y0, x1, y1) in enumerate(all_joinery_footprints(plan)):
+        rects.append({
+            "wall": f"kitchen.run{i}",
+            "part": "joinery",
+            "rect": _rect_mm_to_three(x0, y0, x1, y1),
+        })
     return rects
 
 

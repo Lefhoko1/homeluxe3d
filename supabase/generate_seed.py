@@ -741,6 +741,47 @@ def main() -> int:
     w("                  and a.category_code is not distinct from d.category_code);")
     w("")
 
+    # -- Where the catalogue says a product actually stands ----------------
+    #
+    # THE RECONCILIATION FROZE THESE, AND IT WAS RIGHT TO AT THE TIME. When
+    # the authored slots first arrived, every live placement was moved onto
+    # one WITHOUT MOVING THE PRODUCT -- the products were already where they
+    # belonged and the slots were the new thing, so the coordinates were
+    # pinned with `coalesce` and nothing shifted a millimetre.
+    #
+    # That made the placement's own x/y authoritative for ever, which is the
+    # wrong way round. The catalogue is where a placement is authored; the
+    # database mirrors it, exactly as it mirrors the slots. The master bed had
+    # to move to the far wall when its door started opening into the room, and
+    # the seed happily left the database showing it in the old position.
+    w("-- The catalogue authors where a product stands; this mirrors it.")
+    w("-- Deliberately NOT a coalesce: the catalogue is the source, so a")
+    w("-- placement that moved there moves here. Anything placed by an")
+    w("-- operator in the admin screen has no row in this list and is left")
+    w("-- entirely alone.")
+    w("update placements p")
+    w("   set x_mm = v.x, y_mm = v.y, z_mm = v.z, rotation_deg = v.rot")
+    w("  from scenes sc, product_variants pv, products pr, shops sh, (values")
+    rows = []
+    for pl in placements:
+        x_m, _y_m, z_m = pl["position"]
+        shop_slug, product_slug = pl["product"].split(".", 1)
+        rows.append(
+            f"  ({q(shop_slug)}, {q(product_slug)}, "
+            f"{round(x_m * 1000.0, 1)}, {round(-z_m * 1000.0, 1)}, 0, "
+            f"{pl.get('rotationY', 0)})"
+        )
+    w(",\n".join(rows))
+    w(") as v(shop, product, x, y, z, rot)")
+    w(" where p.scene_id = sc.id and p.status = 'live'")
+    w(f"   and sc.slug = {q(SCENE_SLUG)}")
+    w("   and pv.id = p.variant_id and pr.id = pv.product_id")
+    w("   and sh.id = pr.shop_id")
+    w("   and sh.slug = v.shop and pr.slug = v.product")
+    w("   and (p.x_mm is distinct from v.x or p.y_mm is distinct from v.y")
+    w("        or p.rotation_deg is distinct from v.rot);")
+    w("")
+
     w("commit;")
     w("")
 

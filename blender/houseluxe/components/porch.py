@@ -7,7 +7,12 @@ those materials are decided. The porch is a location, not a material.
 
 from __future__ import annotations
 
-import bpy
+try:
+    import bpy
+except ModuleNotFoundError:                 # pragma: no cover
+    # Importable without Blender, so the plain-Python tools that solve the
+    # route and the collision model can read the catalogue. See core/mesh.py.
+    bpy = None
 
 from ..core import mesh as meshutil
 from ..core.component import BuildContext, Component

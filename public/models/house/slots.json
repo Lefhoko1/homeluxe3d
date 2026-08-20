@@ -833,9 +833,9 @@
       "position": [
         3.74,
         0.0,
-        -3.73
+        -2.33
       ],
-      "rotationY": 0.0,
+      "rotationY": 180.0,
       "size": [
         1.92,
         1.4,
@@ -854,7 +854,7 @@
       "position": [
         2.73,
         0.0,
-        -4.398
+        -1.662
       ],
       "rotationY": 0.0,
       "size": [
@@ -875,7 +875,7 @@
       "position": [
         4.75,
         0.0,
-        -4.398
+        -1.662
       ],
       "rotationY": 0.0,
       "size": [
@@ -896,7 +896,7 @@
       "position": [
         2.372,
         0.0,
-        -1.98
+        -4.08
       ],
       "rotationY": 90.0,
       "size": [
@@ -917,7 +917,7 @@
       "position": [
         5.0,
         0.0,
-        -1.95
+        -3.31
       ],
       "rotationY": 270.0,
       "size": [
@@ -1398,7 +1398,7 @@
       "label": "WC",
       "priority": 70,
       "position": [
-        4.555,
+        4.605,
         0.0,
         -8.6158
       ],
@@ -1545,7 +1545,7 @@
       "label": "Laundry appliance",
       "priority": 70,
       "position": [
-        11.525,
+        11.825,
         0.0,
         -7.295
       ],
@@ -1587,7 +1587,7 @@
       "label": "Laundry tub",
       "priority": 55,
       "position": [
-        12.055,
+        12.155,
         0.0,
         -6.148
       ],
@@ -1797,7 +1797,7 @@
       "label": "Garage storage",
       "priority": 65,
       "position": [
-        -0.8,
+        -1.2,
         0.0,
         -6.995
       ],
@@ -2709,6 +2709,48 @@
         0.6,
         0.3,
         0.6
+      ]
+    },
+    {
+      "id": "SLOT_WALL_EXTERIOR",
+      "room": "",
+      "roomLabel": "",
+      "roomType": null,
+      "type": "wall_surface",
+      "category": "paint",
+      "label": "Exterior walls",
+      "priority": 70,
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "rotationY": 0.0,
+      "size": [
+        0.0,
+        2.4,
+        0.0
+      ]
+    },
+    {
+      "id": "SLOT_DOOR_HARDWARE",
+      "room": "",
+      "roomLabel": "",
+      "roomType": null,
+      "type": "door_hardware",
+      "category": "hardware",
+      "label": "Door hardware",
+      "priority": 40,
+      "position": [
+        0.0,
+        1.04,
+        -0.0
+      ],
+      "rotationY": 0.0,
+      "size": [
+        0.1,
+        0.1,
+        0.044
       ]
     }
   ]

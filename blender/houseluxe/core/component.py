@@ -16,7 +16,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-import bpy
+try:
+    import bpy
+except ModuleNotFoundError:                 # pragma: no cover
+    # Importable without Blender, so the plain-Python tools that solve the
+    # route and the collision model can read the catalogue. See core/mesh.py.
+    bpy = None
 
 from ..config.plan import HousePlan
 from ..config.site import SiteSpec

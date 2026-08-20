@@ -38,7 +38,8 @@ import math
 import os
 from collections import deque
 
-from ..config.kitchen import joinery_footprints
+from ..config.kitchen import all_joinery_footprints
+from ..config.swing import FULL_OPEN, swings
 from ..config.plan import OpeningKind
 
 #: Grid resolution. 100mm resolves an 820mm doorway into eight cells, which is
@@ -258,6 +259,37 @@ def _furniture_rect(item, pad: float) -> tuple[float, float, float, float]:
     return (x - hx, y - hy, x + hx, y + hy)
 
 
+def _leaf_at_rest(leaf, clearance: float, room=None) -> tuple[float, float, float, float]:
+    """The rectangle a fully-open leaf stands in, padded for the walker.
+
+    Square to the wall and a little past it -- FULL_OPEN is 96 degrees -- so
+    this is a thin box reaching the leaf's own length into the room from the
+    hinge, which is exactly where a door in a real house gets in your way.
+
+    CLIPPED TO THE ROOM IT OPENS INTO, and that clip is not cosmetic. The
+    padding is applied to a bounding box, so it spills out through the wall the
+    door is hung in: the master bedroom's leaf was padding 179mm into the
+    living room next door, pinching a corridor that has nothing to do with it
+    and dragging the whole route's clearance from 300mm down to 220. A leaf
+    cannot obstruct the room on the other side of its own wall.
+    """
+    angle = math.radians(FULL_OPEN)
+    px, py = leaf.perp
+    dx = leaf.ux * math.cos(angle) + px * leaf.sign * math.sin(angle)
+    dy = leaf.uy * math.cos(angle) + py * leaf.sign * math.sin(angle)
+    ex, ey = leaf.ax + dx * leaf.leaf, leaf.ay + dy * leaf.leaf
+
+    x0 = min(leaf.ax, ex) - clearance
+    y0 = min(leaf.ay, ey) - clearance
+    x1 = max(leaf.ax, ex) + clearance
+    y1 = max(leaf.ay, ey) + clearance
+
+    if room is not None:
+        x0, y0 = max(x0, room.x0), max(y0, room.y0)
+        x1, y1 = min(x1, room.x1), min(y1, room.y1)
+    return (x0, y0, x1, y1)
+
+
 def build_grid(plan, furniture=()) -> Grid:
     """Occupancy for the whole plan: walls blocked, doorways open.
 
@@ -334,12 +366,41 @@ def build_grid(plan, furniture=()) -> Grid:
     #
     # Painted from the plan rather than passed in, exactly like the walls: a
     # caller cannot forget it and two callers cannot disagree about it.
-    for room in plan.rooms:
-        if room.name != "kitchen":
+    for x0, y0, x1, y1 in all_joinery_footprints(plan):
+        grid.paint(x0 - CLEARANCE, y0 - CLEARANCE,
+                   x1 + CLEARANCE, y1 + CLEARANCE, 1)
+
+    # OPEN DOORS. A door standing open is a 40mm slab of timber square to the
+    # wall, sticking three-quarters of a metre into the room right beside the
+    # opening -- and until the leaves became solid the route was solved as
+    # though it were not there. It ran straight through the leaf of every door
+    # it walked past, which is what "the doors do not collide" looked like
+    # from the outside.
+    #
+    # Painted where the leaf COMES TO REST rather than over its whole arc. A
+    # door is wide open long before anybody reaches it -- doors.js opens at
+    # 3m and the swing takes under a second -- so the arc is empty by the time
+    # the walk arrives, and blocking it would cost the route a quarter-circle
+    # of floor for a state nobody is ever standing in.
+    #
+    # PADDED TO THE WALKER, NOT TO THE ROUTE'S CLEARANCE, and that distinction
+    # decides whether the house is reachable at all. CLEARANCE is a comfort
+    # margin for walls; at 380mm each side of a 40mm leaf standing in an 820mm
+    # doorway it leaves a 20mm gap and seals the room -- the first run of this
+    # reported the master bedroom and bedroom 3 unreachable. A door leaf is
+    # something you brush past, and the only hard requirement is the one the
+    # walk itself enforces at run time: the walker's own radius. That is the
+    # same exception doorways already get, for the same reason, and `min` keeps
+    # it honest during the true-footprint verification pass where CLEARANCE
+    # drops to 1mm.
+    leaf_pad = min(CLEARANCE, WALKER_RADIUS)
+    rooms = {r.name: r for r in plan.rooms}
+    for leaf in swings(plan):
+        if leaf.sign == 0:
             continue
-        for x0, y0, x1, y1 in joinery_footprints(plan, room):
-            grid.paint(x0 - CLEARANCE, y0 - CLEARANCE,
-                       x1 + CLEARANCE, y1 + CLEARANCE, 1)
+        box = _leaf_at_rest(leaf, leaf_pad, rooms.get(leaf.into))
+        if box[2] > box[0] and box[3] > box[1]:
+            grid.paint(*box, 1)
 
     # Furniture last, and never over a doorway: a sofa is not a door, but a
     # rug placed across a threshold should not seal the room off either.

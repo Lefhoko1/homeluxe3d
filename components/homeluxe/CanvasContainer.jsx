@@ -454,6 +454,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // a Box3 per sofa is not recomputed sixty times a second to get the
         // same answer.
         furnitureRectsRef.current = footprintsOf(group);
+        // AND THE DOORS ARE TOLD WHAT IS IN THE ROOM. A leaf stops when it
+        // meets a sofa instead of swinging through it, and only the browser
+        // knows where the sofa actually is -- the placements come from the
+        // database, not from the plan the swing was set out in.
+        doors?.setObstacles(furnitureRectsRef.current);
         walkVolume.setDynamic([
           ...furnitureRectsRef.current,
           ...(doors?.footprints() ?? []),
@@ -819,6 +824,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
    */
   const remeasureFurniture = useCallback(() => {
     furnitureRectsRef.current = footprintsOf(productsRef.current);
+    // Something moved, so how far each door can open has changed with it --
+    // dragging a wardrobe in front of a bedroom door shortens that door's
+    // swing, and dragging it away gives the swing back.
+    doorsRef.current?.setObstacles(furnitureRectsRef.current);
     walkVolumeRef.current?.setDynamic([
       ...furnitureRectsRef.current,
       // The doors go back in with them. Rebuilding the dynamic list from the

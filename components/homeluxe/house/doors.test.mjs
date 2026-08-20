@@ -126,43 +126,68 @@ const furnitureRects = catalog.houses["3bed"]
 }
 
 // ---------------------------------------------------------------------------
-// 2. A door opens away from whoever is at it, and never into them.
+// 2. A door opens INTO THE ROOM IT SERVES, from either side.
+//
+// This used to assert the opposite rule: a door opened away from whoever
+// approached it, because the plan did not record which way it was hung. It is
+// a fair answer to "we do not know" and it has one consequence nobody wants --
+// opening away from the visitor means opening into whatever is on the OTHER
+// side, so the front door swung through the three-seater and every bedroom
+// door swept through its own wardrobe.
+//
+// The plan decides now, and this proves the decision survives the trip into
+// the browser: swing each leaf fully open, take the middle of it, and it must
+// be standing in the room the manifest named. That is the check that catches a
+// sign flip, and a sign flip is the only way this can go wrong -- the browser's
+// z axis is negated against the plan's y, so it is one minus sign between "the
+// door opens into the bedroom" and "the door opens into the corridor".
 // ---------------------------------------------------------------------------
 {
-  const entry = doorsManifest.doors.find((d) => d.motion === "swing");
+  const roomAt = (x, z) =>
+    rooms.find((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
 
-  for (const side of [1, -1]) {
+  const wrong = [];
+  for (const entry of doorsManifest.doors.filter((d) => d.motion === "swing")) {
     const set = createDoorSet([entry]);
     const door = set.doors[0];
-    // Stand a metre off the middle of the leaf, on one side then the other.
-    const cx = door.anchorX + door.alongX * door.width * 0.5;
-    const cz = door.anchorZ + door.alongZ * door.width * 0.5;
-    const viewer = {
-      x: cx + door.alongZ * side * 1.0,
-      z: cz - door.alongX * side * 1.0,
-    };
 
-    for (let i = 0; i < 120; i += 1) set.update(1 / 60, viewer);
+    // Stand right at it, from BOTH sides in turn, and it must go the same way.
+    const landings = [1, -1].map((side) => {
+      set.closeAll();
+      const cx = door.anchorX + door.alongX * door.width * 0.5;
+      const cz = door.anchorZ + door.alongZ * door.width * 0.5;
+      const viewer = {
+        x: cx + door.alongZ * side * 1.0,
+        z: cz - door.alongX * side * 1.0,
+      };
+      for (let i = 0; i < 120; i += 1) set.update(1 / 60, viewer);
 
-    assert.ok(door.openness > 0.99, "the door did not open for someone at it");
+      const a = door.angle;
+      const dx = door.alongX * Math.cos(a) + door.alongZ * Math.sin(a);
+      const dz = -door.alongX * Math.sin(a) + door.alongZ * Math.cos(a);
+      // The middle of the leaf, not its tip: a tip lands within millimetres
+      // of a wall and picks up whichever room rounding puts it in.
+      return roomAt(
+        door.anchorX + dx * door.width * 0.6,
+        door.anchorZ + dz * door.width * 0.6
+      )?.room;
+    });
 
-    // The free end after swinging, and whether it moved towards the visitor.
-    const a = door.angle;
-    const endX = door.anchorX + (door.alongX * Math.cos(a) + door.alongZ * Math.sin(a)) * door.width;
-    const endZ = door.anchorZ + (-door.alongX * Math.sin(a) + door.alongZ * Math.cos(a)) * door.width;
-    const closedEndX = door.anchorX + door.alongX * door.width;
-    const closedEndZ = door.anchorZ + door.alongZ * door.width;
-
-    const movedToward =
-      Math.hypot(endX - viewer.x, endZ - viewer.z) <
-      Math.hypot(closedEndX - viewer.x, closedEndZ - viewer.z);
-
-    assert.ok(
-      !movedToward,
-      `the door swung towards the visitor standing on side ${side}`
-    );
+    if (landings[0] !== landings[1]) {
+      wrong.push(`${entry.label} opens two different ways depending on who is at it`);
+    } else if (entry.into && landings[0] !== entry.into) {
+      wrong.push(
+        `${entry.label} should open into ${entry.into} but its leaf ends up ` +
+        `in ${landings[0] ?? "no room at all"}`
+      );
+    }
   }
-  console.log("  swing: away from the visitor, from either side");
+
+  assert.deepEqual(wrong, [], wrong.join("; "));
+  console.log(
+    `  swing: ${doorsManifest.doors.filter((d) => d.motion === "swing").length} ` +
+    `leaf/leaves open into the room they serve, from either side`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +288,77 @@ const furnitureRects = catalog.houses["3bed"]
   console.log(
     `  a shut door stops you ${(throughBy * 1000).toFixed(0)}mm short of it`
   );
+}
+
+// ---------------------------------------------------------------------------
+// 5. A door stops when it meets the furniture, and does not pass through it.
+//
+// THIS IS THE FAULT THAT STARTED ALL OF IT: doors opening straight through the
+// sofa. Making them open inward is only half the answer -- inward is where the
+// furniture is. A real door opens as far as it can and rests against whatever
+// stopped it, which is why doors in a crowded house stand at odd angles.
+//
+// Driven against the REAL catalogue placements, and it must hold for the leaf
+// at every angle on the way, not only where it comes to rest -- a leaf that
+// ends up clear having swept through a wardrobe on the way is exactly the bug.
+// ---------------------------------------------------------------------------
+{
+  const doors = createDoorSet(doorsManifest.doors);
+  doors.setObstacles(furnitureRects);
+
+  const inside = (x, z) =>
+    furnitureRects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+
+  const through = [];
+  for (const door of doors.doors) {
+    if (door.sliding) continue;
+    // Every angle it can reach, at 1 degree, along the whole leaf.
+    const steps = Math.max(1, Math.round((door.maxAngle * 180) / Math.PI));
+    for (let i = 0; i <= steps; i += 1) {
+      const a = door.sign * (door.maxAngle * i) / steps;
+      const dx = door.alongX * Math.cos(a) + door.alongZ * Math.sin(a);
+      const dz = -door.alongX * Math.sin(a) + door.alongZ * Math.cos(a);
+      for (const f of [0.3, 0.5, 0.7, 0.85, 1.0]) {
+        if (inside(door.anchorX + dx * door.width * f,
+                   door.anchorZ + dz * door.width * f)) {
+          through.push(`${door.label} at ${((a * 180) / Math.PI).toFixed(0)}deg`);
+          i = steps;
+          break;
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(through, [], `these leaves pass through furniture: ${through.join(", ")}`);
+
+  const stopped = doors.doors.filter((d) => !d.sliding && d.maxAngle < Math.PI / 2);
+  console.log(
+    `  furniture: no leaf passes through any of ${furnitureRects.length} piece(s)` +
+    (stopped.length
+      ? `; ${stopped.map((d) => `${d.label} rests at ${((d.maxAngle * 180) / Math.PI).toFixed(0)}deg`).join(", ")}`
+      : "; every door opens fully")
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 6. A door stopped by furniture still leaves room to walk through.
+//
+// The cost of a door that stops at the sofa is a door that might stop across
+// its own doorway, and the guided tour would then stand in front of it for
+// ever -- which looks exactly like the application having frozen, and is
+// strictly worse than the walking-through-furniture it replaced.
+// ---------------------------------------------------------------------------
+{
+  const doors = createDoorSet(doorsManifest.doors);
+  doors.setObstacles(furnitureRects);
+
+  const jammed = doors.doors.filter((d) => !d.sliding && d.blocked);
+  assert.deepEqual(
+    jammed.map((d) => `${d.label} opens only ${((d.maxAngle * 180) / Math.PI).toFixed(0)}deg`),
+    [],
+    "a door is held so nearly shut by furniture that nobody can get past it"
+  );
+  console.log("  passage: every obstructed door still opens wide enough to pass");
 }
 
 console.log("doors: ok");

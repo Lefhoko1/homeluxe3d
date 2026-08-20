@@ -29,7 +29,11 @@ if _BLENDER not in sys.path:
 
 from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER     # noqa: E402
 from houseluxe.config.slots import check as check_slots     # noqa: E402
-from houseluxe.config.slots_3bed import SLOTS               # noqa: E402
+from houseluxe.catalog import CATALOG                        # noqa: E402
+from houseluxe.config.slots_3bed import SLOTS, SWING_CONFLICTS  # noqa: E402
+from houseluxe.export.catalog_json import (                  # noqa: E402
+    write_manifest as write_catalog,
+)
 from houseluxe.export.collision_json import (               # noqa: E402
     report as collision_report,
     write_manifest as write_collision_manifest,
@@ -104,6 +108,20 @@ def furniture_footprints(plan):
 
 def main() -> int:
     plan = PLAN
+
+    # THE CATALOGUE FIRST, because everything after it is solved against the
+    # furniture. It used to be impossible to regenerate here: a module-level
+    # `import bpy` five files down the chain meant the catalogue could only be
+    # read inside Blender, so this tool fell back to the SHIPPED catalog.json
+    # and moving a sofa in the source then re-solving the route quietly used
+    # the sofa's old position. Those imports are guarded now -- see
+    # core/mesh.py -- and the drift is gone with them.
+    manifest = write_catalog(CATALOG, CATALOG_PATH)
+    print(f"catalog: {len(CATALOG.products)} product(s), "
+          f"{len(CATALOG.placements)} placement(s) in "
+          f"{len(manifest['houses'])} house(s)")
+    print(f"  {CATALOG_PATH}")
+
     furniture = furniture_footprints(plan)
 
     collision = write_collision_manifest(plan, COLLISION_PATH)
@@ -118,6 +136,16 @@ def main() -> int:
     slot_problems = check_slots(SLOTS, {r.name: r for r in plan.rooms})
     slots = write_slots_manifest(plan, SLOTS, SLOTS_PATH)
     print(slots_report(slots, slot_problems, SLOTS_PATH))
+
+    # Same report the full build gives, for the same reason: this tool exists
+    # to regenerate the navigation manifests without Blender, and a door that
+    # opens through a wardrobe is navigation.
+    if SWING_CONFLICTS:
+        print(f"  ! {len(SWING_CONFLICTS)} slot(s) sit in a door's swing:")
+        for problem in SWING_CONFLICTS:
+            print(f"      {problem}")
+    else:
+        print("  door swings: every slot is clear of every leaf")
 
     route = write_tour_manifest(
         plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture

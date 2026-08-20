@@ -33,7 +33,7 @@ from houseluxe.components.products import product_components  # noqa: E402
 from houseluxe.components.site import site_components  # noqa: E402
 from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER  # noqa: E402
 from houseluxe.config.slots import check as check_slots  # noqa: E402
-from houseluxe.config.slots_3bed import SLOTS  # noqa: E402
+from houseluxe.config.slots_3bed import SLOTS, SWING_CONFLICTS  # noqa: E402
 from houseluxe.config.site_3bed import SITE  # noqa: E402
 from houseluxe.core.scene import SceneBuilder, purge_scene  # noqa: E402
 from houseluxe.export.catalog_json import (  # noqa: E402
@@ -241,6 +241,18 @@ def main(
         # that is what a shop buys -- so these are declared in the plan and
         # never derived from what happens to be standing there.
         slot_problems = check_slots(SLOTS, {r.name: r for r in plan.rooms})
+
+        # WHAT A DOOR OPENS THROUGH. Not fatal, like room sizes and for the
+        # same reason: a slot in a door's arc is a plan to improve, not a
+        # build that cannot proceed. It is worth saying every single build,
+        # because it is invisible until somebody watches a door swing and it
+        # was true of all nine doors in this house at once.
+        if SWING_CONFLICTS:
+            print(f"  ! {len(SWING_CONFLICTS)} slot(s) sit in a door's swing:")
+            for problem in SWING_CONFLICTS:
+                print(f"      {problem}")
+        else:
+            print("  door swings: every slot is clear of every leaf")
         slots = write_slots_manifest(plan, SLOTS, SLOTS_PATH)
         print(slots_report(slots, slot_problems, SLOTS_PATH))
 

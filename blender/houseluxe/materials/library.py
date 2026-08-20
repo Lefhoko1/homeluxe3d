@@ -13,7 +13,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import bpy
+try:
+    import bpy
+except ModuleNotFoundError:                 # pragma: no cover
+    # Importable without Blender, so the plain-Python tools that solve the
+    # route and the collision model can read the catalogue. See core/mesh.py.
+    bpy = None
 
 
 @dataclass(frozen=True)

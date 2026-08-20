@@ -17,7 +17,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import bpy
+try:
+    import bpy
+except ModuleNotFoundError:                 # pragma: no cover
+    # THE DATA HALF OF THE CATALOGUE HAS TO BE READABLE WITHOUT BLENDER.
+    # `product.py` says so already and keeps bpy behind TYPE_CHECKING for
+    # exactly this reason: the plain-Python tools that solve the route and the
+    # collision model read the placements, and a module-level `import bpy`
+    # three files away put the whole catalogue out of their reach.
+    #
+    # The builders below genuinely need Blender and will say so loudly if they
+    # are called without it. Everything else in this module -- the dimensions,
+    # the products, where they stand -- is plain data.
+    bpy = None
 
 from ....core import mesh as meshutil
 from ....core.component import BuildContext

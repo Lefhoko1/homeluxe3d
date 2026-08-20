@@ -30,7 +30,8 @@ from __future__ import annotations
 
 from .kitchen import BASE_DEPTH, WALL_UNIT_BOTTOM, WORKTOP_HEIGHT
 from .plan_3bed import PLAN
-from .slots import Slot, at, run, surfaces
+from .slots import Slot, at, avoid_swings, run, surfaces
+from .swing import swings as door_swings
 
 ROOM = {r.name: r for r in PLAN.rooms}
 CEILING = PLAN.ceiling.height
@@ -202,31 +203,72 @@ DINING: list[Slot] = [
 # --------------------------------------------------------------------------
 # Bedrooms -- section 7. One arrangement, applied to each.
 # --------------------------------------------------------------------------
-def _bedroom(name: str, code: str, bed_w: float, priority: int) -> list[Slot]:
-    """Bed against the longest unbroken wall, bedsides either side of it."""
+def _head_wall(name: str) -> str:
+    """Which wall a bed should head, "n" or "s": the one AWAY FROM THE DOOR.
+
+    The docstring below has claimed "against the longest unbroken wall" since
+    this file was written, and every bedroom was hardcoded to the north
+    regardless. That was harmless while doors were hung at run time and opened
+    away from whoever approached them. It stopped being harmless the moment
+    they started opening into the rooms they serve.
+
+    THE MASTER IS THE CASE THAT SHOWS WHY. Its door is in the east wall, near
+    the north end, and its leaf comes to rest square to that wall reaching
+    813mm short of the bed's east edge -- a 313mm gap, in a house whose
+    walking character is 520mm across. The whole west half of the room, the
+    ensuite and the walk-in robe became unreachable, and one bedside table
+    stood inside the swing. Heading the bed at the south wall instead costs
+    nothing at all: the same 1,720mm of clear floor at the foot, just measured
+    from the other end.
+
+    Distance from the door to each candidate wall, and the far one wins. A
+    bedroom whose door is in a SIDE wall is equidistant and keeps the north,
+    which is what bedroom 2 does.
+    """
     room = ROOM[name]
+    doors = [sw for sw in door_swings(PLAN) if sw.into == name]
+    if not doors:
+        return "n"
+    to_north = min(abs(room.y1 - sw.ay) for sw in doors)
+    to_south = min(abs(sw.ay - room.y0) for sw in doors)
+    # A clear preference only; a tie keeps the north wall.
+    return "s" if to_south > to_north + 500.0 else "n"
+
+
+def _bedroom(name: str, code: str, bed_w: float, priority: int) -> list[Slot]:
+    """Bed against the wall furthest from the door, bedsides either side."""
+    room = ROOM[name]
+
+    # Every fraction below is written for a bed heading NORTH. Mirroring them
+    # in one place turns the whole arrangement round together -- bedsides stay
+    # at the head, wardrobe and dresser stay at the foot -- rather than
+    # leaving one of them behind, which is the way this goes wrong.
+    head = _head_wall(name)
+    fy = (lambda v: v) if head == "n" else (lambda v: 1.0 - v)
+    facing = 0.0 if head == "n" else 180.0
+
     return [
-        at(room, 0.5, 0.76, slot_id=f"SLOT_{code}_BED_001",
+        at(room, 0.5, fy(0.76), slot_id=f"SLOT_{code}_BED_001",
            slot_type="bedroom_bed", category="bed",
            # The envelope, not a mattress. A slot sized to the double
            # somebody had in mind rejects the queen that would fit the
            # room -- which is exactly what happened to the Slumberland:
            # 1,520mm wide, refused by three 1,370mm slots.
-           width=bed_w + 400.0, depth=2200.0, height=1400.0, rotation=0.0,
+           width=bed_w + 400.0, depth=2200.0, height=1400.0, rotation=facing,
            priority=priority, label="Bed"),
-        at(room, 0.5 - (bed_w / 2 + 250) / (room.x1 - room.x0), 0.88,
+        at(room, 0.5 - (bed_w / 2 + 250) / (room.x1 - room.x0), fy(0.88),
            slot_id=f"SLOT_{code}_BEDSIDE_001", slot_type="bedside_table",
            category="table", width=600.0, depth=450.0, height=700.0,
            priority=55, label="Bedside table"),
-        at(room, 0.5 + (bed_w / 2 + 250) / (room.x1 - room.x0), 0.88,
+        at(room, 0.5 + (bed_w / 2 + 250) / (room.x1 - room.x0), fy(0.88),
            slot_id=f"SLOT_{code}_BEDSIDE_002", slot_type="bedside_table",
            category="table", width=450.0, depth=400.0, height=550.0,
            priority=55, label="Bedside table"),
-        at(room, 0.12, 0.2, slot_id=f"SLOT_{code}_WARDROBE_001",
+        at(room, 0.12, fy(0.2), slot_id=f"SLOT_{code}_WARDROBE_001",
            slot_type="wardrobe", category="storage",
            width=1500.0, depth=680.0, height=2200.0, rotation=90.0,
            priority=75, label="Wardrobe"),
-        at(room, 0.85, 0.2, slot_id=f"SLOT_{code}_DRESSER_001",
+        at(room, 0.85, fy(0.2), slot_id=f"SLOT_{code}_DRESSER_001",
            slot_type="dresser", category="storage",
            width=1200.0, depth=520.0, height=900.0, rotation=270.0,
            priority=60, label="Dresser"),
@@ -388,9 +430,29 @@ HOUSE_WIDE: list[Slot] = [
 ]
 
 
-SLOTS: list[Slot] = (
+#: Everything the rules produce, before the doors get a say.
+AUTHORED: list[Slot] = (
     KITCHEN + KITCHEN_COUNTER + KITCHEN_SINK + KITCHEN_SURFACES
     + LIVING + DINING + BEDROOMS
     + BATHROOM + ENSUITE + WC + LAUNDRY
     + HALL + WIR + GARAGE + SURFACES + HOUSE_WIDE
 )
+
+
+# --------------------------------------------------------------------------
+# And then the doors.
+#
+# A RUN OF SLOTS AND A DOOR SWING WANT THE SAME FLOOR: beside the opening,
+# backs to the wall. Every one of the nine doors in this house swept through
+# something the first time the two were compared -- a shower, two wardrobes, a
+# bed, a WC pan, both laundry appliances -- because the rules that place slots
+# have never known where a door goes and the doors were being hung at run time
+# anyway.
+#
+# `avoid_swings` slides what it can along its own wall, which is a real
+# position moved a little rather than a wardrobe shoved into the middle of the
+# room. What it cannot clear it leaves alone and reports, because a shower
+# that will not fit beside a door is a decision about the plan and not
+# arithmetic. See build.py, which prints them every build.
+# --------------------------------------------------------------------------
+SLOTS, SWING_CONFLICTS = avoid_swings(AUTHORED, PLAN)

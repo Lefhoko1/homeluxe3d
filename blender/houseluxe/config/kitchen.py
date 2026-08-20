@@ -177,3 +177,26 @@ def joinery_footprints(plan, room) -> list[tuple[float, float, float, float]]:
         if b - a >= MODULE:
             rects.append((a, room.y0, b, room.y0 + BASE_DEPTH))
     return rects
+
+
+#: Rooms that get fitted joinery. One, today, and named rather than inferred:
+#: a laundry will want the same treatment and a bedroom never will.
+JOINERY_ROOMS = ("kitchen",)
+
+
+def all_joinery_footprints(plan) -> list[tuple[float, float, float, float]]:
+    """Every fitted run in the house, as plan rectangles.
+
+    `joinery_footprints` sets out the runs for A ROOM and will happily do it
+    for a bedroom, which is why both exporters guarded it with the same
+    `if room.name != "kitchen"` line. A third caller repeated the guard and
+    got it wrong -- door swings were being stopped by kitchen cabinets in the
+    laundry and in all three bedrooms -- so the guard lives here now and the
+    callers ask for the house.
+    """
+    rects: list[tuple[float, float, float, float]] = []
+    for room in plan.rooms:
+        if room.name not in JOINERY_ROOMS:
+            continue
+        rects.extend(joinery_footprints(plan, room))
+    return rects

@@ -50,6 +50,16 @@ class Opening:
     sill: float = 900.0    # bottom of opening above floor level; 0 for doors
     name: str = ""
 
+    #: Which room the leaf swings into, when the convention is wrong.
+    #:
+    #: Normally left empty: a door opens into the room it serves, and the
+    #: door's own name says which that is -- `ensuite.door` opens into the
+    #: ensuite. See config/swing.py, which resolves it. This is the override
+    #: for the door that has to be hung the other way, and naming a room that
+    #: is not on either side of the opening is a build failure rather than a
+    #: silent fall back to the convention.
+    swings_into: str = ""
+
     @property
     def height(self) -> float:
         return self.head - self.sill

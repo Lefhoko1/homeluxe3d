@@ -11,12 +11,17 @@ the same number from the same source cannot drift; a browser measuring a
 bounding box and guessing which end the hinges are on drifts the first time a
 door is made wider.
 
-WHICH WAY A DOOR SWINGS IS DECIDED AT RUN TIME, and is deliberately not here.
-A real door is hung to open one way, and that decision is made on site and
-recorded nowhere in this plan. Rather than invent it per door -- and get it
-wrong for whoever is walking through -- the browser opens each door AWAY from
-whoever is approaching it. Nobody is ever met by a door swinging into their
-face, and no visitor has ever noticed a door that opens both ways.
+WHICH WAY A DOOR SWINGS IS DECIDED HERE, and used to be decided per visitor
+in the browser -- each door opened away from whoever approached it, because
+the plan did not record which way it was hung. That is a fair answer to "we
+do not know" and it produced a house where the front door swung through the
+sofa and every bedroom door swept through its own wardrobe, because opening
+away from the visitor means opening into whatever is on the other side.
+
+The plan knows perfectly well. A door opens INTO THE ROOM IT SERVES, and
+every door is already named for that room. `swing` is +1 or -1 against
+`along`, and `into` says which room it lands in so the browser can say
+something useful when it does not add up. See config/swing.py.
 
 Doorways carry no leaf and are not listed: there is nothing to open.
 
@@ -39,19 +44,12 @@ from __future__ import annotations
 import json
 import os
 
+from ..config.joinery import FRAME_FACE, SASH_FACE
 from ..config.plan import OpeningKind
+from ..config.swing import HINGED, swings
 
-#: Openings with a leaf on hinges.
-HINGED = {OpeningKind.DOOR_INTERNAL, OpeningKind.DOOR_EXTERNAL}
-
-#: And the one that runs sideways instead.
+#: The one that runs sideways instead.
 SLIDING = {OpeningKind.SLIDING_DOOR}
-
-from ..config.joinery import AXIS_OFFSET, FRAME_FACE, LINING_FACE, SASH_FACE
-
-
-def _face_for(kind: OpeningKind) -> float:
-    return FRAME_FACE if kind is OpeningKind.DOOR_EXTERNAL else LINING_FACE
 
 
 def build_manifest(plan) -> dict:
@@ -96,36 +94,36 @@ def build_manifest(plan) -> dict:
 
             if opening.kind not in HINGED:
                 continue
+            # Hinged leaves are built from config.swing below, which owns the
+            # hinge arithmetic and the side it opens to. Repeating it here is
+            # what put every axis 28mm out the first time.
 
-            face = _face_for(opening.kind)
-            half = opening.width / 2.0
-            s0 = opening.offset - half
-            s1 = opening.offset + half
-
-            axis_s = s0 + face
-            leaf_width = (s1 - face) - axis_s
-
-            # World XY of the hinge axis, offset across the wall exactly as
-            # `_hang` offsets it.
-            ax = sx + ux * axis_s + px * AXIS_OFFSET
-            ay = sy + uy * axis_s + py * AXIS_OFFSET
-
-            label = opening.name or f"{wall.name}.{int(opening.offset)}"
-
-            doors.append({
-                "label": label,
-                "motion": "swing",
-                "kind": opening.kind.value,
-                "exterior": bool(wall.exterior),
-                # three.js house-local metres, converted here as everything
-                # else is so the browser never does axis maths.
-                "hinge": [round(ax / 1000.0, 4), round(-ay / 1000.0, 4)],
-                # Unit vector along the closed leaf, from the hinge towards the
-                # latch. The browser needs it to know where the leaf sweeps.
-                "along": [round(ux, 6), round(-uy, 6)],
-                "width_m": round(leaf_width / 1000.0, 4),
-                "height_m": round((opening.head - face) / 1000.0, 4),
-            })
+    for leaf in swings(plan):
+        doors.append({
+            "label": leaf.label,
+            "motion": "swing",
+            "kind": leaf.kind.value,
+            "exterior": leaf.exterior,
+            # three.js house-local metres, converted here as everything else
+            # is so the browser never does axis maths.
+            "hinge": [round(leaf.ax / 1000.0, 4), round(-leaf.ay / 1000.0, 4)],
+            # Unit vector along the closed leaf, from the hinge towards the
+            # latch. The browser needs it to know where the leaf sweeps.
+            "along": [round(leaf.ux, 6), round(-leaf.uy, 6)],
+            # WHICH WAY IT GOES, as the sign of the browser's rotation.y.
+            #
+            # Rotating the leaf by +a sends its free end towards
+            # (along.z, -along.x) in three.js. Mapping that back through
+            # z = -y lands on (-uy, ux), which is the plan's LEFT normal --
+            # the same vector `Swing.sign` is measured against. So the sign
+            # carries across unchanged, and `doors.test.mjs` proves it by
+            # swinging each leaf and checking it finishes inside the room
+            # named in `into` rather than by trusting this paragraph.
+            "swing": leaf.sign,
+            "into": leaf.into,
+            "width_m": round(leaf.leaf / 1000.0, 4),
+            "height_m": round((leaf.head - leaf.face) / 1000.0, 4),
+        })
 
     return {
         "version": 1,
