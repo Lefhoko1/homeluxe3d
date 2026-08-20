@@ -245,14 +245,18 @@ INTERIOR_WALLS = [
     # to hold the bath, shower, WC and vanity that are advertised in it.
     _int("int.bathroom.east", (5655.0, 8145.0), (5655.0, 11285.0)),
     _int("int.wc.east", (6855.0, 8145.0), (6855.0, 11285.0)),
-    # Bedroom 2 reaches south to the laundry line, which is 430mm the room
-    # needed: at 8.8 m2 it could not take a double bed, a wardrobe and the
-    # desk that section 7 advertises in it. The corridor keeps its width.
+    # Bedroom 2 takes its missing square metre from the CORRIDOR, not from the
+    # kitchen. It reached south to the laundry line for one commit, which put
+    # its south-west corner inside the kitchen -- the two rectangles genuinely
+    # overlapped by 1.9 x 0.3 metres, and nothing said so until
+    # `check_room_overlaps` was written. 100mm off a 1,100mm corridor leaves
+    # 1,000mm, which is still a corridor; 1.9 metres off the kitchen was a
+    # bedroom.
     _int(
-        "int.bed2.west", (7955.0, 7715.0), (7955.0, 11285.0),
-        [Opening(DI, 1230.0, DOOR_W, DOOR_HEAD, 0.0, "bed2.door")],
+        "int.bed2.west", (7855.0, 8145.0), (7855.0, 11285.0),
+        [Opening(DI, 800.0, DOOR_W, DOOR_HEAD, 0.0, "bed2.door")],
     ),
-    _int("int.bed2.south", (7955.0, 7715.0), (11085.0, 7715.0)),
+    _int("int.bed2.south", (7855.0, 8145.0), (11085.0, 8145.0)),
 
     # -- The office wing's mouth -------------------------------------------
     #
@@ -308,7 +312,7 @@ ROOMS = [
     # as the separate WC it is. See Room.min_clear.
     Room("wc",       "WC",             5710.0, 8200.0, 6800.0, 11170.0, "tile", "bathroom",
          min_clear=(900.0, 1500.0, 1.4)),
-    Room("bed2",     "Bedroom 2",      8010.0, 7770.0, 10970.0, 11170.0, LIVING_FLOOR, "bedroom"),
+    Room("bed2",     "Bedroom 2",      7910.0, 8200.0, 10970.0, 11170.0, LIVING_FLOOR, "bedroom"),
     Room("kitchen",  "Kitchen",        5650.0, 4955.0, 9940.0, 8090.0, "tile", "kitchen"),
     Room("laundry",  "Laundry",       11140.0, 5770.0, 12970.0, 7660.0, "tile", "laundry"),
     Room("living",   "Living",         5650.0,  230.0, 10150.0, 4230.0, LIVING_FLOOR, "living"),

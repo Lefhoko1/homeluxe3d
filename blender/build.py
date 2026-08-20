@@ -101,6 +101,12 @@ def main(
         for problem in problems:
             print(f"  ! {problem}")
         return 1
+    overlaps = plan.check_room_overlaps()
+    if overlaps:
+        print("Plan validation FAILED -- rooms and walls disagree:")
+        for problem in overlaps:
+            print(f"  ! {problem}")
+        return 1
     print(f"  plan validated: {len(plan.walls)} walls, {len(plan.rooms)} rooms")
 
     # NOT FATAL, ON PURPOSE. A wall running off the end of another is a broken

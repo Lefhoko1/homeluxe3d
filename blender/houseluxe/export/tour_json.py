@@ -38,6 +38,7 @@ import math
 import os
 from collections import deque
 
+from ..config.kitchen import joinery_footprints
 from ..config.plan import OpeningKind
 
 #: Grid resolution. 100mm resolves an 820mm doorway into eight cells, which is
@@ -323,6 +324,22 @@ def build_grid(plan, furniture=()) -> Grid:
             if opening.kind not in WALKABLE_OPENINGS:
                 continue
             grid.paint(*_opening_core(wall, opening), 0)
+
+    # BUILT-IN JOINERY, which is neither a wall nor furniture and so was in
+    # neither list. The kitchen units are 900mm of solid cabinet across two
+    # walls of the room the route has to cross, and without this the solved
+    # path ran straight through them -- six waypoints standing inside a
+    # cabinet, which `walk.test.mjs` reported as unreachable the moment the
+    # collision model learned about them.
+    #
+    # Painted from the plan rather than passed in, exactly like the walls: a
+    # caller cannot forget it and two callers cannot disagree about it.
+    for room in plan.rooms:
+        if room.name != "kitchen":
+            continue
+        for x0, y0, x1, y1 in joinery_footprints(plan, room):
+            grid.paint(x0 - CLEARANCE, y0 - CLEARANCE,
+                       x1 + CLEARANCE, y1 + CLEARANCE, 1)
 
     # Furniture last, and never over a doorway: a sofa is not a door, but a
     # rug placed across a threshold should not seal the room off either.
@@ -744,7 +761,7 @@ def verify(plan, manifest: dict, furniture=()) -> list[str]:
     remembered = CLEARANCE
     try:
         CLEARANCE = 1.0                     # ~no padding: true footprints
-        solid = build_grid(plan, furniture)
+        solid = build_grid(plan, furniture)   # includes the joinery
     finally:
         CLEARANCE = remembered
 

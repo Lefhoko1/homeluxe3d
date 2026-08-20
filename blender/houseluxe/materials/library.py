@@ -114,6 +114,18 @@ FINISHES: dict[str, Finish] = {
     "hinge_black":     Finish("hinge_black",     (0.055, 0.058, 0.063),
                               roughness=0.52, metallic=0.55),
 
+    # -- Kitchen joinery ---------------------------------------------------
+    # ARCHITECTURE, not product. The carcass is never seen once the doors are
+    # on, so it is a plain board colour. The worktop, the doors and the
+    # splashback are each their own material because each is a separate thing
+    # a shop sells against -- a stone supplier, a door-front supplier and a
+    # tile supplier are three customers, not one.
+    "cabinet_carcass": Finish("cabinet_carcass", (0.878, 0.871, 0.855), roughness=0.80),
+    "cabinet_door":    Finish("cabinet_door",    (0.235, 0.267, 0.298), roughness=0.42),
+    "cabinet_plinth":  Finish("cabinet_plinth",  (0.157, 0.173, 0.192), roughness=0.55),
+    "worktop_stone":   Finish("worktop_stone",   (0.290, 0.298, 0.310), roughness=0.22),
+    "splashback_tile": Finish("splashback_tile", (0.906, 0.914, 0.918), roughness=0.18),
+
     # -- Tubod wall finishes -----------------------------------------------
     # Fallback colours only. The textured coating is generated in three.js and
     # tinted per variant; these keep a Blender render honest.

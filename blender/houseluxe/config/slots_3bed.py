@@ -21,6 +21,7 @@ the kitchen changing size -- and it changed size twice while this was written.
 
 from __future__ import annotations
 
+from .kitchen import BASE_DEPTH, WALL_UNIT_BOTTOM, WORKTOP_HEIGHT
 from .plan_3bed import PLAN
 from .slots import Slot, at, run, surfaces
 
@@ -49,6 +50,82 @@ KITCHEN: list[Slot] = [
        slot_type="kitchen_unit", category="storage",
        width=600.0, depth=650.0, height=2100.0, rotation=270.0,
        priority=70, label="Tall kitchen storage"),
+]
+
+
+# --------------------------------------------------------------------------
+# ON the worktop -- section 4's countertop and sink lists.
+#
+# THESE COULD NOT EXIST UNTIL THE JOINERY DID. A kettle position 900mm in the
+# air with nothing under it is a promise the house cannot keep, so the twenty
+# countertop slots and the ten sink-area ones waited for
+# `components/kitchen.py` to build something to stand them on.
+#
+# Their height comes from the same constant the worktop is built to. A slot
+# manifest that thinks the worktop is at 850 while the worktop is at 900 puts
+# every kettle in the house floating fifty millimetres above it.
+# --------------------------------------------------------------------------
+_K = ROOM["kitchen"]
+
+#: The usable band on a 600 worktop: back against the splashback, front left
+#: clear to work on. A kettle is not pushed to the front edge.
+_COUNTER_DEPTH = 380.0
+_COUNTER_Y = _K.y1 - BASE_DEPTH + _COUNTER_DEPTH / 2 + 60.0
+_RUN_END = _K.x1 - BASE_DEPTH          # where the north run stops
+
+KITCHEN_COUNTER: list[Slot] = [
+    Slot(id=f"SLOT_KITCHEN_COUNTER_{i + 1:03d}", room="kitchen",
+         slot_type="kitchen_counter", category="appliance",
+         x=x, y=_COUNTER_Y, z=WORKTOP_HEIGHT, rotation=180.0,
+         width=380.0, depth=_COUNTER_DEPTH, height=450.0,
+         priority=70 - i * 2, label="Countertop product")
+    for i, x in enumerate(
+        _K.x0 + 320.0 + i * 430.0 for i in range(int((_RUN_END - _K.x0 - 500) // 430))
+    )
+]
+
+#: The sink run is the EAST return, under the window end, which is where a
+#: sink goes: you wash up looking out rather than at a wall.
+_SINK_X = _K.x1 - BASE_DEPTH / 2
+
+KITCHEN_SINK: list[Slot] = [
+    Slot(id="SLOT_KITCHEN_SINK_001", room="kitchen", slot_type="kitchen_sink",
+         category="basin", x=_SINK_X, y=_K.y0 + 1200.0, z=WORKTOP_HEIGHT - 200.0,
+         rotation=270.0, width=860.0, depth=500.0, height=220.0,
+         priority=80, label="Sink"),
+    Slot(id="SLOT_KITCHEN_TAP_001", room="kitchen", slot_type="kitchen_tap",
+         category="basin", x=_SINK_X + 180.0, y=_K.y0 + 1200.0, z=WORKTOP_HEIGHT,
+         rotation=270.0, width=120.0, depth=200.0, height=380.0,
+         priority=75, label="Kitchen tap"),
+    *[
+        Slot(id=f"SLOT_KITCHEN_SINKSIDE_{i + 1:03d}", room="kitchen",
+             slot_type="kitchen_counter", category="decor",
+             x=_SINK_X, y=y, z=WORKTOP_HEIGHT, rotation=270.0,
+             width=300.0, depth=300.0, height=300.0,
+             priority=45, label="Sink-side product")
+        for i, y in enumerate((_K.y0 + 400.0, _K.y0 + 2000.0, _K.y0 + 2500.0))
+    ],
+]
+
+#: The splashback, which is what a tile company is selling when it sells a
+#: kitchen -- and it is a surface, so it needs no furniture under it.
+KITCHEN_SURFACES: list[Slot] = [
+    Slot(id="SLOT_KITCHEN_SPLASHBACK", room="kitchen",
+         slot_type="splashback", category="tile",
+         x=(_K.x0 + _RUN_END) / 2, y=_K.y1 - 100.0, z=WORKTOP_HEIGHT,
+         rotation=180.0, width=_RUN_END - _K.x0, depth=60.0,
+         height=WALL_UNIT_BOTTOM - WORKTOP_HEIGHT,
+         priority=65, label="Splashback"),
+    Slot(id="SLOT_KITCHEN_WORKTOP", room="kitchen",
+         slot_type="worktop", category="tile",
+         x=(_K.x0 + _RUN_END) / 2, y=_K.y1 - BASE_DEPTH / 2, z=WORKTOP_HEIGHT - 40.0,
+         rotation=180.0, width=_RUN_END - _K.x0, depth=BASE_DEPTH, height=40.0,
+         priority=70, label="Worktop"),
+    Slot(id="SLOT_KITCHEN_DOORFRONTS", room="kitchen",
+         slot_type="cabinet_front", category="paint",
+         x=(_K.x0 + _RUN_END) / 2, y=_K.y1 - BASE_DEPTH, z=100.0,
+         rotation=180.0, width=_RUN_END - _K.x0, depth=60.0, height=770.0,
+         priority=60, label="Cabinet fronts"),
 ]
 
 
@@ -281,7 +358,8 @@ SURFACES: list[Slot] = [
 
 
 SLOTS: list[Slot] = (
-    KITCHEN + LIVING + DINING + BEDROOMS
+    KITCHEN + KITCHEN_COUNTER + KITCHEN_SINK + KITCHEN_SURFACES
+    + LIVING + DINING + BEDROOMS
     + BATHROOM + ENSUITE + WC + LAUNDRY
     + HALL + WIR + GARAGE + SURFACES
 )

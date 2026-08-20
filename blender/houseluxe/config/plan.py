@@ -329,6 +329,46 @@ class HousePlan:
         """Sum of declared room areas, in square metres."""
         return sum(room.area for room in self.rooms)
 
+    def check_room_overlaps(self) -> list[str]:
+        """Walls running through the middle of a declared room.
+
+        A room is declared as a rectangle and the walls are declared
+        separately, so nothing stops the two disagreeing -- and when they do,
+        the room is not the shape anybody thinks it is. Enlarging the kitchen
+        and moving bedroom 2's south wall in the same change made the two
+        rectangles OVERLAP by 1.9 x 0.3 metres, and every downstream
+        consequence was silent: slots placed into a bedroom, a floor plate
+        drawn through a wall, a room area that counted the same square metre
+        twice.
+
+        Fatal, unlike a room being too small. A room of the wrong shape is a
+        plan that does not describe a building.
+        """
+        problems: list[str] = []
+        edge = 50.0     # ignore a wall lying ON a room's boundary
+
+        for room in self.rooms:
+            for wall in self.walls:
+                (sx, sy), (ex, ey) = wall.start, wall.end
+
+                if wall.is_horizontal:
+                    lo, hi = sorted((sx, ex))
+                    inside = (room.y0 + edge < sy < room.y1 - edge
+                              and hi > room.x0 + edge and lo < room.x1 - edge)
+                elif wall.is_vertical:
+                    lo, hi = sorted((sy, ey))
+                    inside = (room.x0 + edge < sx < room.x1 - edge
+                              and hi > room.y0 + edge and lo < room.y1 - edge)
+                else:
+                    continue
+
+                if inside:
+                    problems.append(
+                        f"wall {wall.name!r} runs through room {room.name!r}"
+                    )
+
+        return problems
+
     def check_room_sizes(self) -> list[str]:
         """Rooms too small to hold what is advertised in them.
 

@@ -40,6 +40,7 @@ from __future__ import annotations
 import json
 import os
 
+from ..config.kitchen import joinery_footprints
 from ..core.wallmath import WallFrame, solid_spans
 
 #: The band of heights a walker occupies, in millimetres above floor level.
@@ -91,6 +92,27 @@ def wall_rects(plan) -> list[dict]:
     return rects
 
 
+def joinery_rects(plan) -> list[dict]:
+    """Built-in joinery a walker cannot pass through.
+
+    Kitchen units are ARCHITECTURE -- they come with the house, they are not
+    sold, and they are not in the catalogue -- so nothing else in this
+    pipeline would ever mention them. They are also 900mm of solid cabinet
+    across two walls of the densest room in the building.
+    """
+    rects = []
+    for room in plan.rooms:
+        if room.name != "kitchen":
+            continue
+        for i, (x0, y0, x1, y1) in enumerate(joinery_footprints(plan, room)):
+            rects.append({
+                "wall": f"kitchen.run{i}",
+                "part": "joinery",
+                "rect": _rect_mm_to_three(x0, y0, x1, y1),
+            })
+    return rects
+
+
 def room_rects(plan) -> list[dict]:
     """Each room's clear floor area.
 
@@ -119,7 +141,7 @@ def build_manifest(plan) -> dict:
         # describe, rather than assuming.
         "walk_band_m": [WALK_LOW / 1000.0, WALK_HIGH / 1000.0],
         "ceiling_m": round(plan.ceiling.height / 1000.0, 4),
-        "walls": wall_rects(plan),
+        "walls": wall_rects(plan) + joinery_rects(plan),
         "rooms": room_rects(plan),
     }
 

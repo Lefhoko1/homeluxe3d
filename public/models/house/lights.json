@@ -94,9 +94,9 @@
       "room": "bed2",
       "label": "Bedroom 2",
       "position": [
-        9.49,
+        8.61,
         2.312,
-        -8.47
+        -9.685
       ],
       "intensity": 8.5,
       "distance": 6.5
@@ -105,9 +105,9 @@
       "room": "bed2",
       "label": "Bedroom 2",
       "position": [
-        9.49,
+        10.27,
         2.312,
-        -10.47
+        -9.685
       ],
       "intensity": 8.5,
       "distance": 6.5

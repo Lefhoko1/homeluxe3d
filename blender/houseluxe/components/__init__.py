@@ -10,6 +10,7 @@ from __future__ import annotations
 from ..core.component import Component
 from .ceiling import CeilingComponent
 from .floors import FloorFinishComponent
+from .kitchen import KitchenComponent
 from .lights import LightsComponent
 from .openings import DoorsComponent, WindowsComponent
 from .porch import PorchComponent
@@ -27,6 +28,7 @@ __all__ = [
     "WindowsComponent",
     "DoorsComponent",
     "CeilingComponent",
+    "KitchenComponent",
     "LightsComponent",
     "RoofComponent",
     "PorchComponent",
@@ -45,6 +47,7 @@ def default_components() -> list[Component]:
         WindowsComponent(),
         DoorsComponent(),
         CeilingComponent(),
+        KitchenComponent(),
         LightsComponent(),
         PorchComponent(),
         RoofComponent(),
