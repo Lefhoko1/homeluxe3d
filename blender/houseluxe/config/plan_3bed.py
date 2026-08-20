@@ -77,7 +77,7 @@ def _int(name, start, end, openings=()):
 # laundry projects past the bedroom wing.
 # --------------------------------------------------------------------------
 FOOTPRINT = (
-    (4600.0, 0.0),
+    (5480.0, 0.0),
     (13200.0, 0.0),
     (13200.0, 7600.0),
     (11200.0, 7600.0),
@@ -91,7 +91,7 @@ FOOTPRINT = (
     (-6500.0, 7515.0),
     (-6500.0, 1000.0),
     (0.0, 1000.0),
-    (4600.0, 1000.0),
+    (5480.0, 1000.0),
 )
 
 # Wall centrelines sit 115mm inside the outer face.
@@ -99,21 +99,38 @@ EXTERIOR_WALLS = [
     # South wall of the living / dining wing. Runs EAST to WEST, so offsets
     # below are measured from the south-east corner.
     _ext(
-        "ext.south.main", (13085.0, 115.0), (4485.0, 115.0),
+        "ext.south.main", (13085.0, 115.0), (5595.0, 115.0),
         [
             Opening(W, 1700.0, 2400.0, WIN_HEAD, WIN_SILL, "dining.south"),
             Opening(W, 5000.0, 2400.0, WIN_HEAD, WIN_SILL, "living.south"),
-            Opening(DX, 7485.0, ENTRY_W, DOOR_HEAD, 0.0, "entry.front_door"),
+            # MOVED EAST, and this is the fix for a real hole in the plan.
+            #
+            # The step used to stand at x 4,485 while the master's east wall
+            # started at x 5,595 -- and only from y 1,115 upwards. That left a
+            # pocket, x 4,485..5,595 by y 115..1,115, walled on two sides and
+            # open on the other two: one into the living room and one INTO THE
+            # MASTER BEDROOM. The front door, spanning x 5,100..6,100,
+            # straddled the master's own wall line and opened straight into
+            # it. A bedroom you can see into from the front step is not a
+            # bedroom.
+            #
+            # The step now stands at x 5,595, so the wing's south wall runs
+            # all the way to the master's east wall and the two meet. The
+            # pocket is gone, and the door moved east to clear the junction.
+            Opening(DX, 6785.0, ENTRY_W, DOOR_HEAD, 0.0, "entry.front_door"),
         ],
     ),
     # The 1,000mm step back to the master wing.
-    _ext("ext.step", (4485.0, 115.0), (4485.0, 1115.0)),
+    _ext("ext.step", (5595.0, 115.0), (5595.0, 1115.0)),
     # South wall of the master / ensuite wing, running EAST to WEST.
+    #
+    # Offsets are measured from the step, which moved, so both windows were
+    # re-measured to leave the glass exactly where it was on the elevation.
     _ext(
-        "ext.south.wing", (4485.0, 1115.0), (115.0, 1115.0),
+        "ext.south.wing", (5595.0, 1115.0), (115.0, 1115.0),
         [
-            Opening(W, 1285.0, 1800.0, WIN_HEAD, WIN_SILL, "master.south"),
-            Opening(W, 3455.0, 600.0, WIN_HEAD, WET_SILL, "ensuite.south"),
+            Opening(W, 2395.0, 1800.0, WIN_HEAD, WIN_SILL, "master.south"),
+            Opening(W, 4565.0, 600.0, WIN_HEAD, WET_SILL, "ensuite.south"),
         ],
     ),
     # West wall, running SOUTH to NORTH.
@@ -222,13 +239,20 @@ INTERIOR_WALLS = [
         ],
     ),
     _int("int.bed3.east", (3455.0, 8145.0), (3455.0, 11285.0)),
-    _int("int.bathroom.east", (5655.0, 9400.0), (5655.0, 11285.0)),
+    # Reaches the corridor now. It used to stop at y 9,400, which left a
+    # 3,400 x 1,255 lobby serving nothing but the two doors behind it -- and
+    # took that depth out of the bathroom, leaving it 1,715mm deep and unable
+    # to hold the bath, shower, WC and vanity that are advertised in it.
+    _int("int.bathroom.east", (5655.0, 8145.0), (5655.0, 11285.0)),
     _int("int.wc.east", (6855.0, 8145.0), (6855.0, 11285.0)),
+    # Bedroom 2 reaches south to the laundry line, which is 430mm the room
+    # needed: at 8.8 m2 it could not take a double bed, a wardrobe and the
+    # desk that section 7 advertises in it. The corridor keeps its width.
     _int(
-        "int.bed2.west", (7955.0, 8145.0), (7955.0, 11285.0),
-        [Opening(DI, 800.0, DOOR_W, DOOR_HEAD, 0.0, "bed2.door")],
+        "int.bed2.west", (7955.0, 7715.0), (7955.0, 11285.0),
+        [Opening(DI, 1230.0, DOOR_W, DOOR_HEAD, 0.0, "bed2.door")],
     ),
-    _int("int.bed2.south", (7955.0, 8145.0), (11085.0, 8145.0)),
+    _int("int.bed2.south", (7955.0, 7715.0), (11085.0, 7715.0)),
 
     # -- The office wing's mouth -------------------------------------------
     #
@@ -243,11 +267,18 @@ INTERIOR_WALLS = [
     ),
 
     # -- Kitchen / service core -------------------------------------------
+    # THE DENSEST ROOM IN THE SPECIFICATION, and it was the second smallest
+    # in the house. Section 4 lists 68 slots here -- major appliances, a
+    # countertop run, the sink area -- against 3,490 x 2,540, which is a
+    # galley with no room for the far run. It reaches 595mm further south into
+    # the circulation and 800mm further east into the passage: 4,290 x 3,190,
+    # which takes units down one side, appliances down the other, and a metre
+    # between them to open an oven door.
     _int(
-        "int.kitchen.south", (5595.0, 5495.0), (9195.0, 5495.0),
-        [Opening(OP, 1800.0, 2400.0, DOOR_HEAD, 0.0, "kitchen.servery")],
+        "int.kitchen.south", (5595.0, 4900.0), (9995.0, 4900.0),
+        [Opening(OP, 2200.0, 2400.0, DOOR_HEAD, 0.0, "kitchen.servery")],
     ),
-    _int("int.kitchen.east", (9195.0, 5495.0), (9195.0, 8145.0)),
+    _int("int.kitchen.east", (9995.0, 4900.0), (9995.0, 8145.0)),
     _int(
         "int.laundry.west", (11085.0, 5715.0), (11085.0, 7715.0),
         [Opening(DI, 1000.0, DOOR_W_NARROW, DOOR_HEAD, 0.0, "laundry.door")],
@@ -272,10 +303,13 @@ ROOMS = [
     Room("ensuite",  "Ensuite",         230.0, 1230.0, 1830.0, 3530.0, "tile", "ensuite"),
     Room("wir",      "Walk-in Robe",    230.0, 3640.0, 1830.0, 5440.0, "carpet", "storage"),
     Room("bed3",     "Bedroom 3",       230.0, 8200.0, 3400.0, 11170.0, LIVING_FLOOR, "bedroom"),
-    Room("bathroom", "Bathroom",       3510.0, 9455.0, 5600.0, 11170.0, "tile", "bathroom"),
-    Room("wc",       "WC",             5710.0, 9455.0, 6800.0, 11170.0, "tile", "bathroom"),
-    Room("bed2",     "Bedroom 2",      8010.0, 8200.0, 10970.0, 11170.0, LIVING_FLOOR, "bedroom"),
-    Room("kitchen",  "Kitchen",        5650.0, 5550.0, 9140.0, 8090.0, "tile", "kitchen"),
+    Room("bathroom", "Bathroom",       3510.0, 8200.0, 5600.0, 11170.0, "tile", "bathroom"),
+    # Scopes as a bathroom -- a pan and a basin are sold for it -- but sized
+    # as the separate WC it is. See Room.min_clear.
+    Room("wc",       "WC",             5710.0, 8200.0, 6800.0, 11170.0, "tile", "bathroom",
+         min_clear=(900.0, 1500.0, 1.4)),
+    Room("bed2",     "Bedroom 2",      8010.0, 7770.0, 10970.0, 11170.0, LIVING_FLOOR, "bedroom"),
+    Room("kitchen",  "Kitchen",        5650.0, 4955.0, 9940.0, 8090.0, "tile", "kitchen"),
     Room("laundry",  "Laundry",       11140.0, 5770.0, 12970.0, 7660.0, "tile", "laundry"),
     Room("living",   "Living",         5650.0,  230.0, 10150.0, 4230.0, LIVING_FLOOR, "living"),
     # Dining is open to the living room -- one space, so one floor. Splitting
@@ -307,7 +341,10 @@ PLAN = HousePlan(
     rooms=ROOMS,
     wall_height=WALL_HEIGHT,
     roof=RoofSpec(
-        pitch_degrees=25.0,
+        # The elevations print 5,140mm to the ridge. That is the dimension
+        # that governs, so it is the input and the pitch is solved from it.
+        ridge_height=5140.0,
+        pitch_degrees=25.0,   # fallback only, if ridge_height is cleared
         eave_height=2400.0,
         overhang=600.0,
         thickness=180.0,
@@ -321,7 +358,8 @@ PLAN = HousePlan(
         ),
     ),
     slab=SlabSpec(thickness=300.0, apron=300.0, top_level=0.0),
-    porch=(4600.0, -1500.0, 6600.0, 0.0),
+    # Centred on the front door, which moved east with the step.
+    porch=(5300.0, -1500.0, 7300.0, 0.0),
     notes=(
         "The original floor plan showed NO garage while the front and top "
         "elevations showed a double garage door -- the drawings disagreed, and "

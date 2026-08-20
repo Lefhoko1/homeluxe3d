@@ -138,6 +138,15 @@ class Room:
     finish: str = "tile"
     room_type: str = "living"
 
+    #: Override the size minimum for this room, as (short, long, area_m2).
+    #:
+    #: `room_type` is the SCOPING key -- what may be sold for the room -- and
+    #: a separate WC scopes as a bathroom because toilets and basins are what
+    #: go in it. Its SIZE is a different question: a WC holds a pan and a
+    #: hand basin, not a bath and a shower, and holding it to a bathroom's
+    #: minimum would demand 2m of width it has no use for.
+    min_clear: tuple[float, float, float] | None = None
+
     @property
     def width(self) -> float:
         return self.x1 - self.x0
@@ -152,12 +161,54 @@ class Room:
         return (self.width * self.depth) / 1_000_000.0
 
 
+#: The smallest a room of each type may be and still hold what is sold for it.
+#:
+#: THESE ARE FURNITURE DIMENSIONS, NOT TASTE. Instructions.md lists what each
+#: room has to be able to advertise -- a bathroom carries a bath, a shower, a
+#: WC and a vanity; a bedroom carries a double bed, bedsides and a wardrobe --
+#: and a room too small for those is not a small room, it is a room that
+#: cannot do its job. The house exists to display things that are for sale,
+#: so a room that cannot hold them is a fault in the plan.
+#:
+#: (min_width, min_depth, min_area_m2). Width and depth are the SHORT and LONG
+#: clear dimensions, compared unordered: a 2.1 x 2.4 bathroom is the same
+#: bathroom whichever way it is drawn.
+MIN_CLEAR: dict[str, tuple[float, float, float]] = {
+    # Double bed 1,400 x 1,900, bedsides either side, wardrobe 600 deep, and
+    # 700 to walk past the foot.
+    "bedroom":  (2900.0, 2900.0, 9.0),
+    # Bath 1,700 along one wall, a 900 shower, a WC and a vanity.
+    "bathroom": (2000.0, 2400.0, 5.4),
+    # Shower, WC and basin only -- no bath.
+    "ensuite":  (1600.0, 2200.0, 3.6),
+    # A run of units one side, appliances the other, 1,000 between them.
+    "kitchen":  (2900.0, 3300.0, 10.0),
+    "laundry":  (1600.0, 1800.0, 3.0),
+    "storage":  (1300.0, 1300.0, 1.7),
+    "hallway":  (900.0, 1200.0, 1.1),
+    "living":   (3400.0, 3800.0, 14.0),
+    "dining":   (2500.0, 3000.0, 8.0),
+    "outdoor":  (0.0, 0.0, 0.0),
+}
+
+
 @dataclass(frozen=True)
 class RoofSpec:
     """Hipped roof parameters.
 
-    Ridge height is DERIVED from pitch and span rather than stated, so the
-    roof stays geometrically consistent when you change the pitch.
+    WHICH NUMBER IS THE INPUT, AND WHY IT CHANGED. This used to take a pitch
+    and derive the ridge, on the reasoning that a roof should stay
+    geometrically consistent when the pitch changes. Sound in the abstract and
+    wrong for a real drawing set: the elevations print a RIDGE HEIGHT of
+    5,140mm, that is the dimension a planning authority reads and a builder
+    sets out to, and deriving it from an assumed 25 degrees produced 5,338mm
+    -- 198mm over, every build, reported as a warning nobody could act on.
+
+    So the printed dimension is the input. Set `ridge_height` and the pitch is
+    solved from it and the span; leave it None and `pitch_degrees` is used as
+    before. The PITCH is what a roof holds constant across its hips, so once
+    solved it is applied to the wings too -- which is why a wing has a lower
+    ridge than the main roof, exactly as a real one does.
     """
 
     pitch_degrees: float = 25.0
@@ -181,6 +232,30 @@ class RoofSpec:
     #:
     #: Each entry is (x0, y0, x1, y1) of the WALL FACES, like `span`.
     wings: tuple[tuple[float, float, float, float], ...] = ()
+
+    #: The ridge height the elevations print, above finished floor level.
+    #: When set, the pitch is solved from it rather than assumed.
+    ridge_height: float | None = None
+
+    def pitch_for(self, span: tuple[float, float, float, float]) -> float:
+        """The pitch to build at, in degrees.
+
+        Solved once from the MAIN span so the whole roof shares one pitch --
+        a hip whose faces meet at different angles is not a hip. `span` is
+        the main span INCLUDING its overhang, because that is what the ridge
+        height was measured over.
+        """
+        if self.ridge_height is None:
+            return self.pitch_degrees
+
+        import math
+
+        x0, y0, x1, y1 = span
+        half_short = min(abs(x1 - x0), abs(y1 - y0)) / 2.0
+        if half_short <= 0:
+            return self.pitch_degrees
+        rise = self.ridge_height - self.eave_height
+        return math.degrees(math.atan2(rise, half_short))
 
 
 @dataclass(frozen=True)
@@ -253,3 +328,41 @@ class HousePlan:
     def living_area(self) -> float:
         """Sum of declared room areas, in square metres."""
         return sum(room.area for room in self.rooms)
+
+    def check_room_sizes(self) -> list[str]:
+        """Rooms too small to hold what is advertised in them.
+
+        Separate from `validate` on purpose. A wall that runs off the end of
+        another is a broken plan and must stop the build; a bathroom 400mm
+        short is a plan that will disappoint rather than fail, and the build
+        should say so and carry on. Both are worth knowing; only one is fatal.
+
+        See MIN_CLEAR for where the numbers come from -- they are the
+        furniture, not an opinion about generous rooms.
+        """
+        problems: list[str] = []
+
+        for room in self.rooms:
+            limits = room.min_clear or MIN_CLEAR.get(room.room_type)
+            if not limits:
+                continue
+            min_short, min_long, min_area = limits
+            short, long = sorted((room.width, room.depth))
+
+            if short < min_short - 1.0:
+                problems.append(
+                    f"{room.name}: {short:.0f}mm across, needs {min_short:.0f} "
+                    f"for a {room.room_type}"
+                )
+            elif long < min_long - 1.0:
+                problems.append(
+                    f"{room.name}: {long:.0f}mm long, needs {min_long:.0f} "
+                    f"for a {room.room_type}"
+                )
+            elif room.area < min_area - 0.05:
+                problems.append(
+                    f"{room.name}: {room.area:.1f} m2, needs {min_area:.1f} "
+                    f"for a {room.room_type}"
+                )
+
+        return problems

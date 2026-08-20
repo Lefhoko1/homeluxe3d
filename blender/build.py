@@ -95,6 +95,19 @@ def main(
             print(f"  ! {problem}")
         return 1
     print(f"  plan validated: {len(plan.walls)} walls, {len(plan.rooms)} rooms")
+
+    # NOT FATAL, ON PURPOSE. A wall running off the end of another is a broken
+    # plan and stops the build; a bathroom 400mm short is a plan that will
+    # disappoint rather than fail. The house exists to display things that are
+    # for sale, so a room that cannot hold what is advertised in it is worth
+    # saying out loud every single build. See HousePlan.check_room_sizes.
+    undersized = plan.check_room_sizes()
+    if undersized:
+        print(f"  ! {len(undersized)} room(s) too small for what is sold in them:")
+        for problem in undersized:
+            print(f"      {problem}")
+    else:
+        print(f"  room sizes: all {len(plan.rooms)} hold their advertised furniture")
     print(f"  declared living area: {plan.living_area():.1f} m2")
 
     if site_spec is not None:

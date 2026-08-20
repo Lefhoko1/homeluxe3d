@@ -115,19 +115,25 @@ class RoofComponent(Component):
         oh = spec.overhang
         ex0, ey0, ex1, ey1 = sx0 - oh, sy0 - oh, sx1 + oh, sy1 + oh
 
+        # ONE PITCH FOR THE WHOLE ROOF, solved from the main span. See
+        # RoofSpec.pitch_for: the elevations print the ridge, so the ridge is
+        # the input and the pitch is what falls out of it.
+        pitch = spec.pitch_for((ex0, ey0, ex1, ey1))
+
         main, rise = hip_surface(
             self.object_name("main"), ex0, ey0, ex1, ey1,
-            spec.eave_height, spec.pitch_degrees,
+            spec.eave_height, pitch,
         )
         meshutil.solidify(main, spec.thickness, offset=1.0)
         ctx.materials.assign(main, "roof_metal")
         objects.append(main)
 
         ridge_height = spec.eave_height + rise
-        ctx.warn(
-            f"derived ridge height is {ridge_height:.0f}mm "
-            f"(elevations print 5,140mm) -- see plan notes"
-        )
+        if spec.ridge_height is not None and abs(ridge_height - spec.ridge_height) > 1.0:
+            ctx.warn(
+                f"ridge came out at {ridge_height:.0f}mm but the elevations "
+                f"print {spec.ridge_height:.0f}mm -- the solve is wrong"
+            )
 
         fascia = fascia_ring(
             self.object_name("fascia"), ex0, ey0, ex1, ey1, spec.eave_height, spec
@@ -146,7 +152,7 @@ class RoofComponent(Component):
             surface, _ = hip_surface(
                 self.object_name(f"wing{index}"),
                 wx0 - oh, wy0 - oh, wx1 + oh, wy1 + oh,
-                spec.eave_height, spec.pitch_degrees,
+                spec.eave_height, pitch,
             )
             meshutil.solidify(surface, spec.thickness, offset=1.0)
             ctx.materials.assign(surface, "roof_metal")
@@ -166,7 +172,7 @@ class RoofComponent(Component):
             porch, _ = hip_surface(
                 self.object_name("porch"),
                 px0 - oh, py0 - oh, px1 + oh, py1,
-                spec.eave_height, spec.pitch_degrees,
+                spec.eave_height, pitch,
             )
             meshutil.solidify(porch, spec.thickness, offset=1.0)
             ctx.materials.assign(porch, "roof_metal")
