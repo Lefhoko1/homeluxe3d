@@ -84,7 +84,8 @@ body {
 }
 
 /* Digits that line up wherever they are counted or compared. */
-.price-tag, .spec-value, .progress-text, .furniture-count, .shop-chip-count {
+.product-price, .product-price-was, .product-spec-value,
+.progress-text, .furniture-count, .shop-chip-count {
   font-variant-numeric: tabular-nums;
 }
 
@@ -527,28 +528,8 @@ body {
   z-index: 10;
 }
 
-.product-header-row {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 8px;
-}
 
-.product-shop-badge {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  padding: 8px 15px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
 
-.product-shop-icon {
-  font-size: 20px;
-}
 
 .product-header h2 {
   font-family: 'Fraunces', Georgia, serif;
@@ -569,78 +550,16 @@ body {
   padding: 25px;
 }
 
-.price-tag {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
-  color: var(--on-accent);
-  padding: 18px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  text-align: center;
-}
 
-.price-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
-  opacity: 0.9;
-}
 
-.price-value {
-  font-size: 32px;
-  font-weight: 700;
-  font-family: 'Fraunces', Georgia, serif;
-}
 
-.product-description {
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--muted);
-  margin-bottom: 20px;
-  padding: 15px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  border-left: 3px solid var(--accent);
-}
 
-.specs-section {
-  margin-bottom: 20px;
-}
 
-.specs-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 
-.spec-grid {
-  display: grid;
-  gap: 10px;
-}
 
-.spec-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-}
 
-.spec-label {
-  font-weight: 600;
-  color: var(--secondary);
-}
 
-.spec-value {
-  color: var(--text);
-  text-align: right;
-}
+
 
 .shop-section {
   background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
@@ -1110,13 +1029,6 @@ body {
 .product-promo-ends { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .product-promo-terms { font-size: 11px; color: var(--muted); margin-top: 5px; }
 
-.product-description {
-  margin: 16px 20px 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--muted);
-}
-
 .product-specs-title {
   margin: 22px 20px 10px;
   font-size: 13px;
@@ -1405,4 +1317,103 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
+}
+
+
+/* ===========================================================================
+   The price, and the panel around it
+   ===========================================================================
+
+   THE PRICE HAD NO STYLES AT ALL. `.product-price-block`, its label and its
+   value were in the markup and in nothing else, so a price rendered as plain
+   text hard against the panel's left edge -- no padding, no size, no weight.
+   On a platform whose whole business is putting a product in front of
+   somebody, the number they are being asked to pay was the least considered
+   thing on the screen.
+
+   It is the point of the panel now. A tinted card, a small currency mark
+   beside a large number in the display face, and enough room around it that
+   the eye stops there. Amber, because in this palette amber means money and
+   nothing else does.
+   ========================================================================== */
+
+.product-name {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: 25px;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin: 6px 0 0;
+}
+
+.product-price-block {
+  /* Matches the 20px side margin the rest of the panel body uses, which is
+     what was missing: the block was flush to the panel edge because nothing
+     had ever given it a margin. */
+  margin: 18px 20px 0;
+  padding: 16px 18px 17px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #FDF6E7 0%, #FBF0DA 100%);
+  border: 1px solid #EAD6A9;
+}
+
+.product-price-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+.product-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 3px;
+  color: var(--primary);
+}
+
+/* The currency mark is a mark, not part of the number. Baseline-aligned and
+   two thirds the size, so the eye lands on the figure. */
+.product-price-symbol {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--accent-deep);
+}
+
+.product-price-amount {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Only ever shown beside a reduced price, which is why it says "was". A
+   struck-through number with no word in front of it reads as a mistake. */
+.product-price-was {
+  margin-top: 5px;
+  font-size: 13px;
+  /* Not --muted. That tone is measured against the page's paper and comes out
+     at 4.45:1 on this warmer, lighter card -- just under what small text
+     needs. A card with its own ground needs its own quiet colour. */
+  color: #676357;
+}
+
+/* The description is prose, not a callout. It had a card and an amber rule
+   down its left edge, which made a paragraph of specification text look like
+   a warning, and put a second amber accent directly under the price -- so
+   neither of them meant anything. */
+.product-description {
+  margin: 16px 20px 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--muted);
 }

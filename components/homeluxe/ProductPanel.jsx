@@ -6,12 +6,28 @@ import React from 'react';
  * Shows whatever is selected, whether that came from the list on the left or
  * from clicking the thing itself in the 3D room. One selection, three views.
  */
-const money = (amount, currency = 'BWP') => {
+/**
+ * A price, split into the symbol and the number.
+ *
+ * TWO PARTS BECAUSE THEY WANT DIFFERENT SIZES. "P 165" set at one size is a
+ * string; a small currency mark beside a large number is a price. This is the
+ * thing a shop is paying to put in front of somebody, and it should look like
+ * the point of the panel rather than like a field in a form.
+ *
+ * Locale pinned: the default differs between server and browser and causes a
+ * hydration mismatch. Same reason as lib/models/Model.js.
+ */
+const moneyParts = (amount, currency = 'BWP') => {
   if (amount == null) return null;
-  // Locale pinned: the default differs between server and browser and causes
-  // a hydration mismatch. Same reason as lib/models/Model.js.
-  const n = Number(amount).toLocaleString('en-GB', { maximumFractionDigits: 2 });
-  return `${currency === 'BWP' ? 'P' : currency} ${n}`;
+  return {
+    symbol: currency === 'BWP' ? 'P' : currency,
+    amount: Number(amount).toLocaleString('en-GB', { maximumFractionDigits: 2 }),
+  };
+};
+
+const money = (amount, currency = 'BWP') => {
+  const parts = moneyParts(amount, currency);
+  return parts ? `${parts.symbol} ${parts.amount}` : null;
 };
 
 const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
@@ -91,10 +107,21 @@ const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
       </div>
 
       <div className="product-price-block">
-        <div className="product-price-label">Price</div>
-        <div className="product-price">{money(price, product.currency)}</div>
+        <div className="product-price-label">
+          {wasPrice ? 'Now' : 'Price'}
+        </div>
+        <div className="product-price">
+          <span className="product-price-symbol">
+            {moneyParts(price, product.currency)?.symbol}
+          </span>
+          <span className="product-price-amount">
+            {moneyParts(price, product.currency)?.amount}
+          </span>
+        </div>
         {wasPrice && (
-          <div className="product-price-was">{money(wasPrice, product.currency)}</div>
+          <div className="product-price-was">
+            was {money(wasPrice, product.currency)}
+          </div>
         )}
       </div>
 
