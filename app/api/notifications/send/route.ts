@@ -11,26 +11,35 @@ import { EmailNotConfigured, emailConfig, sendEmail } from "../../../../lib/emai
  * two are deliberately not welded together -- a slow provider must not make
  * publishing slow, and a provider that is down must not make publishing fail.
  *
- * CLAIMED BEFORE SENT. A row goes pending -> sending -> sent, and the claim is
- * a conditional update: `set status='sending' where status='pending'`. Two
- * senders running at once (a cron firing while somebody presses the button)
- * cannot both take the same row, because only one of the two updates matches.
- * Without that, a retry sends the email twice, and there is no way to unsend.
+ * CLAIMED BEFORE SENT. A row goes pending -> sending -> sent, and the claim
+ * happens inside one statement in the database, with `for update skip locked`.
+ * Two senders running at once -- a schedule firing while somebody presses the
+ * button -- take different rows rather than both taking the same one. Without
+ * that, a retry sends the email twice, and there is no way to unsend.
  *
  * NOT PUBLIC. Anyone who can call this can make the platform send mail, so it
- * wants either the cron's own header or the shared secret. Both are checked
- * against a constant-time comparison, because comparing secrets with === leaks
- * their length and prefix to anybody willing to measure.
+ * wants the shared secret, compared in constant time -- comparing secrets with
+ * === leaks their length and prefix to anybody willing to measure.
+ *
+ * AND IT DOES NOT HOLD THE SERVICE-ROLE KEY. The outbox has no read policy
+ * because it holds other people's email addresses, and the obvious way to read
+ * it anyway is the service role -- which would also let this route do
+ * absolutely anything else in the database, for the sake of one query. It uses
+ * the ordinary anon key and two security-definer functions instead, guarded by
+ * the same secret. The most this endpoint can do, if the secret leaks, is send
+ * the mail that was already queued.
  */
 
-export const runtime = "nodejs";       // needs the service key; never the edge cache
+export const runtime = "nodejs";       // never the edge cache: this must not be replayed
 export const dynamic = "force-dynamic";
 
 /** How many to take in one pass. Small: a cron runs often and retries cost nothing. */
 const BATCH = 25;
 
-/** Give up after this many tries, so one bad address cannot block the queue for ever. */
-const MAX_ATTEMPTS = 4;
+// How many tries a message gets is the DATABASE's business, not this file's:
+// `claim_email_batch` will not hand back a row that has used up its attempts,
+// and `finish_email` is the one counting. Keeping a second copy of the number
+// here is how the two drift apart.
 
 export async function POST(request: Request) {
   const denied = authorise(request);
@@ -47,52 +56,33 @@ export async function POST(request: Request) {
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "SUPABASE_SERVICE_ROLE_KEY is not set. The outbox holds other " +
-          "people's email addresses and has no read policy at all, so the " +
-          "sender needs the service role. It is server-side only and must " +
-          "never be prefixed NEXT_PUBLIC_.",
-      },
+      { ok: false, error: "Supabase is not configured." },
       { status: 503 }
     );
   }
 
-  const db = createClient(url, serviceKey, {
+  const secret = process.env.NOTIFY_SECRET as string;
+  const db = createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   // -- claim ---------------------------------------------------------------
-  const { data: waiting, error: readError } = await db
-    .from("email_outbox")
-    .select("id, to_email, to_name, subject, html, body_text, attempts")
-    .eq("status", "pending")
-    .lt("attempts", MAX_ATTEMPTS)
-    .order("created_at", { ascending: true })
-    .limit(BATCH);
+  // One statement takes the batch and marks it `sending`, so a schedule
+  // firing while somebody presses the button cannot hand the same message to
+  // Resend twice. There is no unsend.
+  const { data: claimed, error: claimError } = await db.rpc("claim_email_batch", {
+    p_secret: secret,
+    p_limit: BATCH,
+  });
 
-  if (readError) {
-    return NextResponse.json({ ok: false, error: readError.message }, { status: 500 });
+  if (claimError) {
+    return NextResponse.json({ ok: false, error: claimError.message }, { status: 500 });
   }
-  if (!waiting?.length) {
+  if (!claimed?.length) {
     return NextResponse.json({ ok: true, claimed: 0, sent: 0, failed: 0 });
-  }
-
-  const claimed: typeof waiting = [];
-  for (const row of waiting) {
-    // Conditional on status, so a second sender racing this one loses.
-    const { data, error } = await db
-      .from("email_outbox")
-      .update({ status: "sending", claimed_at: new Date().toISOString() })
-      .eq("id", row.id)
-      .eq("status", "pending")
-      .select("id")
-      .maybeSingle();
-    if (!error && data) claimed.push(row);
   }
 
   // -- send ----------------------------------------------------------------
@@ -108,33 +98,40 @@ export async function POST(request: Request) {
         html: row.html,
         text: row.body_text ?? undefined,
       });
-      await db
-        .from("email_outbox")
-        .update({
-          status: "sent",
-          provider_id: id,
-          sent_at: new Date().toISOString(),
-          attempts: (row.attempts ?? 0) + 1,
-          error: null,
-        })
-        .eq("id", row.id);
+      // CHECKED, NOT FIRED AND FORGOTTEN. The first version ignored what
+      // this returned, so when the function was refusing every call the API
+      // still reported the mail as sent and the rows sat in `sending` for
+      // ever. A write whose result nobody looks at is a write that might not
+      // have happened.
+      const { error: markError } = await db.rpc("finish_email", {
+        p_secret: secret,
+        p_id: row.id,
+        p_provider_id: id,
+        p_error: null,
+      });
+      if (markError) {
+        // The mail HAS gone. Saying otherwise would make a retry send it
+        // twice, so this counts as sent and shouts about the bookkeeping.
+        problems.push(
+          `${row.to_email}: sent, but the outbox could not be updated ` +
+          `(${markError.message}). It may be retried and sent twice.`
+        );
+      }
       sent += 1;
     } catch (error) {
-      const attempts = (row.attempts ?? 0) + 1;
       const message = error instanceof Error ? error.message : String(error);
-      await db
-        .from("email_outbox")
-        .update({
-          // Back to pending while there are tries left: a rate limit or a
-          // blip should not condemn a message for ever. Only a row that has
-          // used up its attempts is called failed, and by then the error on
-          // it says why.
-          status: attempts >= MAX_ATTEMPTS ? "failed" : "pending",
-          attempts,
-          error: message,
-        })
-        .eq("id", row.id);
+      // The database decides whether this becomes `failed` or goes back to
+      // `pending` for another try -- it is the one counting the attempts.
+      const { error: markError } = await db.rpc("finish_email", {
+        p_secret: secret,
+        p_id: row.id,
+        p_provider_id: null,
+        p_error: message,
+      });
       failed += 1;
+      if (markError) {
+        problems.push(`${row.to_email}: could not record the failure (${markError.message})`);
+      }
       problems.push(`${row.to_email}: ${message}`);
     }
   }
@@ -163,11 +160,8 @@ export async function GET(request: Request) {
 
   const config = emailConfig();
   return NextResponse.json({
-    ready: config.ready && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    missing: [
-      ...config.missing,
-      ...(process.env.SUPABASE_SERVICE_ROLE_KEY ? [] : ["SUPABASE_SERVICE_ROLE_KEY"]),
-    ],
+    ready: config.ready,
+    missing: config.missing,
     from: config.from ?? null,
     testSender: config.isTestSender,
   });
