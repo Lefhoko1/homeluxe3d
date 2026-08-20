@@ -221,6 +221,72 @@
       ],
       "intensity": 8.5,
       "distance": 6.5
+    },
+    {
+      "room": "bed4",
+      "label": "Bedroom 4 / Office",
+      "position": [
+        7.67,
+        2.312,
+        -13.085
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "bed4",
+      "label": "Bedroom 4 / Office",
+      "position": [
+        10.27,
+        2.312,
+        -13.085
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "garage",
+      "label": "Garage",
+      "position": [
+        -5.57,
+        2.312,
+        -1.93
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "garage",
+      "label": "Garage",
+      "position": [
+        -5.57,
+        2.312,
+        -6.585
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "garage",
+      "label": "Garage",
+      "position": [
+        -0.7,
+        2.312,
+        -1.93
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
+    },
+    {
+      "room": "garage",
+      "label": "Garage",
+      "position": [
+        -0.7,
+        2.312,
+        -6.585
+      ],
+      "intensity": 8.5,
+      "distance": 6.5
     }
   ]
 }

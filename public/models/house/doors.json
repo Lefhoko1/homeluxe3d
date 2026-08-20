@@ -19,6 +19,22 @@
       "height_m": 2.04
     },
     {
+      "label": "garage.door",
+      "motion": "swing",
+      "kind": "door_internal",
+      "exterior": true,
+      "hinge": [
+        0.089,
+        -6.445
+      ],
+      "along": [
+        0.0,
+        -1.0
+      ],
+      "width_m": 0.71,
+      "height_m": 2.07
+    },
+    {
       "label": "dining.slider",
       "motion": "slide",
       "kind": "sliding_door",

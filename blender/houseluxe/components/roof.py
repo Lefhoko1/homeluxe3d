@@ -135,6 +135,31 @@ class RoofComponent(Component):
         ctx.materials.assign(fascia, "fascia_gutter")
         objects.append(fascia)
 
+        # -- Wings ---------------------------------------------------------
+        # One hip each, meeting the main roof where they abut it. A wing is
+        # roofed on its own terms rather than by stretching `span` around it:
+        # stretching would throw roof over the open ground on the inside of
+        # the L, and the ridge would run at a height the wing's own walls
+        # cannot support.
+        for index, wing in enumerate(spec.wings):
+            wx0, wy0, wx1, wy1 = wing
+            surface, _ = hip_surface(
+                self.object_name(f"wing{index}"),
+                wx0 - oh, wy0 - oh, wx1 + oh, wy1 + oh,
+                spec.eave_height, spec.pitch_degrees,
+            )
+            meshutil.solidify(surface, spec.thickness, offset=1.0)
+            ctx.materials.assign(surface, "roof_metal")
+            objects.append(surface)
+
+            wing_fascia = fascia_ring(
+                self.object_name(f"wing{index}_fascia"),
+                wx0 - oh, wy0 - oh, wx1 + oh, wy1 + oh,
+                spec.eave_height, spec,
+            )
+            ctx.materials.assign(wing_fascia, "fascia_gutter")
+            objects.append(wing_fascia)
+
         # -- Porch roof ----------------------------------------------------
         if ctx.plan.porch is not None:
             px0, py0, px1, py1 = ctx.plan.porch

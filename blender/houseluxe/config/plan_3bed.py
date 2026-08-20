@@ -81,8 +81,15 @@ FOOTPRINT = (
     (13200.0, 0.0),
     (13200.0, 7600.0),
     (11200.0, 7600.0),
-    (11200.0, 11400.0),
+    # -- Bedroom 4 / office, projecting north off the bedroom corridor -----
+    (11200.0, 15000.0),
+    (6740.0, 15000.0),
+    (6740.0, 11400.0),
     (0.0, 11400.0),
+    (0.0, 7515.0),
+    # -- Garage, attached on the west --------------------------------------
+    (-6500.0, 7515.0),
+    (-6500.0, 1000.0),
     (0.0, 1000.0),
     (4600.0, 1000.0),
 )
@@ -110,23 +117,64 @@ EXTERIOR_WALLS = [
         ],
     ),
     # West wall, running SOUTH to NORTH.
+    # West wall, running SOUTH to NORTH.
+    #
+    # THE GARAGE IS BUILT AGAINST THE SOUTHERN TWO THIRDS OF THIS WALL, so it
+    # carries the door between the two and no longer carries the ensuite's
+    # obscure pane -- a window into a garage is not a window. The ensuite
+    # keeps its south light. bed3.west is well north of the garage and
+    # unaffected.
     _ext(
         "ext.west", (115.0, 1115.0), (115.0, 11285.0),
         [
-            Opening(W, 1000.0, 600.0, WIN_HEAD, WET_SILL, "ensuite.west"),
+            Opening(DI, 5685.0, DOOR_W_NARROW, DOOR_HEAD, 0.0, "garage.door"),
             Opening(W, 8685.0, 1500.0, WIN_HEAD, WIN_SILL, "bed3.west"),
         ],
     ),
     # North wall of the bedroom wing, running WEST to EAST.
+    #
+    # SPLIT IN TWO BY THE OFFICE WING. What was one wall from x 115 to 11085
+    # is now the length up to the wing (still exterior, still carrying three
+    # windows) and then the wing's own walls. The stretch across the wing's
+    # mouth became internal -- see `int.wing.south` -- because it is no longer
+    # the outside of anything.
+    #
+    # bed2.north went with it: the wing stands where that window looked. The
+    # room keeps bed2.east, so it is still a corner room with light.
     _ext(
-        "ext.north", (115.0, 11285.0), (11085.0, 11285.0),
+        "ext.north.west", (115.0, 11285.0), (6855.0, 11285.0),
         [
             Opening(W, 1725.0, 1500.0, WIN_HEAD, WIN_SILL, "bed3.north"),
             Opening(W, 4495.0, 900.0, WIN_HEAD, WET_SILL, "bathroom.north"),
             Opening(W, 6195.0, 600.0, WIN_HEAD, WET_SILL, "wc.north"),
-            Opening(W, 9375.0, 1800.0, WIN_HEAD, WIN_SILL, "bed2.north"),
         ],
     ),
+
+    # -- Bedroom 4 / office wing, projecting north -------------------------
+    _ext("ext.wing.west", (6855.0, 11285.0), (6855.0, 14885.0)),
+    _ext(
+        "ext.wing.north", (6855.0, 14885.0), (11085.0, 14885.0),
+        [Opening(W, 2115.0, 1800.0, WIN_HEAD, WIN_SILL, "bed4.north")],
+    ),
+    _ext(
+        "ext.wing.east", (11085.0, 14885.0), (11085.0, 11285.0),
+        [Opening(W, 1800.0, 1200.0, WIN_HEAD, WIN_SILL, "bed4.east")],
+    ),
+
+    # -- Garage, attached on the west --------------------------------------
+    #
+    # Its south wall is collinear with the master wing's, so the two read as
+    # one elevation from the street. The vehicle door faces the driveway.
+    _ext(
+        "ext.garage.south", (115.0, 1115.0), (-6385.0, 1115.0),
+        [Opening(OpeningKind.GARAGE_DOOR, 3250.0, 4800.0, 2100.0, 0.0,
+                 "garage.vehicle_door")],
+    ),
+    _ext(
+        "ext.garage.west", (-6385.0, 1115.0), (-6385.0, 7400.0),
+        [Opening(W, 3140.0, 900.0, WIN_HEAD, WIN_SILL, "garage.west")],
+    ),
+    _ext("ext.garage.north", (-6385.0, 7400.0), (115.0, 7400.0)),
     # East wall of bedroom 2, running NORTH to SOUTH.
     _ext(
         "ext.east.upper", (11085.0, 11285.0), (11085.0, 7715.0),
@@ -182,6 +230,18 @@ INTERIOR_WALLS = [
     ),
     _int("int.bed2.south", (7955.0, 8145.0), (11085.0, 8145.0)),
 
+    # -- The office wing's mouth -------------------------------------------
+    #
+    # This was the north EXTERIOR wall until the wing was built against it.
+    # It is now the wall between bedroom 2 and the office, with a cased
+    # opening where the bedroom corridor runs through -- which is why the
+    # corridor is the one place the wing could go: it is the only stretch of
+    # the north wall with no window in it.
+    _int(
+        "int.wing.south", (6855.0, 11285.0), (11085.0, 11285.0),
+        [Opening(OP, 550.0, 900.0, DOOR_HEAD, 0.0, "bed4.opening")],
+    ),
+
     # -- Kitchen / service core -------------------------------------------
     _int(
         "int.kitchen.south", (5595.0, 5495.0), (9195.0, 5495.0),
@@ -222,6 +282,22 @@ ROOMS = [
     # the finish down the middle of an open plan would look like a mistake.
     Room("dining",   "Dining",        10150.0,  230.0, 12970.0, 4230.0, LIVING_FLOOR, "dining"),
     Room("hall",     "Hallway",        1940.0, 4940.0, 5540.0, 8090.0, LIVING_FLOOR, "hallway"),
+
+    # -- The two rooms the platform specification asks for -----------------
+    #
+    # BEDROOM 4 is the "office / flex room" of Instructions.md section 7: it
+    # has to take a desk and a filing cabinet, or a single bed, and be reached
+    # without walking through another bedroom. Projecting north off the
+    # bedroom corridor is the only place in this plan that satisfies both.
+    Room("bed4",     "Bedroom 4 / Office", 6970.0, 11400.0, 10970.0, 14770.0,
+         LIVING_FLOOR, "bedroom"),
+
+    # THE GARAGE is section 17, and it is a double: 6,270 x 6,055 clear takes
+    # two cars, or one car and the workbench, shelving, bicycles and garden
+    # tools that section actually lists. Its floor stays bare concrete --
+    # nobody tiles a garage, and the slab is already under it.
+    Room("garage",   "Garage",         -6270.0, 1230.0, 0.0, 7285.0,
+         "concrete_slab", "storage"),
 ]
 
 PLAN = HousePlan(
@@ -236,13 +312,27 @@ PLAN = HousePlan(
         overhang=600.0,
         thickness=180.0,
         span=(0.0, 0.0, 13200.0, 11400.0),
+        # One hip per wing, meeting the main roof where each abuts it. See
+        # RoofSpec.wings: stretching the main span around an L throws roof
+        # over open ground on the inside of the corner.
+        wings=(
+            (-6500.0, 1000.0, 0.0, 7515.0),      # garage
+            (6740.0, 11170.0, 11200.0, 15000.0),  # bedroom 4 / office
+        ),
     ),
     slab=SlabSpec(thickness=300.0, apron=300.0, top_level=0.0),
     porch=(4600.0, -1500.0, 6600.0, 0.0),
     notes=(
-        "The floor plan shows NO garage; the front and top elevations show a "
-        "double garage door. Geometry follows the FLOOR PLAN. A GarageDoorFactory "
-        "is registered in components/openings.py but no plan wall uses it.",
+        "The original floor plan showed NO garage while the front and top "
+        "elevations showed a double garage door -- the drawings disagreed, and "
+        "geometry followed the FLOOR PLAN. The garage is now built, attached on "
+        "the west, which resolves the disagreement in favour of the elevations "
+        "and finally uses the GarageDoorFactory that has been registered in "
+        "components/openings.py since the beginning.",
+        "Bedroom 4 and the garage are NOT on the source drawings. They are "
+        "required by the platform specification (Instructions.md sections 7 "
+        "and 17), which asks for a four-bedroom house with a garage, and they "
+        "are the two rooms whose advertising slots had nowhere to live.",
         "Ridge height is derived from pitch + span + overhang, so it lands "
         "near 5,340 rather than the 5,140 printed on the elevations. Reduce "
         "RoofSpec.overhang to about 180 to hit 5,140 exactly.",
@@ -281,5 +371,7 @@ TOUR_ORDER = [
     "bathroom",
     "wc",
     "bed2",
+    "bed4",       # north off the bedroom corridor
+    "garage",     # out through the hall, and the last stop before home
     "living",     # home again
 ]

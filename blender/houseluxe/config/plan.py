@@ -171,6 +171,17 @@ class RoofSpec:
     #: The overhang is added outside this.
     span: tuple[float, float, float, float] = (0.0, 0.0, 13200.0, 11400.0)
 
+    #: Further hipped spans, one per WING.
+    #:
+    #: A single span can only describe a rectangle, and a house stops being a
+    #: rectangle the moment it grows a garage or a projecting bedroom. Roofing
+    #: an L-shape with one hip puts roof over open ground on the inside of the
+    #: L -- which reads as a mistake from every angle -- so each wing gets its
+    #: own hip that meets the main one, exactly as the porch already does.
+    #:
+    #: Each entry is (x0, y0, x1, y1) of the WALL FACES, like `span`.
+    wings: tuple[tuple[float, float, float, float], ...] = ()
+
 
 @dataclass(frozen=True)
 class CeilingSpec:

@@ -33,7 +33,7 @@ from .site import FenceRun, HedgeRun, Plant, PoolFence, PoolSpec, Rect, SiteSpec
 # --------------------------------------------------------------------------
 # Boundary
 # --------------------------------------------------------------------------
-SITE_X0, SITE_Y0 = -6000.0, -14000.0
+SITE_X0, SITE_Y0 = -10000.0, -14000.0
 SITE_X1, SITE_Y1 = 24000.0, 26000.0
 
 PAVING_LEVEL = 0.0
@@ -65,6 +65,9 @@ SHELL_X0, SHELL_Y0, SHELL_X1, SHELL_Y1 = POOL.shell
 PAVING = [
     # Driveway: 3.6m wide, street to porch.
     Rect("paving.driveway", 3800.0, SITE_Y0, 7400.0, -1500.0, "paving_concrete"),
+    # The apron in front of the garage, joining it to the drive. Without it
+    # the vehicle door opens onto lawn.
+    Rect("paving.garage_apron", -5900.0, -1500.0, 3800.0, 1000.0, "paving_concrete"),
     # Spur from the driveway east along the front of the house.
     Rect("paving.front_path", 7400.0, -1100.0, 13500.0, -300.0),
     # Side path north up the east flank, linking front door to terrace.
@@ -100,8 +103,12 @@ POOL_FENCE = PoolFence(
 # --------------------------------------------------------------------------
 BEDS = [
     Rect("bed.front", 7400.0, -1900.0, 13200.0, -1200.0, "mulch", 60.0),
-    Rect("bed.west", -1800.0, 2000.0, -400.0, 9000.0, "mulch", 60.0),
-    Rect("bed.rear", 1000.0, 11800.0, 10000.0, 13000.0, "mulch", 60.0),
+    # Moved west of the garage. It used to run x -1800..-400, which is now
+    # the middle of the garage floor.
+    Rect("bed.west", -8600.0, 1500.0, -7200.0, 9000.0, "mulch", 60.0),
+    # Stops short of the office wing, which projects to y 15,000 between
+    # x 6,740 and 11,200.
+    Rect("bed.rear", 1000.0, 11800.0, 6200.0, 13000.0, "mulch", 60.0),
     Rect("bed.pool", TERRACE_X1, TERRACE_Y0, 22600.0, TERRACE_Y1, "mulch", 60.0),
 ]
 
@@ -113,7 +120,10 @@ BEDS = [
 # enough to cover the slab apron, the roof overhang and the porch, so the
 # ground stays dead level where the building meets it.
 # --------------------------------------------------------------------------
-HOUSE_ZONE = Rect("zone.house", -900.0, -2400.0, 14100.0, 12300.0)
+# Both wings included: the garage reaches x -6,500 and the office wing y
+# 15,000, and terrain that does not know about them contours up through a
+# concrete floor.
+HOUSE_ZONE = Rect("zone.house", -7400.0, -2400.0, 14100.0, 15900.0)
 POOL_ZONE = Rect("zone.pool", SHELL_X0, SHELL_Y0, SHELL_X1, SHELL_Y1)
 
 FLAT_ZONES = [HOUSE_ZONE, POOL_ZONE] + PAVING + BEDS
@@ -137,13 +147,13 @@ def _shrub_row(prefix_seed, x_values, y_values, height=900.0, spread=1100.0):
 # the afternoon, and frame the pool -- not scattered at random.
 # --------------------------------------------------------------------------
 TREES = [
-    Plant("tree", -3000.0, -7000.0, 5500.0, 3600.0, 1),
+    Plant("tree", -7500.0, -7000.0, 5500.0, 3600.0, 1),
     Plant("tree", 20500.0, -8000.0, 6000.0, 4000.0, 2),
-    Plant("tree", -3200.0, 15000.0, 6500.0, 4200.0, 3),
+    Plant("tree", -7000.0, 16500.0, 6500.0, 4200.0, 3),
     Plant("tree", 4000.0, 20000.0, 7000.0, 4500.0, 4),
     Plant("tree", 14000.0, 21000.0, 6000.0, 3800.0, 5),
     Plant("tree", 21000.0, 16000.0, 5500.0, 3600.0, 6),
-    Plant("tree", -3500.0, 6000.0, 5000.0, 3400.0, 7),   # shades the west wall
+    Plant("tree", -8000.0, 6000.0, 5000.0, 3400.0, 7),   # shades the garage
     Plant("tree", 22000.0, 12800.0, 4500.0, 3000.0, 8),
 ]
 
@@ -161,17 +171,17 @@ PLANTS = TREES + SHRUBS
 # The street frontage is left open apart from the fence.
 # --------------------------------------------------------------------------
 HEDGES = [
-    HedgeRun("hedge.north", (-5200.0, 25200.0), (23200.0, 25200.0), 800.0, 1600.0),
+    HedgeRun("hedge.north", (-9200.0, 25200.0), (23200.0, 25200.0), 800.0, 1600.0),
     HedgeRun("hedge.east", (23200.0, -13200.0), (23200.0, 25200.0), 800.0, 1600.0),
-    HedgeRun("hedge.west", (-5200.0, -13200.0), (-5200.0, 25200.0), 800.0, 1600.0),
+    HedgeRun("hedge.west", (-9200.0, -13200.0), (-9200.0, 25200.0), 800.0, 1600.0),
 ]
 
 FENCES = [
-    FenceRun("fence.north", (-5900.0, 25900.0), (23900.0, 25900.0)),
+    FenceRun("fence.north", (-9900.0, 25900.0), (23900.0, 25900.0)),
     FenceRun("fence.east", (23900.0, -13900.0), (23900.0, 25900.0)),
-    FenceRun("fence.west", (-5900.0, -13900.0), (-5900.0, 25900.0)),
+    FenceRun("fence.west", (-9900.0, -13900.0), (-9900.0, 25900.0)),
     # Street frontage, with the driveway crossing left open.
-    FenceRun("fence.south_west", (-5900.0, -13900.0), (3800.0, -13900.0), height=1200.0),
+    FenceRun("fence.south_west", (-9900.0, -13900.0), (3800.0, -13900.0), height=1200.0),
     FenceRun("fence.south_east", (7400.0, -13900.0), (23900.0, -13900.0), height=1200.0),
 ]
 

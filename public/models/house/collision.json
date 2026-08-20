@@ -132,19 +132,9 @@
       "part": "pier",
       "rect": [
         0.0,
-        -1.815,
+        -6.415,
         0.23,
         -1.0
-      ]
-    },
-    {
-      "wall": "ext.west",
-      "part": "sill:ensuite.west",
-      "rect": [
-        0.0,
-        -2.415,
-        0.23,
-        -1.815
       ]
     },
     {
@@ -154,7 +144,7 @@
         0.0,
         -9.05,
         0.23,
-        -2.415
+        -7.185
       ]
     },
     {
@@ -178,7 +168,7 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "pier",
       "rect": [
         0.0,
@@ -188,7 +178,7 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "sill:bed3.north",
       "rect": [
         1.09,
@@ -198,7 +188,7 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "pier",
       "rect": [
         2.59,
@@ -208,7 +198,7 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "sill:bathroom.north",
       "rect": [
         4.16,
@@ -218,7 +208,7 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "pier",
       "rect": [
         5.06,
@@ -228,7 +218,7 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "sill:wc.north",
       "rect": [
         6.01,
@@ -238,33 +228,143 @@
       ]
     },
     {
-      "wall": "ext.north",
+      "wall": "ext.north.west",
       "part": "pier",
       "rect": [
         6.61,
         -11.4,
-        8.59,
+        6.97,
         -11.17
       ]
     },
     {
-      "wall": "ext.north",
-      "part": "sill:bed2.north",
-      "rect": [
-        8.59,
-        -11.4,
-        10.39,
-        -11.17
-      ]
-    },
-    {
-      "wall": "ext.north",
+      "wall": "ext.wing.west",
       "part": "pier",
       "rect": [
-        10.39,
-        -11.4,
+        6.74,
+        -15.0,
+        6.97,
+        -11.17
+      ]
+    },
+    {
+      "wall": "ext.wing.north",
+      "part": "pier",
+      "rect": [
+        6.74,
+        -15.0,
+        8.07,
+        -14.77
+      ]
+    },
+    {
+      "wall": "ext.wing.north",
+      "part": "sill:bed4.north",
+      "rect": [
+        8.07,
+        -15.0,
+        9.87,
+        -14.77
+      ]
+    },
+    {
+      "wall": "ext.wing.north",
+      "part": "pier",
+      "rect": [
+        9.87,
+        -15.0,
+        11.2,
+        -14.77
+      ]
+    },
+    {
+      "wall": "ext.wing.east",
+      "part": "pier",
+      "rect": [
+        10.97,
+        -15.0,
+        11.2,
+        -13.685
+      ]
+    },
+    {
+      "wall": "ext.wing.east",
+      "part": "sill:bed4.east",
+      "rect": [
+        10.97,
+        -13.685,
+        11.2,
+        -12.485
+      ]
+    },
+    {
+      "wall": "ext.wing.east",
+      "part": "pier",
+      "rect": [
+        10.97,
+        -12.485,
         11.2,
         -11.17
+      ]
+    },
+    {
+      "wall": "ext.garage.south",
+      "part": "pier",
+      "rect": [
+        -0.735,
+        -1.23,
+        0.23,
+        -1.0
+      ]
+    },
+    {
+      "wall": "ext.garage.south",
+      "part": "pier",
+      "rect": [
+        -6.5,
+        -1.23,
+        -5.535,
+        -1.0
+      ]
+    },
+    {
+      "wall": "ext.garage.west",
+      "part": "pier",
+      "rect": [
+        -6.5,
+        -3.805,
+        -6.27,
+        -1.0
+      ]
+    },
+    {
+      "wall": "ext.garage.west",
+      "part": "sill:garage.west",
+      "rect": [
+        -6.5,
+        -4.705,
+        -6.27,
+        -3.805
+      ]
+    },
+    {
+      "wall": "ext.garage.west",
+      "part": "pier",
+      "rect": [
+        -6.5,
+        -7.515,
+        -6.27,
+        -4.705
+      ]
+    },
+    {
+      "wall": "ext.garage.north",
+      "part": "pier",
+      "rect": [
+        -6.5,
+        -7.515,
+        0.23,
+        -7.285
       ]
     },
     {
@@ -528,6 +628,26 @@
       ]
     },
     {
+      "wall": "int.wing.south",
+      "part": "pier",
+      "rect": [
+        6.8,
+        -11.34,
+        6.955,
+        -11.23
+      ]
+    },
+    {
+      "wall": "int.wing.south",
+      "part": "pier",
+      "rect": [
+        7.855,
+        -11.34,
+        11.14,
+        -11.23
+      ]
+    },
+    {
       "wall": "int.kitchen.south",
       "part": "pier",
       "rect": [
@@ -719,6 +839,28 @@
         -8.09,
         5.54,
         -4.94
+      ]
+    },
+    {
+      "room": "bed4",
+      "label": "Bedroom 4 / Office",
+      "type": "bedroom",
+      "rect": [
+        6.97,
+        -14.77,
+        10.97,
+        -11.4
+      ]
+    },
+    {
+      "room": "garage",
+      "label": "Garage",
+      "type": "storage",
+      "rect": [
+        -6.27,
+        -7.285,
+        0.0,
+        -1.23
       ]
     }
   ]
