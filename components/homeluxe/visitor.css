@@ -1,0 +1,375 @@
+/* ===========================================================================
+   The visitor's side
+   ===========================================================================
+
+   The opening title over the film, and the pages somebody uses once they have
+   decided they want to hear from a shop. Same palette and type as the
+   showroom -- these tokens are defined in homeluxe.css and this file only
+   ever spends them.
+
+   The layout rule everywhere here: ONE COLUMN, NARROW. These are pages you
+   read and make a decision on, not dashboards you scan, and a 1200px-wide
+   form is a form nobody finishes.
+   ========================================================================== */
+
+/* -- the opening title, over the tour ------------------------------------- */
+
+.cinematic-rail {
+  position: absolute;
+  left: clamp(20px, 4vw, 56px);
+  bottom: clamp(96px, 14vh, 150px);
+  z-index: 12;
+  max-width: 27rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Never over the middle of the frame: the middle of the frame is the house. */
+  pointer-events: none;
+  animation: rail-in 900ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+.cinematic-rail > * { pointer-events: auto; }
+
+@keyframes rail-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* One arrival animation, and it is over. Anything that keeps moving while
+   somebody is reading is competing with the tour, which is the thing that is
+   supposed to be moving. */
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-rail { animation: none; }
+}
+
+.cinematic-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.cinematic-title {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  /* Optical sizing is the reason this face is here: at 40px it wants the
+     display cut, not the text cut scaled up. */
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(28px, 3.4vw, 42px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: var(--on-dark);
+  /* The house behind this is bright in some rooms and dark in others, so the
+     text carries its own contrast rather than trusting the frame. */
+  text-shadow: 0 2px 24px rgba(6, 8, 12, 0.75);
+}
+
+.cinematic-body {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--on-dark);
+  text-shadow: 0 1px 16px rgba(6, 8, 12, 0.85);
+}
+
+.cinematic-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+
+/* -- buttons -------------------------------------------------------------- */
+
+.luxe-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+.luxe-btn:active { transform: translateY(1px); }
+.luxe-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.luxe-btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.luxe-btn.primary:hover { background: #E7B173; }
+
+.luxe-btn.ghost {
+  background: rgba(12, 16, 22, 0.6);
+  border-color: rgba(236, 238, 242, 0.28);
+  color: var(--on-dark);
+  backdrop-filter: blur(8px);
+}
+.luxe-btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.luxe-btn.quiet {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.luxe-btn.quiet:hover { color: var(--text); border-color: var(--muted); }
+
+.luxe-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+/* -- the visitor pages ---------------------------------------------------- */
+
+.luxe-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 520px at 78% -8%, rgba(217, 161, 92, 0.10), transparent 60%),
+    radial-gradient(900px 460px at 8% 4%, rgba(78, 126, 150, 0.10), transparent 62%),
+    var(--ink);
+  color: var(--text);
+  font-family: 'Archivo', system-ui, sans-serif;
+  padding: 0 20px 80px;
+}
+
+.luxe-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 20px 0 28px;
+}
+.luxe-wordmark {
+  display: flex; align-items: baseline; gap: 9px;
+  text-decoration: none; color: var(--on-dark);
+}
+.luxe-wordmark strong {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600; font-size: 20px; letter-spacing: -0.01em;
+}
+.luxe-wordmark span {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+}
+
+.luxe-narrow { max-width: 30rem; margin: 0 auto; }
+.luxe-wide { max-width: 62rem; margin: 0 auto; }
+
+.luxe-lede {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin: 0 0 8px;
+  color: var(--on-dark);
+}
+.luxe-sub {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 54ch;
+}
+
+.luxe-card {
+  background: rgba(19, 25, 34, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 22px 24px;
+  backdrop-filter: blur(10px);
+}
+
+/* -- forms ---------------------------------------------------------------- */
+
+.luxe-form { display: flex; flex-direction: column; gap: 14px; }
+.luxe-field { display: flex; flex-direction: column; gap: 6px; }
+.luxe-field > span {
+  font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted);
+}
+.luxe-field input {
+  font: inherit;
+  font-size: 14px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(11, 14, 19, 0.7);
+  color: var(--text);
+}
+.luxe-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(217, 161, 92, 0.18);
+}
+.luxe-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.luxe-note {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  border: 1px solid transparent;
+}
+.luxe-note.bad {
+  background: rgba(224, 107, 94, 0.12);
+  border-color: rgba(224, 107, 94, 0.35);
+  color: #F3B2AA;
+}
+.luxe-note.good {
+  background: rgba(88, 192, 139, 0.12);
+  border-color: rgba(88, 192, 139, 0.32);
+  color: #A6E5C4;
+}
+
+.luxe-switchers {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; margin-top: 16px; font-size: 13px; color: var(--muted);
+}
+.luxe-link {
+  background: none; border: 0; padding: 0; font: inherit;
+  color: var(--accent); cursor: pointer; text-decoration: none;
+}
+.luxe-link:hover { text-decoration: underline; }
+
+/* -- the shop list -------------------------------------------------------- */
+
+.luxe-shops {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 14px;
+}
+
+.luxe-shop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 15px;
+  border: 1px solid var(--border);
+  background: rgba(19, 25, 34, 0.7);
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.luxe-shop:hover { border-color: rgba(217, 161, 92, 0.45); transform: translateY(-1px); }
+.luxe-shop.following { border-color: rgba(217, 161, 92, 0.55); }
+
+.luxe-shop-head { display: flex; align-items: flex-start; gap: 12px; }
+.luxe-shop-mark {
+  width: 42px; height: 42px; border-radius: 11px; flex: none;
+  display: grid; place-items: center;
+  background: linear-gradient(140deg, var(--surface-2), var(--primary));
+  border: 1px solid var(--border);
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 17px; color: var(--accent);
+}
+.luxe-shop-name {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600; font-size: 17px; color: var(--on-dark);
+}
+.luxe-shop-meta { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+.luxe-shop-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px; color: var(--accent);
+  letter-spacing: 0.4px;
+}
+
+/* -- notification preferences --------------------------------------------- */
+
+.luxe-prefs {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.luxe-pref {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 13px; color: var(--text); cursor: pointer;
+}
+.luxe-pref input { margin-top: 2px; accent-color: var(--accent); }
+.luxe-pref em { display: block; font-style: normal; font-size: 11px; color: var(--muted); }
+.luxe-pref.off { opacity: 0.45; }
+
+/* -- notifications -------------------------------------------------------- */
+
+.luxe-feed { display: flex; flex-direction: column; gap: 10px; }
+.luxe-item {
+  display: flex; gap: 13px; align-items: flex-start;
+  padding: 15px 16px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: rgba(19, 25, 34, 0.62);
+  text-decoration: none;
+  color: inherit;
+}
+.luxe-item.unread { border-color: rgba(217, 161, 92, 0.42); background: rgba(26, 33, 44, 0.8); }
+.luxe-item:hover { border-color: var(--muted); }
+.luxe-item-dot {
+  width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; flex: none;
+  background: var(--accent);
+}
+.luxe-item.read .luxe-item-dot { background: var(--border); }
+.luxe-item h3 {
+  margin: 0 0 3px;
+  font-size: 15px; font-weight: 600; color: var(--on-dark);
+}
+.luxe-item p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
+.luxe-item-when {
+  font-size: 11px; color: var(--muted); white-space: nowrap; margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.luxe-empty {
+  padding: 40px 22px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 15px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* -- the follow control in the showroom header ---------------------------- */
+
+.follow-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: rgba(11, 14, 19, 0.55);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.follow-btn:hover { border-color: var(--accent); color: var(--accent); }
+.follow-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+@media (max-width: 720px) {
+  .cinematic-rail { left: 16px; right: 16px; bottom: 88px; max-width: none; }
+  .luxe-shops { grid-template-columns: 1fr; }
+}
+
+/* The count on "My shops". Small, brass, and absent at zero -- a badge that
+   always shows a number stops meaning anything. */
+.header-unread {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 17px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}

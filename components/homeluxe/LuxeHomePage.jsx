@@ -8,6 +8,7 @@ import TourControls from './TourControls';
 import LoginModal from './LoginModal';
 import { useCatalog } from '../../lib/catalog/useCatalog';
 import { recordEvent } from '../../lib/catalog/repository';
+import { VisitorService } from '../../lib/visitor/VisitorService';
 import { useAdmin } from './admin';
 import './homeluxe.css';
 
@@ -27,6 +28,7 @@ const LuxeHomePage = () => {
   // sees the last published snapshot, which is a house somebody decided to
   // show them rather than whatever state a rearrangement is halfway through.
   const {
+    session,
     isAdmin,
     isSignedIn,
     displayName,
@@ -84,7 +86,59 @@ const LuxeHomePage = () => {
   // The 3D scene owns the tour controller -- it needs the camera, the
   // character and the geometry -- and lends this button its start function.
   const tourApi = useRef(null);
-  const handleTourApi = useCallback((api) => { tourApi.current = api; }, []);
+
+  /**
+   * The house introduces itself.
+   *
+   * A LANDING PAGE SHOULD NOT OPEN WITH AN EMPTY ROOM AND A BUTTON. Whoever
+   * has just arrived has no idea what this is yet, and the fastest way to
+   * explain a house you can walk through is to walk through it for them. So
+   * the guided tour starts on its own, with the walking figure HIDDEN --
+   * a third-person character standing in shot turns "here is a house" into
+   * "here is a video game about a house".
+   *
+   * It waits a moment first. The tour needs the scene, the route and the
+   * collision volume, and starting before they exist is a no-op that looks
+   * like a broken autoplay.
+   */
+  const [cinematic, setCinematic] = useState(true);
+
+  // The scene hands its controls over once, asynchronously, and the opening
+  // has to wait for that. A piece of state rather than a ref, because the
+  // effect below has to re-run when it arrives.
+  const [sceneControls, setSceneControls] = useState(null);
+
+  const handleTourApi = useCallback((api) => {
+    tourApi.current = api;
+    setSceneControls(api ?? null);
+  }, []);
+
+  /**
+   * Start the opening film.
+   *
+   * IN AN EFFECT, NOT IN THE CALLBACK. The first version started the timer
+   * inside `handleTourApi` and returned a cleanup from it -- but a callback
+   * is not an effect, nothing calls what it returns, and the timer would have
+   * fired into an unmounted page. Here the cleanup actually runs.
+   *
+   * The short wait is not decoration: the tour needs the scene, the route and
+   * the collision volume, and starting before they exist is a no-op that
+   * looks exactly like a broken autoplay.
+   */
+  useEffect(() => {
+    if (!cinematic || !sceneControls?.startGuided) return undefined;
+    const timer = setTimeout(() => {
+      sceneControls.setWalkerVisible?.(false);
+      sceneControls.startGuided();
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [cinematic, sceneControls]);
+
+  /** They want to walk it themselves. Give them the figure back. */
+  const takeControl = useCallback(() => {
+    setCinematic(false);
+    tourApi.current?.setWalkerVisible?.(true);
+  }, []);
 
   const handleEnquire = (product) => {
     if (!product) return;
@@ -126,6 +180,25 @@ const LuxeHomePage = () => {
   // there is no cookie to set here and no admin state to keep in this
   // component. The old version wrote `isAdmin=true` into document.cookie,
   // which authorised precisely nothing.
+  /**
+   * How many notifications are waiting, for the badge on "My shops".
+   *
+   * Read once when somebody signs in rather than polled: a number that is a
+   * few minutes stale costs nothing, and a poll on a page rendering a 3D
+   * scene at sixty frames a second costs more than it is worth.
+   */
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    const id = session?.userId;
+    if (!id) { setUnread(0); return undefined; }
+    let cancelled = false;
+    new VisitorService()
+      .unreadCount()
+      .then((n) => { if (!cancelled) setUnread(n); })
+      .catch(() => {});          // a badge is not worth an error banner
+    return () => { cancelled = true; };
+  }, [session?.userId]);
+
   const handleLogin = async (email, password) => {
     await signIn(email, password);
     setShowLogin(false);
@@ -137,6 +210,7 @@ const LuxeHomePage = () => {
         isAdmin={isAdmin}
         isSignedIn={isSignedIn}
         displayName={displayName}
+        unreadCount={unread}
         onLogin={() => setShowLogin(true)}
         onLogout={signOut}
       />
@@ -145,6 +219,7 @@ const LuxeHomePage = () => {
         shops={shops}
         activeShop={shopFilter}
         onShopSelect={handleShopSelect}
+        userId={session?.userId ?? null}
       />
 
       <TourPanel
@@ -178,12 +253,37 @@ const LuxeHomePage = () => {
         onEnquire={handleEnquire}
       />
 
+      {/* THE OPENING TITLE, over the film.
+          It says what this is in one line and offers the one thing somebody
+          might want instead -- the controls. It leaves as soon as they take
+          them, and it never covers the middle of the frame, because the
+          middle of the frame is the house. */}
+      {cinematic && (
+        <div className="cinematic-rail">
+          <p className="cinematic-eyebrow">A house you can walk through</p>
+          <h2 className="cinematic-title">
+            Every room is a showroom.
+          </h2>
+          <p className="cinematic-body">
+            Furniture, tiles, paint and fittings from Gaborone shops, standing
+            where you would actually put them. Follow a shop and hear when
+            something new arrives.
+          </p>
+          <div className="cinematic-actions">
+            <button type="button" className="luxe-btn primary" onClick={takeControl}>
+              Walk it yourself
+            </button>
+            <a className="luxe-btn ghost" href="/following">Follow a shop</a>
+          </div>
+        </div>
+      )}
+
       <TourControls
         currentIndex={currentIndex}
         totalItems={currentProducts.length}
         onPrevious={() => handleProductSelect(Math.max(0, currentIndex - 1))}
         onNext={() => handleProductSelect(Math.min(currentProducts.length - 1, currentIndex + 1))}
-        onAutoPlay={() => tourApi.current?.startGuided()}
+        onAutoPlay={() => { takeControl(); tourApi.current?.startGuided(); }}
       />
 
       {showLogin && (

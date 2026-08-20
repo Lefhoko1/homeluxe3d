@@ -151,7 +151,7 @@ const AdminShell = ({ session, shops = [], onSignOut }) => {
         {active === 'campaigns'  && <Campaigns data={data} canManage={canManage} shops={shops} />}
         {active === 'analytics'  && <Analytics data={data} />}
         {active === 'people'     && (
-          <People data={data} canManage={isPlatform} me={session?.profile?.id} />
+          <People data={data} canManage={isPlatform} me={session?.userId} />
         )}
         {active === 'audit'      && <AuditLog data={data} />}
       </main>

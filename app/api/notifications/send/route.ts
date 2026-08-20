@@ -30,6 +30,24 @@ import { EmailNotConfigured, emailConfig, sendEmail } from "../../../../lib/emai
  * the mail that was already queued.
  */
 
+/**
+ * One row of the outbox, as `claim_email_batch` returns it.
+ *
+ * Written out because the generated Supabase types do not cover functions
+ * that return a table, so the rows arrive as `object` and every field access
+ * is a compile error. Naming the shape here is also the only place that says
+ * what the sender actually needs from a queued message.
+ */
+type QueuedEmail = {
+  id: string;
+  to_email: string;
+  to_name: string | null;
+  subject: string;
+  html: string;
+  body_text: string | null;
+  attempts: number;
+};
+
 export const runtime = "nodejs";       // never the edge cache: this must not be replayed
 export const dynamic = "force-dynamic";
 
@@ -73,15 +91,16 @@ export async function POST(request: Request) {
   // One statement takes the batch and marks it `sending`, so a schedule
   // firing while somebody presses the button cannot hand the same message to
   // Resend twice. There is no unsend.
-  const { data: claimed, error: claimError } = await db.rpc("claim_email_batch", {
+  const { data, error: claimError } = await db.rpc("claim_email_batch", {
     p_secret: secret,
     p_limit: BATCH,
   });
+  const claimed = (data ?? []) as QueuedEmail[];
 
   if (claimError) {
     return NextResponse.json({ ok: false, error: claimError.message }, { status: 500 });
   }
-  if (!claimed?.length) {
+  if (!claimed.length) {
     return NextResponse.json({ ok: true, claimed: 0, sent: 0, failed: 0 });
   }
 

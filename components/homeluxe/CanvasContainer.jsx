@@ -1061,6 +1061,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const startTour = () => {
     const tour = tourRef.current;
     if (!tour) return;
+    // Walking it yourself means seeing yourself: the figure is how you know
+    // where you are standing, and the cinematic opening hides it.
+    setWalkerVisible(true);
     tour.toggle();
     setTouring(tour.active);
     if (!tour.active) { setGuided(false); setStopLabel(null); setShowing(null); }
@@ -1162,9 +1165,31 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // start it. The scene has to own the controller -- it needs the camera, the
   // character and the geometry -- so the button borrows it rather than the
   // other way round.
+  /**
+   * Show or hide the walking figure.
+   *
+   * THE LANDING PAGE IS A FILM, NOT A GAME. Somebody arriving has not asked
+   * to control anything yet, and a third-person character standing in shot is
+   * the difference between "here is a house" and "here is a video game about
+   * a house". The camera still follows the same route on the same collision
+   * volume -- nothing about the walk changes, only whether you can see who is
+   * doing the walking.
+   *
+   * The figure comes back the moment they take the controls, because then it
+   * IS them and they need to see where they are standing.
+   */
+  const setWalkerVisible = useCallback((visible) => {
+    const character = characterRef.current;
+    if (character) character.visible = visible;
+  }, []);
+
   useEffect(() => {
-    onTourApi?.({ startGuided: toggleGuided });
-  }, [onTourApi, toggleGuided]);
+    onTourApi?.({
+      startGuided: toggleGuided,
+      setWalkerVisible,
+      isTouring: () => Boolean(tourRef.current?.active),
+    });
+  }, [onTourApi, toggleGuided, setWalkerVisible]);
 
   const toggleTourView = () => {
     const tour = tourRef.current;
