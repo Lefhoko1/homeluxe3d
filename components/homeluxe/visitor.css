@@ -2,10 +2,15 @@
    The visitor's side
    ===========================================================================
 
-   The opening title over the film, and the pages somebody uses once they have
-   decided they want to hear from a shop. Same palette and type as the
-   showroom -- these tokens are defined in homeluxe.css and this file only
-   ever spends them.
+   The opening title over the tour, and the pages somebody uses once they have
+   decided they want to hear from a shop.
+
+   LIGHT, LIKE THE REST OF IT. This is a shop window: the whole point is a bed
+   you can imagine in your own room, and nobody imagines furniture in the
+   dark. Contrast does the work -- a white card on warm paper, a hairline
+   rule, and one saturated colour reserved for prices and offers.
+
+   The tokens live in homeluxe.css; this file only ever spends them.
 
    The layout rule everywhere here: ONE COLUMN, NARROW. These are pages you
    read and make a decision on, not dashboards you scan, and a 1200px-wide
@@ -16,18 +21,28 @@
 
 .cinematic-rail {
   position: absolute;
-  left: clamp(20px, 4vw, 56px);
+  left: clamp(18px, 4vw, 52px);
   bottom: clamp(96px, 14vh, 150px);
   z-index: 12;
-  max-width: 27rem;
+  max-width: 25rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  /* Never over the middle of the frame: the middle of the frame is the house. */
-  pointer-events: none;
-  animation: rail-in 900ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  gap: 11px;
+  padding: 22px 24px 24px;
+  border-radius: 18px;
+
+  /* A CARD, NOT TEXT WITH A SHADOW ON IT. This sits over a 3D render that is
+     a sunlit kitchen in one room and a shaded hallway in the next, and text
+     that has to survive both ends up outlined and grubby. A frosted white
+     panel is legible over anything and reads as a caption on a photograph,
+     which is what it is. */
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 18px 50px rgba(23, 33, 46, 0.16);
+
+  animation: rail-in 800ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
 }
-.cinematic-rail > * { pointer-events: auto; }
 
 @keyframes rail-in {
   from { opacity: 0; transform: translateY(14px); }
@@ -35,7 +50,7 @@
 }
 
 /* One arrival animation, and it is over. Anything that keeps moving while
-   somebody is reading is competing with the tour, which is the thing that is
+   somebody is reading competes with the tour, which is the thing that is
    supposed to be moving. */
 @media (prefers-reduced-motion: reduce) {
   .cinematic-rail { animation: none; }
@@ -43,39 +58,36 @@
 
 .cinematic-eyebrow {
   margin: 0;
-  font-size: 11px;
-  letter-spacing: 2.4px;
+  font-size: 10px;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
-  color: var(--accent);
+  font-weight: 600;
+  color: var(--accent-deep);
 }
 
 .cinematic-title {
   margin: 0;
   font-family: 'Fraunces', Georgia, serif;
-  /* Optical sizing is the reason this face is here: at 40px it wants the
+  /* Optical sizing is the reason this face is here: at 38px it wants the
      display cut, not the text cut scaled up. */
   font-optical-sizing: auto;
   font-weight: 600;
-  font-size: clamp(28px, 3.4vw, 42px);
+  font-size: clamp(26px, 3.1vw, 38px);
   line-height: 1.08;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.018em;
   text-wrap: balance;
-  color: var(--on-dark);
-  /* The house behind this is bright in some rooms and dark in others, so the
-     text carries its own contrast rather than trusting the frame. */
-  text-shadow: 0 2px 24px rgba(6, 8, 12, 0.75);
+  color: var(--primary);
 }
 
 .cinematic-body {
   margin: 0;
   max-width: 34ch;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.6;
-  color: var(--on-dark);
-  text-shadow: 0 1px 16px rgba(6, 8, 12, 0.85);
+  color: var(--muted);
 }
 
-.cinematic-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.cinematic-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 5px; }
 
 /* -- buttons -------------------------------------------------------------- */
 
@@ -90,27 +102,26 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.01em;
   cursor: pointer;
   text-decoration: none;
   transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
 }
 .luxe-btn:active { transform: translateY(1px); }
-.luxe-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.luxe-btn:focus-visible { outline: 2px solid var(--secondary); outline-offset: 3px; }
+.luxe-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
-.luxe-btn.primary {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.luxe-btn.primary:hover { background: #E7B173; }
+/* NAVY CARRIES THE BUTTONS, not the amber. White on amber fails contrast at
+   this size; white on navy is legible at any size, and it leaves the amber
+   free to mean one thing only -- see .price-tag. */
+.luxe-btn.primary { background: var(--primary); color: var(--on-dark); }
+.luxe-btn.primary:hover { background: #22303F; }
 
 .luxe-btn.ghost {
-  background: rgba(12, 16, 22, 0.6);
-  border-color: rgba(236, 238, 242, 0.28);
-  color: var(--on-dark);
-  backdrop-filter: blur(8px);
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--primary);
 }
-.luxe-btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.luxe-btn.ghost:hover { border-color: var(--secondary); color: var(--secondary); }
 
 .luxe-btn.quiet {
   background: transparent;
@@ -119,16 +130,16 @@
 }
 .luxe-btn.quiet:hover { color: var(--text); border-color: var(--muted); }
 
-.luxe-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-
 /* -- the visitor pages ---------------------------------------------------- */
 
 .luxe-page {
   min-height: 100vh;
+  /* Two very faint washes, so the page is not a flat rectangle of off-white.
+     Barely visible on purpose: this is stationery, not a gradient hero. */
   background:
-    radial-gradient(1100px 520px at 78% -8%, rgba(217, 161, 92, 0.10), transparent 60%),
-    radial-gradient(900px 460px at 8% 4%, rgba(78, 126, 150, 0.10), transparent 62%),
-    var(--ink);
+    radial-gradient(900px 460px at 82% -6%, rgba(192, 138, 46, 0.10), transparent 62%),
+    radial-gradient(760px 420px at 4% 2%, rgba(31, 111, 139, 0.08), transparent 64%),
+    var(--paper);
   color: var(--text);
   font-family: 'Archivo', system-ui, sans-serif;
   padding: 0 20px 80px;
@@ -141,16 +152,16 @@
   gap: 16px;
   max-width: 62rem;
   margin: 0 auto;
-  padding: 20px 0 28px;
+  padding: 20px 0 30px;
 }
 .luxe-wordmark {
   display: flex; align-items: baseline; gap: 9px;
-  text-decoration: none; color: var(--on-dark);
+  text-decoration: none; color: var(--primary);
 }
 .luxe-wordmark strong {
   font-family: 'Fraunces', Georgia, serif;
   font-optical-sizing: auto;
-  font-weight: 600; font-size: 20px; letter-spacing: -0.01em;
+  font-weight: 600; font-size: 20px; letter-spacing: -0.012em;
 }
 .luxe-wordmark span {
   font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
@@ -165,25 +176,25 @@
   font-weight: 600;
   font-size: clamp(26px, 3vw, 34px);
   line-height: 1.14;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.018em;
   text-wrap: balance;
   margin: 0 0 8px;
-  color: var(--on-dark);
+  color: var(--primary);
 }
 .luxe-sub {
   margin: 0 0 24px;
   color: var(--muted);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.62;
   max-width: 54ch;
 }
 
 .luxe-card {
-  background: rgba(19, 25, 34, 0.78);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 22px 22px 24px;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 2px rgba(23, 33, 46, 0.04), 0 12px 30px rgba(23, 33, 46, 0.05);
 }
 
 /* -- forms ---------------------------------------------------------------- */
@@ -191,7 +202,8 @@
 .luxe-form { display: flex; flex-direction: column; gap: 14px; }
 .luxe-field { display: flex; flex-direction: column; gap: 6px; }
 .luxe-field > span {
-  font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted);
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  font-weight: 600; color: var(--muted);
 }
 .luxe-field input {
   font: inherit;
@@ -199,13 +211,13 @@
   padding: 11px 13px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(11, 14, 19, 0.7);
+  background: var(--surface);
   color: var(--text);
 }
 .luxe-field input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(217, 161, 92, 0.18);
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
 }
 .luxe-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
@@ -218,14 +230,10 @@
   border: 1px solid transparent;
 }
 .luxe-note.bad {
-  background: rgba(224, 107, 94, 0.12);
-  border-color: rgba(224, 107, 94, 0.35);
-  color: #F3B2AA;
+  background: #FCECEA; border-color: #F0C6C0; color: #8E2B20;
 }
 .luxe-note.good {
-  background: rgba(88, 192, 139, 0.12);
-  border-color: rgba(88, 192, 139, 0.32);
-  color: #A6E5C4;
+  background: #E8F5EE; border-color: #BFE3CE; color: #1E5F42;
 }
 
 .luxe-switchers {
@@ -234,7 +242,7 @@
 }
 .luxe-link {
   background: none; border: 0; padding: 0; font: inherit;
-  color: var(--accent); cursor: pointer; text-decoration: none;
+  color: var(--secondary); font-weight: 600; cursor: pointer; text-decoration: none;
 }
 .luxe-link:hover { text-decoration: underline; }
 
@@ -253,45 +261,50 @@
   padding: 18px;
   border-radius: 15px;
   border: 1px solid var(--border);
-  background: rgba(19, 25, 34, 0.7);
-  transition: border-color 160ms ease, transform 160ms ease;
+  background: var(--surface);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
-.luxe-shop:hover { border-color: rgba(217, 161, 92, 0.45); transform: translateY(-1px); }
-.luxe-shop.following { border-color: rgba(217, 161, 92, 0.55); }
+.luxe-shop:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(23, 33, 46, 0.07);
+}
+/* Followed shops carry the amber edge -- the one place on this page the
+   accent appears, because it is the state the page exists to produce. */
+.luxe-shop.following { border-color: var(--accent); }
 
 .luxe-shop-head { display: flex; align-items: flex-start; gap: 12px; }
 .luxe-shop-mark {
   width: 42px; height: 42px; border-radius: 11px; flex: none;
   display: grid; place-items: center;
-  background: linear-gradient(140deg, var(--surface-2), var(--primary));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   font-family: 'Fraunces', Georgia, serif;
-  font-size: 17px; color: var(--accent);
+  font-weight: 600; font-size: 18px; color: var(--secondary);
 }
 .luxe-shop-name {
   margin: 0;
   font-family: 'Fraunces', Georgia, serif;
   font-optical-sizing: auto;
-  font-weight: 600; font-size: 17px; color: var(--on-dark);
+  font-weight: 600; font-size: 17px; color: var(--primary);
 }
 .luxe-shop-meta { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
 .luxe-shop-count {
   font-variant-numeric: tabular-nums;
-  font-size: 11px; color: var(--accent);
-  letter-spacing: 0.4px;
+  font-size: 11px; font-weight: 600; color: var(--accent-deep);
+  margin: 3px 0 0;
 }
 
 /* -- notification preferences --------------------------------------------- */
 
 .luxe-prefs {
-  display: flex; flex-direction: column; gap: 8px;
-  padding-top: 12px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 9px;
+  padding-top: 13px; border-top: 1px solid var(--border);
 }
 .luxe-pref {
   display: flex; align-items: flex-start; gap: 9px;
   font-size: 13px; color: var(--text); cursor: pointer;
 }
-.luxe-pref input { margin-top: 2px; accent-color: var(--accent); }
+.luxe-pref input { margin-top: 2px; accent-color: var(--secondary); }
 .luxe-pref em { display: block; font-style: normal; font-size: 11px; color: var(--muted); }
 .luxe-pref.off { opacity: 0.45; }
 
@@ -303,12 +316,12 @@
   padding: 15px 16px;
   border-radius: 13px;
   border: 1px solid var(--border);
-  background: rgba(19, 25, 34, 0.62);
+  background: var(--surface);
   text-decoration: none;
   color: inherit;
 }
-.luxe-item.unread { border-color: rgba(217, 161, 92, 0.42); background: rgba(26, 33, 44, 0.8); }
-.luxe-item:hover { border-color: var(--muted); }
+.luxe-item.unread { border-color: var(--accent); background: #FFFCF5; }
+.luxe-item:hover { box-shadow: 0 8px 22px rgba(23, 33, 46, 0.06); }
 .luxe-item-dot {
   width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; flex: none;
   background: var(--accent);
@@ -316,7 +329,7 @@
 .luxe-item.read .luxe-item-dot { background: var(--border); }
 .luxe-item h3 {
   margin: 0 0 3px;
-  font-size: 15px; font-weight: 600; color: var(--on-dark);
+  font-size: 15px; font-weight: 600; color: var(--primary);
 }
 .luxe-item p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
 .luxe-item-when {
@@ -329,6 +342,7 @@
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: 15px;
+  background: var(--surface);
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
@@ -339,27 +353,29 @@
 .follow-btn {
   appearance: none;
   border: 1px solid var(--border);
-  background: rgba(11, 14, 19, 0.55);
+  background: var(--surface);
   color: var(--muted);
   border-radius: 999px;
   padding: 3px 10px;
   font: inherit;
   font-size: 10px;
-  letter-spacing: 0.6px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
 }
-.follow-btn:hover { border-color: var(--accent); color: var(--accent); }
-.follow-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-
-@media (max-width: 720px) {
-  .cinematic-rail { left: 16px; right: 16px; bottom: 88px; max-width: none; }
-  .luxe-shops { grid-template-columns: 1fr; }
+.follow-btn:hover { border-color: var(--accent); color: var(--accent-deep); }
+.follow-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
+.follow-btn:disabled { opacity: 0.55; cursor: default; }
 
-/* The count on "My shops". Small, brass, and absent at zero -- a badge that
-   always shows a number stops meaning anything. */
+/* The count on "My shops". Absent at zero -- a badge that always shows a
+   number stops meaning anything. */
 .header-unread {
   display: inline-block;
   margin-left: 6px;
@@ -372,4 +388,9 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+@media (max-width: 720px) {
+  .cinematic-rail { left: 14px; right: 14px; bottom: 86px; max-width: none; }
+  .luxe-shops { grid-template-columns: 1fr; }
 }

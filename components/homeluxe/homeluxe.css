@@ -2,76 +2,89 @@
    HomeLuxe 3D -- the showroom
    ===========================================================================
 
-   THE RENDER IS THE BRIGHTEST THING ON SCREEN, and everything here exists to
-   make sure it stays that way. The house is the product; the chrome around it
-   is a frame, and a white frame competes with a lit room for attention and
-   wins. So the application is dark and the doorway you are looking through
-   is not.
+   BRIGHT, BECAUSE IT IS AN ADVERTISING APPLICATION. A dark chrome makes the
+   render pop, which is a real argument and the wrong one: this is a shop
+   window, and shop windows are lit. Everything on sale here -- a bed, a tile,
+   a wall colour -- is bought by people imagining it in a room with the
+   curtains open, and a black frame around it sells software, not furniture.
 
-   The palette is taken from what the house actually sells: brass, from the
-   Tubod hinge on every door and the fittings above every room; a desaturated
-   teal from the pool; and a blue-black ground rather than a neutral one,
-   because a true grey beside a warm render reads as a screenshot.
+   So the ground is paper and the house sits on it like a photograph on a
+   page. Contrast does the work that darkness was doing: a white card on a
+   warm off-white ground, a hairline rule, and one saturated colour used only
+   where money is involved.
+
+   The palette is still taken from what the house actually sells -- amber from
+   the brass hinge on every door, teal from the pool -- but it is spent
+   differently on a light ground. Navy carries the buttons, because white on
+   navy is legible at any size; amber carries prices and offers with INK on
+   top of it, because white on amber is not.
 
    Type is Fraunces and Archivo. Fraunces is a variable serif with optical
-   sizing -- it holds its character at 34px over the hero and stops shouting
-   at 15px in a product name, which one static weight cannot do. Archivo
-   carries everything else: a grotesque with enough width to stay legible in
-   an 11px label over a moving 3D scene.
+   sizing -- it holds its character at 42px over a hero and stops shouting at
+   15px in a product name, which one static weight cannot do. Archivo carries
+   everything else.
 
-   EVERY COLOUR IS A TOKEN. It was not before -- `background: white` appeared
-   nine times and `color: white` eleven, which is why this file could not be
-   rethemed without a search-and-replace. Two of those elevens sat on the
-   brass accent and needed ink rather than light, and only reading each one
-   found that.
+   EVERY COLOUR IS A TOKEN, which is what made this switch a rewrite of one
+   block rather than a search-and-replace through 1,300 lines.
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Grounds, darkest first. */
-  --ink: #0B0E13;
-  --primary: #0F141C;
-  --surface: #131922;
-  --surface-2: #1A212C;
-  --border: #26303F;
+  /* Grounds, lightest first. The page is a warm off-white and the cards are
+     pure white, so a card reads as raised without needing a shadow. */
+  --paper: #FAF9F6;
+  --surface: #FFFFFF;
+  --surface-2: #F1F0EB;
+  --border: #E4E1DA;
 
-  /* Ink on those grounds. The muted tone is deliberately blue-biased:
-     a pure grey next to the brass reads as dirt. */
-  --text: #E9ECF1;
-  --muted: #8C97A9;
-  --on-dark: #F2F5F9;
+  /* Ink. The muted tone is warm-biased to sit with the paper -- a cold grey
+     on a warm ground looks like a rendering error. */
+  --text: #1B1D21;
+  --muted: #71736F;
+  --on-dark: #FFFFFF;      /* text that sits on navy or on the 3D view */
 
-  /* Brass -- the hinge, the lamp. The one warm thing, used sparingly. */
-  --accent: #D9A15C;
-  --accent-deep: #A9763A;
-  --on-accent: #16110A;
+  /* Structure. Navy carries buttons, headers and the active state. */
+  --primary: #17212E;
+  --secondary: #1F6F8B;
+  --secondary-lift: #2E88A6;
 
-  /* The pool. Secondary, and never competing with the brass. */
-  --secondary: #4E7E96;
-  --secondary-lift: #6699B0;
+  /* Amber, from the brass. Prices, offers, the one thing on the page that
+     is allowed to shout -- always with ink on top, never white. */
+  --accent: #C08A2E;
+  /* Two steps darker than the accent it is named after, and the darkness is
+     measured rather than chosen: this carries 10px uppercase labels, and at
+     #9A6C1F they came out at 4.43:1 on the paper -- under the 4.5 that small
+     text needs. #8B5F16 clears it on white, on paper and on the frosted rail. */
+  --accent-deep: #8B5F16;
+  --on-accent: #1B1405;
 
   /* Semantic, and separate from the accent on purpose: "live" must not be
      mistakeable for "featured". */
-  --live: #58C08B;
-  --warn: #E8B84B;
-  --stop: #E06B5E;
+  --live: #2F855A;
+  --warn: #B7791F;
+  --stop: #C0392B;
+
+  /* The one place that stays dark, and deliberately. These chips float ON
+     the 3D view, which is a bright kitchen in one room and a shaded corridor
+     in the next -- a light control would vanish against half the house. */
+  --over-canvas: rgba(23, 33, 46, 0.88);
+  --over-canvas-hover: rgba(23, 33, 46, 0.97);
 
   --light: var(--surface-2);   /* kept: older rules still name it */
 }
 
 html, body {
-  background: var(--ink);
+  background: var(--paper);
   color: var(--text);
 }
 
 body {
   font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-feature-settings: 'tnum' 0;
 }
 
 /* Digits that line up wherever they are counted or compared. */
-.price-tag, .spec-value, .progress-text, .furniture-count, .shop-badge span {
+.price-tag, .spec-value, .progress-text, .furniture-count, .shop-chip-count {
   font-variant-numeric: tabular-nums;
 }
 
@@ -395,7 +408,7 @@ body {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(26, 35, 50, 0.9);
+  background: var(--over-canvas);
   color: var(--on-dark);
   padding: 10px 20px;
   border-radius: 20px;
@@ -427,7 +440,7 @@ body {
 .camera-btn {
   width: 40px;
   height: 40px;
-  background: rgba(26, 35, 50, 0.9);
+  background: var(--over-canvas);
   color: var(--on-dark);
   border: none;
   border-radius: 50%;
@@ -453,7 +466,7 @@ body {
 .edit-btn {
   width: 40px;
   height: 40px;
-  background: rgba(26, 35, 50, 0.9);
+  background: var(--over-canvas);
   color: var(--on-dark);
   border: none;
   border-radius: 50%;
@@ -479,7 +492,7 @@ body {
 .transform-sub-btn {
   width: 35px;
   height: 35px;
-  background: rgba(26, 35, 50, 0.9);
+  background: var(--over-canvas);
   color: var(--on-dark);
   border: none;
   border-radius: 50%;
