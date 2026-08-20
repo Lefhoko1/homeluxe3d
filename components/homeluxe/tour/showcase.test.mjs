@@ -40,6 +40,7 @@ const read = (...parts) => JSON.parse(readFileSync(join(PUBLIC, ...parts), "utf8
 const collision = read("house", "collision.json");
 const lights = read("house", "lights.json");
 const doorsManifest = read("house", "doors.json");
+const slotsManifest = read("house", "slots.json");
 const catalog = read("products", "catalog.json");
 const route = read("tour", "tour.json");
 
@@ -71,6 +72,11 @@ placements
       productId: placement.product,
       name: product?.name ?? placement.product,
       room: placement.room,
+      // CARRIED, because the showcase matches free slots against what is
+      // already standing here by category. Without it the stub was thinner
+      // than `advertFor` and the master offered a bed position with the
+      // Slumberland in it -- a fault in the test, not in the code.
+      category: product?.category,
     };
     group.add(mesh);
   });
@@ -126,6 +132,7 @@ const showcase = createShowcase({
   rooms,
   ceiling: collision.ceiling_m,
   doors: doorPoints,
+  slots: slotsManifest.slots,
 });
 
 // ---- Walk the route's stops ----------------------------------------------
@@ -191,6 +198,54 @@ stops.forEach((stop) => {
   console.log(
     `  finishes: all ${finishes.length} placed finish(es) are shown ` +
     `(${fittings.length} aimed at a door)`
+  );
+}
+
+// ---- 2b. The empty positions are offered ---------------------------------
+//
+// A slot is what is FOR SALE. A walkthrough that only shows what has already
+// been bought is a tour of somebody else's success -- the visitor being sold
+// space has to be shown the space.
+{
+  const offered = [...shown.values()].flat().filter((t) => t.kind === "slot");
+  assert.ok(
+    offered.length > 0,
+    "the tour never offers an empty position, so nothing in this house is " +
+    "visibly for sale"
+  );
+
+  // Every one has to be a real slot from the manifest, aimed where it says.
+  const byId = new Map(slotsManifest.slots.map((s) => [s.id, s]));
+  offered.forEach((target) => {
+    const slot = byId.get(target.slot?.id);
+    assert.ok(slot, `offered a slot that is not in the manifest: ${target.caption}`);
+    assert.ok(
+      Math.hypot(target.point.x - slot.position[0],
+                 target.point.z - slot.position[2]) < 0.01,
+      `${slot.id} is aimed at ${target.point.x.toFixed(2)},` +
+      `${target.point.z.toFixed(2)} but stands at ` +
+      `${slot.position[0]},${slot.position[2]}`
+    );
+  });
+
+  // A position that is already filled must never be offered.
+  const placedCategories = new Map();
+  placements.filter((p) => !p.isFinish && p.position).forEach((p) => {
+    const cat = products.get(p.product)?.category;
+    if (cat) placedCategories.set(`${p.room}:${cat}`, true);
+  });
+  const doubleSold = offered.filter(
+    (t) => t.slot.category && placedCategories.has(`${t.slot.room}:${t.slot.category}`)
+  );
+  assert.deepEqual(
+    doubleSold.map((t) => `${t.slot.id} in ${t.slot.room}`), [],
+    "offered a position that already holds a product of that category"
+  );
+
+  const rooms = new Set(offered.map((t) => t.slot.room));
+  console.log(
+    `  inventory: ${offered.length} empty position(s) offered across ` +
+    `${rooms.size} room(s)`
   );
 }
 

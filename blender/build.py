@@ -32,6 +32,8 @@ from houseluxe.components.character import CharacterComponent  # noqa: E402
 from houseluxe.components.products import product_components  # noqa: E402
 from houseluxe.components.site import site_components  # noqa: E402
 from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER  # noqa: E402
+from houseluxe.config.slots import check as check_slots  # noqa: E402
+from houseluxe.config.slots_3bed import SLOTS  # noqa: E402
 from houseluxe.config.site_3bed import SITE  # noqa: E402
 from houseluxe.core.scene import SceneBuilder, purge_scene  # noqa: E402
 from houseluxe.export.catalog_json import (  # noqa: E402
@@ -55,6 +57,10 @@ from houseluxe.export.planting_json import (  # noqa: E402
     report as planting_report,
     write_manifest as write_planting_manifest,
 )
+from houseluxe.export.slots_json import (  # noqa: E402
+    report as slots_report,
+    write_manifest as write_slots_manifest,
+)
 from houseluxe.export.tour_json import (  # noqa: E402
     report as tour_report,
     verify as verify_tour,
@@ -73,6 +79,7 @@ TOUR_PATH = os.path.join(TOUR_MODEL_DIR, "tour.json")
 LIGHTS_PATH = os.path.join(MODEL_DIR, "lights.json")
 COLLISION_PATH = os.path.join(MODEL_DIR, "collision.json")
 DOORS_PATH = os.path.join(MODEL_DIR, "doors.json")
+SLOTS_PATH = os.path.join(MODEL_DIR, "slots.json")
 BLEND_PATH = os.path.join(_HERE, "house_3bed.blend")
 
 
@@ -221,6 +228,13 @@ def main(
         # export/doors_json.py.
         doors = write_doors_manifest(plan, DOORS_PATH)
         print(doors_report(doors, DOORS_PATH))
+
+        # The advertising inventory. A slot has to be able to exist EMPTY --
+        # that is what a shop buys -- so these are declared in the plan and
+        # never derived from what happens to be standing there.
+        slot_problems = check_slots(SLOTS, {r.name: r for r in plan.rooms})
+        slots = write_slots_manifest(plan, SLOTS, SLOTS_PATH)
+        print(slots_report(slots, slot_problems, SLOTS_PATH))
 
         # The guided walk-through, solved over the plan's own walls and
         # doorways so it cannot route through one. See export/tour_json.py.

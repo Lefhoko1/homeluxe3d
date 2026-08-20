@@ -29,3 +29,4 @@ export {
 } from "./textures/materialLibrary";
 
 export { loadDoors, DOORS_MANIFEST_URL } from "./doors";
+export { loadSlots, SLOTS_MANIFEST_URL } from "./slots";

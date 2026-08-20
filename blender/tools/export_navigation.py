@@ -28,6 +28,8 @@ if _BLENDER not in sys.path:
     sys.path.insert(0, _BLENDER)
 
 from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER     # noqa: E402
+from houseluxe.config.slots import check as check_slots     # noqa: E402
+from houseluxe.config.slots_3bed import SLOTS               # noqa: E402
 from houseluxe.export.collision_json import (               # noqa: E402
     report as collision_report,
     write_manifest as write_collision_manifest,
@@ -35,6 +37,10 @@ from houseluxe.export.collision_json import (               # noqa: E402
 from houseluxe.export.doors_json import (                   # noqa: E402
     report as doors_report,
     write_manifest as write_doors_manifest,
+)
+from houseluxe.export.slots_json import (                   # noqa: E402
+    report as slots_report,
+    write_manifest as write_slots_manifest,
 )
 from houseluxe.export.tour_json import (                    # noqa: E402
     report as tour_report,
@@ -45,6 +51,7 @@ from houseluxe.export.tour_json import (                    # noqa: E402
 COLLISION_PATH = os.path.join(_REPO, "public", "models", "house", "collision.json")
 TOUR_PATH = os.path.join(_REPO, "public", "models", "tour", "tour.json")
 DOORS_PATH = os.path.join(_REPO, "public", "models", "house", "doors.json")
+SLOTS_PATH = os.path.join(_REPO, "public", "models", "house", "slots.json")
 CATALOG_PATH = os.path.join(_REPO, "public", "models", "products", "catalog.json")
 
 
@@ -104,6 +111,13 @@ def main() -> int:
 
     doors = write_doors_manifest(plan, DOORS_PATH)
     print(doors_report(doors, DOORS_PATH))
+
+    # The advertising inventory. A slot has to be able to exist EMPTY --
+    # that is what a shop buys -- so these are declared in the plan and
+    # never derived from what happens to be standing there.
+    slot_problems = check_slots(SLOTS, {r.name: r for r in plan.rooms})
+    slots = write_slots_manifest(plan, SLOTS, SLOTS_PATH)
+    print(slots_report(slots, slot_problems, SLOTS_PATH))
 
     route = write_tour_manifest(
         plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture

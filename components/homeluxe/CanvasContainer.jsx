@@ -10,6 +10,7 @@ import {
   createHouseMaterials,
   disposeHouseMaterials,
   loadDoors,
+  loadSlots,
   HOUSE_VIEWS,
 } from './house';
 import { loadProducts, loadOneProduct, disposeProducts, advertFor } from './products';
@@ -59,6 +60,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const walkVolumeRef = useRef(null);
   const showcaseRef = useRef(null);
   const doorsRef = useRef(null);
+  const slotsRef = useRef(null);
+  const [showSlots, setShowSlots] = useState(false);
+  const [slotCount, setSlotCount] = useState(0);
   // Cached because it only changes when an admin moves something.
   const furnitureRectsRef = useRef([]);
   // Room extents, so a stop displaced by new furniture is re-seated inside
@@ -546,6 +550,17 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           })
         );
 
+        // ---- The advertising inventory -----------------------------------
+        // Every position a product can be sold into, drawn as the box it
+        // would fill. Off by default: it is a view of the inventory, not part
+        // of the house. See house/slots.js.
+        const slots = await loadSlots(house);
+        slotsRef.current = slots;
+        if (slots) {
+          slots.hideOccupied(placed.filter((p) => !p.isFinish));
+          setSlotCount(slots.count);
+        }
+
         showcaseRef.current = createShowcase({
           products: group,
           finishes: finishAdverts,
@@ -555,6 +570,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           // Where the hinges are: on the doors. Taken from the same manifest
           // that swings them, in world metres.
           doors: (doors?.points?.() ?? []),
+          // Empty positions are worth showing too: a visitor being sold
+          // space needs to see the space.
+          slots: slots?.worldEntries() ?? [],
         });
 
         // The solved route through the house. House-local in the manifest,
@@ -689,6 +707,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       walkVolumeRef.current = null;
       showcaseRef.current = null;
       doorsRef.current = null;
+      slotsRef.current?.dispose();
+      slotsRef.current = null;
       furnitureRectsRef.current = [];
       collisionRoomsRef.current = [];
       disposeCharacter(characterRef.current);
@@ -1199,6 +1219,26 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           >
             🚶
           </button>
+          {/* THE INVENTORY. Shows the box every product would fill, in the
+              room, at the size it would be -- which is the only way to judge
+              a position that is still empty. */}
+          {slotCount > 0 && (
+            <button
+              type="button"
+              className={`camera-btn${showSlots ? ' active' : ''}`}
+              title={
+                showSlots
+                  ? 'Hide the advertising positions'
+                  : `Show all ${slotCount} advertising positions`
+              }
+              onClick={() => {
+                const on = slotsRef.current?.toggle() ?? false;
+                setShowSlots(on);
+              }}
+            >
+              ▦
+            </button>
+          )}
         </div>
       )}
 
