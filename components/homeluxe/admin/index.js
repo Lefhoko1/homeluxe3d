@@ -14,6 +14,7 @@
 export { default as AdminGate } from './AdminGate';
 export { default as AdminBar } from './AdminBar';
 export { default as AdminList } from './AdminList';
+export { default as AdminShell } from './AdminShell';
 export { default as RequestQueue } from './RequestQueue';
 export { default as UploadDialog } from './UploadDialog';
 export { PlacementEditor } from './PlacementEditor';

@@ -2,37 +2,41 @@
 
 import React, { useState } from "react";
 
-import {
-  AdminList,
-  RequestQueue,
-  useAdmin,
-} from "../../components/homeluxe/admin";
+import { AdminShell, useAdmin } from "../../components/homeluxe/admin";
 import LoginModal from "../../components/homeluxe/LoginModal";
 import "../../components/homeluxe/homeluxe.css";
 
 /**
- * The management screen, away from the 3D view.
+ * The management application, away from the 3D view.
  *
- * The same list is available inside the showroom, where it is the quickest
- * way to get from "upload" to "place". This route exists for the other half
- * of the job -- reviewing what a shop has published, unpublishing something
- * whose promotion has ended, clearing out a draft -- which nobody wants to do
- * while a house is being rendered behind them.
+ * This route used to be one list with two tabs. It is now the whole admin --
+ * the house's slots and what stands in them, the catalogue, the assets and
+ * their versions, the shops, the campaigns, the analytics, the audit log --
+ * because the specification asks for seventeen screens and the work an
+ * operator does every day is spread across most of them.
  *
- * Placing is deliberately absent here: it needs a scene, and there is none.
+ * PLACING IS STILL ABSENT FROM ONE PLACE ONLY: dragging a product around in
+ * 3D needs a scene, and there is none here. Everything that does NOT need a
+ * rendered house is here rather than floating over one, which is the right
+ * split -- nobody wants to audit a shop's permissions through a translucent
+ * panel with a house being rendered behind it.
  *
- * TWO TABS, BECAUSE THERE ARE TWO KINDS OF WORK. "Products" is everything
- * that exists. "Made to order" is everything a shop has asked us to make and
- * that does not exist yet -- which is most of what actually comes in, since
- * a furniture shop has photographs and a price list and no way on earth to
- * export a .glb. Both end in the same place; only the first hundred metres
- * differ.
+ * This page's whole job is the three states before the application starts:
+ * checking, signed out, and signed in as somebody with nothing to administer.
+ * Everything after that is `AdminShell`.
  */
 export default function AdminPage() {
-  const { isAdmin, isSignedIn, loading, displayName, shops, signIn, signOut } =
-    useAdmin();
+  const {
+    session,
+    isAdmin,
+    isSignedIn,
+    loading,
+    displayName,
+    shops,
+    signIn,
+    signOut,
+  } = useAdmin();
   const [showLogin, setShowLogin] = useState(false);
-  const [tab, setTab] = useState<"products" | "requests">("products");
 
   if (loading) {
     return (
@@ -46,7 +50,7 @@ export default function AdminPage() {
     return (
       <main className="admin-page">
         <h1>HomeLuxe admin</h1>
-        <p>Sign in to manage products.</p>
+        <p>Sign in to manage the house.</p>
         <button
           className="admin-btn primary"
           onClick={() => setShowLogin(true)}
@@ -68,7 +72,7 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     // Signed in, but not as anyone who manages a shop. Saying so is better
-    // than an empty list, which reads as "there is nothing here".
+    // than an empty application, which reads as "there is nothing here".
     return (
       <main className="admin-page">
         <h1>HomeLuxe admin</h1>
@@ -83,43 +87,5 @@ export default function AdminPage() {
     );
   }
 
-  return (
-    <main className="admin-page">
-      <div className="admin-page-head">
-        <h1>HomeLuxe admin</h1>
-        <span>{displayName}</span>
-        <button className="admin-btn" onClick={signOut}>
-          Sign out
-        </button>
-        <a className="admin-btn" href="/">
-          Open the showroom
-        </a>
-      </div>
-
-      <nav className="admin-tabs">
-        <button
-          className={`admin-tab${tab === "products" ? " on" : ""}`}
-          type="button"
-          onClick={() => setTab("products")}
-        >
-          Products
-        </button>
-        <button
-          className={`admin-tab${tab === "requests" ? " on" : ""}`}
-          type="button"
-          onClick={() => setTab("requests")}
-        >
-          Made to order
-        </button>
-      </nav>
-
-      {/* Inline rather than as an overlay: this whole page is the list, so
-          there is nothing to dismiss it back to. */}
-      {tab === "products" ? (
-        <AdminList inline shops={shops} />
-      ) : (
-        <RequestQueue shops={shops} />
-      )}
-    </main>
-  );
+  return <AdminShell session={session} shops={shops} onSignOut={signOut} />;
 }

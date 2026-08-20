@@ -88,7 +88,12 @@ const LuxeHomePage = () => {
 
   const handleEnquire = (product) => {
     if (!product) return;
+    // The variant is what makes this attributable: a product panel enquiry
+    // names no placement -- nothing was clicked in the house -- but a variant
+    // belongs to exactly one product and one shop, and migration 0014 works
+    // the rest out from it.
     recordEvent('enquiry_open', {
+      variantId: product.variantId ?? null,
       metadata: { product: product.id, shop: product.shopSlug ?? product.shop },
     });
   };

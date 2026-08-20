@@ -365,8 +365,14 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           if (pickedNode) editorRef.current?.attach(pickedNode);
           else editorRef.current?.detach();
           onSelectRef.current?.(picked);      // tell the panels
+          // THE IDS, NOT JUST THE SLUGS. The slugs in `metadata` are for
+          // reading; the ids are what the event is attributed BY. Passing
+          // only metadata left 126 clicks in the database belonging to no
+          // shop and no product, which is the one thing a shop is paying
+          // for -- see migration 0014, which fills in the rest from these.
           recordEvent('product_click', {
             placementId: picked.placementId ?? null,
+            variantId: picked.variantId ?? null,
             metadata: {
               product: picked.productId,
               shop: picked.shop,
