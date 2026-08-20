@@ -244,7 +244,16 @@ INTERIOR_WALLS = [
     # took that depth out of the bathroom, leaving it 1,715mm deep and unable
     # to hold the bath, shower, WC and vanity that are advertised in it.
     _int("int.bathroom.east", (5655.0, 8145.0), (5655.0, 11285.0)),
-    _int("int.wc.east", (6855.0, 8145.0), (6855.0, 11285.0)),
+    # THE CORRIDOR IS THE ROUTE'S NARROWEST POINT, and 100mm of it comes from
+    # here. Bedroom 2 took its missing square metre off the corridor, leaving
+    # 1,000mm -- and at the 380mm clearance the route prefers, 1,000mm of
+    # corridor is 130mm of free floor once both walls are padded. The solver
+    # dropped to 340mm to fit, which makes the route hug walls in every other
+    # room to pay for one corridor.
+    #
+    # The WC gives the 100mm back. At 990mm clear it still holds a pan and a
+    # basin -- see its `min_clear` -- and the corridor returns to 1,100mm.
+    _int("int.wc.east", (6755.0, 8145.0), (6755.0, 11285.0)),
     # Bedroom 2 takes its missing square metre from the CORRIDOR, not from the
     # kitchen. It reached south to the laundry line for one commit, which put
     # its south-west corner inside the kitchen -- the two rectangles genuinely
@@ -310,7 +319,7 @@ ROOMS = [
     Room("bathroom", "Bathroom",       3510.0, 8200.0, 5600.0, 11170.0, "tile", "bathroom"),
     # Scopes as a bathroom -- a pan and a basin are sold for it -- but sized
     # as the separate WC it is. See Room.min_clear.
-    Room("wc",       "WC",             5710.0, 8200.0, 6800.0, 11170.0, "tile", "bathroom",
+    Room("wc",       "WC",             5710.0, 8200.0, 6700.0, 11170.0, "tile", "bathroom",
          min_clear=(900.0, 1500.0, 1.4)),
     Room("bed2",     "Bedroom 2",      7910.0, 8200.0, 10970.0, 11170.0, LIVING_FLOOR, "bedroom"),
     Room("kitchen",  "Kitchen",        5650.0, 4955.0, 9940.0, 8090.0, "tile", "kitchen"),

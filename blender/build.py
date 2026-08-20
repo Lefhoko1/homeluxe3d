@@ -101,7 +101,9 @@ def main(
         for problem in problems:
             print(f"  ! {problem}")
         return 1
-    overlaps = plan.check_room_overlaps()
+    # Fatal: a room of the wrong shape is a plan that does not describe a
+    # building, and everything downstream inherits the mistake silently.
+    overlaps = plan.check_room_overlaps() + plan.check_room_enclosure()
     if overlaps:
         print("Plan validation FAILED -- rooms and walls disagree:")
         for problem in overlaps:

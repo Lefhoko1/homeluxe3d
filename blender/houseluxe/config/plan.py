@@ -369,6 +369,73 @@ class HousePlan:
 
         return problems
 
+    def check_room_enclosure(self) -> list[str]:
+        """Private rooms with an edge that no wall closes.
+
+        THIS IS THE CHECK THAT WOULD HAVE FOUND THE MASTER BEDROOM. Its south
+        edge ran 1,055mm past the end of its own south wall, so the room was
+        open to the entrance hall -- and the front door, which straddled the
+        gap, opened into the bedroom. It was found by eye, in a screenshot,
+        after being shipped.
+
+        A DOORWAY IS NOT A GAP. An opening is a hole IN a wall, and the wall
+        still runs along the room's edge either side of it, so a room with
+        four doors still reads as enclosed here. What does not is an edge with
+        no wall along it at all.
+
+        Only PRIVATE rooms are checked. A living room open to the dining room
+        and the hall is an open plan, not a fault, and this house is one --
+        which is why the check is by room type rather than applied to
+        everything.
+        """
+        private = {"bedroom", "bathroom", "ensuite", "laundry", "storage"}
+        tolerance = 250.0       # a wall centreline sits inside the room edge
+        min_gap = 200.0         # ignore rounding at corners
+
+        problems: list[str] = []
+
+        for room in self.rooms:
+            if room.room_type not in private:
+                continue
+
+            for label, horizontal, line, lo, hi in (
+                ("south", True, room.y0, room.x0, room.x1),
+                ("north", True, room.y1, room.x0, room.x1),
+                ("west", False, room.x0, room.y0, room.y1),
+                ("east", False, room.x1, room.y0, room.y1),
+            ):
+                spans = []
+                for wall in self.walls:
+                    (sx, sy), (ex, ey) = wall.start, wall.end
+                    reach = tolerance + wall.thickness / 2.0
+                    if horizontal and wall.is_horizontal and abs(sy - line) <= reach:
+                        a, b = sorted((sx, ex))
+                    elif (not horizontal) and wall.is_vertical and abs(sx - line) <= reach:
+                        a, b = sorted((sy, ey))
+                    else:
+                        continue
+                    a, b = max(a, lo), min(b, hi)
+                    if b > a:
+                        spans.append((a, b))
+
+                spans.sort()
+                open_length = 0.0
+                cursor = lo
+                for a, b in spans:
+                    if a > cursor:
+                        open_length += a - cursor
+                    cursor = max(cursor, b)
+                if cursor < hi:
+                    open_length += hi - cursor
+
+                if open_length > min_gap:
+                    problems.append(
+                        f"{room.name}: {open_length:.0f}mm of its {label} edge "
+                        f"has no wall, so the room is open to whatever is beyond"
+                    )
+
+        return problems
+
     def check_room_sizes(self) -> list[str]:
         """Rooms too small to hold what is advertised in them.
 

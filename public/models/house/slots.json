@@ -1503,7 +1503,7 @@
       "label": "WC",
       "priority": 60,
       "position": [
-        6.255,
+        6.205,
         0.0,
         -10.6354
       ],
@@ -1524,7 +1524,7 @@
       "label": "Hand basin",
       "priority": 50,
       "position": [
-        6.255,
+        6.205,
         0.0,
         -8.794
       ],
@@ -2154,13 +2154,13 @@
       "label": "WC floor",
       "priority": 60,
       "position": [
-        6.255,
+        6.205,
         0.0,
         -9.685
       ],
       "rotationY": 0.0,
       "size": [
-        1.09,
+        0.99,
         0.01,
         2.97
       ]
@@ -2175,13 +2175,13 @@
       "label": "WC walls",
       "priority": 50,
       "position": [
-        6.255,
+        6.205,
         0.0,
         -9.685
       ],
       "rotationY": 0.0,
       "size": [
-        1.09,
+        0.99,
         2.4,
         2.97
       ]
@@ -2196,7 +2196,7 @@
       "label": "WC ceiling light",
       "priority": 45,
       "position": [
-        6.255,
+        6.205,
         2.1,
         -9.685
       ],
