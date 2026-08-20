@@ -9,6 +9,9 @@ import LoginModal from './LoginModal';
 import { useCatalog } from '../../lib/catalog/useCatalog';
 import { recordEvent } from '../../lib/catalog/repository';
 import { VisitorService } from '../../lib/visitor/VisitorService';
+// The opening title over the tour is styled here. Without this import it
+// rendered as unstyled black text below the canvas, in the page's flow.
+import './visitor.css';
 import { useAdmin } from './admin';
 import './homeluxe.css';
 

@@ -20,9 +20,18 @@
 /* -- the opening title, over the tour ------------------------------------- */
 
 .cinematic-rail {
-  position: absolute;
-  left: clamp(18px, 4vw, 52px);
-  bottom: clamp(96px, 14vh, 150px);
+  /* IN THE CANVAS CELL, not floating over the page.
+     This is a sibling of #canvas-container in the app's grid, so
+     `position: absolute` had nothing to anchor to -- the nearest positioned
+     ancestor is the viewport, and the rail ended up wherever that put it.
+     Sharing the grid cell puts it over the 3D view by construction, and it
+     follows the layout when the columns collapse instead of needing to be
+     told about it twice. Later in the DOM, so it stacks on top. */
+  grid-column: 2;
+  grid-row: 3 / 4;
+  align-self: end;
+  justify-self: start;
+  margin: 0 0 clamp(18px, 4vh, 34px) clamp(18px, 2.5vw, 34px);
   z-index: 12;
   max-width: 25rem;
   display: flex;
@@ -112,7 +121,7 @@
 
 /* NAVY CARRIES THE BUTTONS, not the amber. White on amber fails contrast at
    this size; white on navy is legible at any size, and it leaves the amber
-   free to mean one thing only -- see .price-tag. */
+   free to mean one thing only -- see .product-price-block. */
 .luxe-btn.primary { background: var(--primary); color: var(--on-dark); }
 .luxe-btn.primary:hover { background: #22303F; }
 
@@ -390,7 +399,19 @@
   text-align: center;
 }
 
+/* The app's grid collapses to one column at 1024 and the canvas moves to
+   row 4. The rail moves with it -- it is in that cell, not beside it. */
+@media (max-width: 1024px) {
+  .cinematic-rail {
+    grid-column: 1;
+    grid-row: 4 / 5;
+    max-width: none;
+    justify-self: stretch;
+    margin: 0 14px 16px;
+  }
+}
+
 @media (max-width: 720px) {
-  .cinematic-rail { left: 14px; right: 14px; bottom: 86px; max-width: none; }
+  .cinematic-rail { padding: 16px 17px 18px; }
   .luxe-shops { grid-template-columns: 1fr; }
 }
