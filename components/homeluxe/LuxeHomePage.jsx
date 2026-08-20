@@ -137,7 +137,15 @@ const LuxeHomePage = () => {
     return () => clearTimeout(timer);
   }, [cinematic, sceneControls]);
 
-  /** They want to walk it themselves. Give them the figure back. */
+  /**
+   * They want to walk it themselves. Give them the figure back.
+   *
+   * Reached from the Auto Tour button and from the scene's own controls.
+   * There WAS a card over the 3D view offering it as well; it is gone. The
+   * canvas is one column of a three-column layout and already the smallest
+   * part of the screen it should be -- putting a 25rem panel on top of it
+   * spent the one thing the page is for.
+   */
   const takeControl = useCallback(() => {
     setCinematic(false);
     tourApi.current?.setWalkerVisible?.(true);
@@ -255,31 +263,6 @@ const LuxeHomePage = () => {
         loading={loading}
         onEnquire={handleEnquire}
       />
-
-      {/* THE OPENING TITLE, over the film.
-          It says what this is in one line and offers the one thing somebody
-          might want instead -- the controls. It leaves as soon as they take
-          them, and it never covers the middle of the frame, because the
-          middle of the frame is the house. */}
-      {cinematic && (
-        <div className="cinematic-rail">
-          <p className="cinematic-eyebrow">A house you can walk through</p>
-          <h2 className="cinematic-title">
-            Every room is a showroom.
-          </h2>
-          <p className="cinematic-body">
-            Furniture, tiles, paint and fittings from Gaborone shops, standing
-            where you would actually put them. Follow a shop and hear when
-            something new arrives.
-          </p>
-          <div className="cinematic-actions">
-            <button type="button" className="luxe-btn primary" onClick={takeControl}>
-              Walk it yourself
-            </button>
-            <a className="luxe-btn ghost" href="/following">Follow a shop</a>
-          </div>
-        </div>
-      )}
 
       <TourControls
         currentIndex={currentIndex}

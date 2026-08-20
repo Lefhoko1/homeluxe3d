@@ -93,7 +93,7 @@ const Following = ({ userId, displayName, onSignOut }) => {
     <div className="luxe-wide">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <p className="cinematic-eyebrow">
+          <p className="luxe-eyebrow">
             {displayName ? `Hello, ${displayName}` : 'Your shops'}
           </p>
           <h1 className="luxe-lede">

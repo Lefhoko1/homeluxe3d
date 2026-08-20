@@ -734,21 +734,55 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     };
     animate();
 
-    // Handle resize
-    const handleResize = () => {
-      const width = canvasRef.current.clientWidth;
-      const height = canvasRef.current.clientHeight;
+    /**
+     * Keep the drawing buffer the same shape as the box it is drawn in.
+     *
+     * WATCHING THE ELEMENT, NOT THE WINDOW. This canvas is one cell of a
+     * three-column grid, and most of what changes its size is not a window
+     * resize at all: the product panel appearing when something is selected,
+     * the tour panel growing with a longer room list, the columns collapsing
+     * at 1024. None of those fire a resize event, so the renderer kept the
+     * size it was given on the very first frame -- which is why the house
+     * drew into part of the frame and left the rest as empty background.
+     *
+     * The aspect goes with it. A camera whose aspect does not match the
+     * buffer stretches everything it draws, and that stretch is the
+     * distortion you see when the house is turning: straight walls lean.
+     */
+    const resize = () => {
+      const box = canvasRef.current;
+      if (!box) return;
+      const width = box.clientWidth;
+      const height = box.clientHeight;
+      if (!width || !height) return;      // laid out but not yet measured
+
+      // Guard against re-entering: setSize writes inline styles on the
+      // canvas, which the observer would otherwise report as a change.
+      if (width === lastWidth && height === lastHeight) return;
+      lastWidth = width;
+      lastHeight = height;
+
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderer.setSize(width, height, true);
+      // Sharp on a phone, and capped: at devicePixelRatio 3 the house is
+      // nine times the pixels for no visible gain.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     };
 
-    window.addEventListener('resize', handleResize);
+    let lastWidth = 0;
+    let lastHeight = 0;
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvasRef.current);
+    // Once immediately: the first measurement above happened before the grid
+    // had settled, and the observer's first callback can be a frame late.
+    resize();
 
     // Cleanup
     return () => {
       disposed = true;
-      window.removeEventListener('resize', handleResize);
+      observer.disconnect();
       cleanupPointer?.();
 
       tourRef.current?.detach(window);

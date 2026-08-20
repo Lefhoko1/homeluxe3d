@@ -17,86 +17,21 @@
    form is a form nobody finishes.
    ========================================================================== */
 
-/* -- the opening title, over the tour ------------------------------------- */
+/* -- page eyebrow --------------------------------------------------------- */
 
-.cinematic-rail {
-  /* IN THE CANVAS CELL, not floating over the page.
-     This is a sibling of #canvas-container in the app's grid, so
-     `position: absolute` had nothing to anchor to -- the nearest positioned
-     ancestor is the viewport, and the rail ended up wherever that put it.
-     Sharing the grid cell puts it over the 3D view by construction, and it
-     follows the layout when the columns collapse instead of needing to be
-     told about it twice. Later in the DOM, so it stacks on top. */
-  grid-column: 2;
-  grid-row: 3 / 4;
-  align-self: end;
-  justify-self: start;
-  margin: 0 0 clamp(18px, 4vh, 34px) clamp(18px, 2.5vw, 34px);
-  z-index: 12;
-  max-width: 25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  padding: 22px 24px 24px;
-  border-radius: 18px;
-
-  /* A CARD, NOT TEXT WITH A SHADOW ON IT. This sits over a 3D render that is
-     a sunlit kitchen in one room and a shaded hallway in the next, and text
-     that has to survive both ends up outlined and grubby. A frosted white
-     panel is legible over anything and reads as a caption on a photograph,
-     which is what it is. */
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(14px) saturate(1.1);
-  box-shadow: 0 18px 50px rgba(23, 33, 46, 0.16);
-
-  animation: rail-in 800ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
-}
-
-@keyframes rail-in {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: none; }
-}
-
-/* One arrival animation, and it is over. Anything that keeps moving while
-   somebody is reading competes with the tour, which is the thing that is
-   supposed to be moving. */
-@media (prefers-reduced-motion: reduce) {
-  .cinematic-rail { animation: none; }
-}
-
-.cinematic-eyebrow {
-  margin: 0;
+/* The small uppercase line above a heading. It was `.cinematic-eyebrow` and
+   lived with a card that sat over the 3D view; the card is gone -- the canvas
+   is one column of three and already the smallest part of the screen it
+   should be, and a 25rem panel on top of it spent the one thing the page is
+   for. The eyebrow outlived it because the visitor pages use it. */
+.luxe-eyebrow {
+  margin: 0 0 6px;
   font-size: 10px;
   letter-spacing: 2.2px;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--accent-deep);
 }
-
-.cinematic-title {
-  margin: 0;
-  font-family: 'Fraunces', Georgia, serif;
-  /* Optical sizing is the reason this face is here: at 38px it wants the
-     display cut, not the text cut scaled up. */
-  font-optical-sizing: auto;
-  font-weight: 600;
-  font-size: clamp(26px, 3.1vw, 38px);
-  line-height: 1.08;
-  letter-spacing: -0.018em;
-  text-wrap: balance;
-  color: var(--primary);
-}
-
-.cinematic-body {
-  margin: 0;
-  max-width: 34ch;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-
-.cinematic-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 5px; }
 
 /* -- buttons -------------------------------------------------------------- */
 
@@ -399,19 +334,6 @@
   text-align: center;
 }
 
-/* The app's grid collapses to one column at 1024 and the canvas moves to
-   row 4. The rail moves with it -- it is in that cell, not beside it. */
-@media (max-width: 1024px) {
-  .cinematic-rail {
-    grid-column: 1;
-    grid-row: 4 / 5;
-    max-width: none;
-    justify-self: stretch;
-    margin: 0 14px 16px;
-  }
-}
-
 @media (max-width: 720px) {
-  .cinematic-rail { padding: 16px 17px 18px; }
   .luxe-shops { grid-template-columns: 1fr; }
 }

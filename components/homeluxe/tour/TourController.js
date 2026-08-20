@@ -206,7 +206,13 @@ export const VIEWS = {
     up: 1.72,           // above the head, well under the 2.4m ceiling
     lookAhead: 3.4,     // the room, not the character
     lookHeight: 1.35,
-    fov: 68,            // wide: a narrow lens makes a small room a corridor
+    // THE SAME LENS AS OUTSIDE THE TOUR, so stepping into it does not warp
+    // the house. This was 68, which is 100 degrees across a 16:9 frame -- an
+    // ultra-wide, and ultra-wides bend straight lines. A house is nothing
+    // BUT straight lines, so every wall leaned as the camera turned and the
+    // building looked like it was flexing. 55 is 86 degrees across, still
+    // wide enough to see both sides of the smallest room in the plan.
+    fov: 55,
     showCharacter: true,
   },
   first: {
@@ -214,7 +220,10 @@ export const VIEWS = {
     up: 1.45,
     lookAhead: 4.0,
     lookHeight: 1.45,
-    fov: 74,
+    // A little wider than third person, because your eyes are at the wall
+    // rather than 2.3m back from it -- but nowhere near the old 74, which
+    // was 107 degrees across and bowed the corners of every room.
+    fov: 62,
     showCharacter: false,
   },
 };

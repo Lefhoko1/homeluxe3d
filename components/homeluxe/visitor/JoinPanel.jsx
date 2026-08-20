@@ -62,7 +62,7 @@ const JoinPanel = ({ mode: initialMode = 'register', onDone }) => {
 
   return (
     <div className="luxe-narrow">
-      <p className="cinematic-eyebrow">
+      <p className="luxe-eyebrow">
         {registering ? 'Join HomeLuxe' : 'Welcome back'}
       </p>
       <h1 className="luxe-lede">
