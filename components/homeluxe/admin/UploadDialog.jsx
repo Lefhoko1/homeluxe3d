@@ -121,6 +121,22 @@ const UploadDialog = ({ shops = [], onClose, onCreated }) => {
 
     try {
       const created = await draft.save(setStep);
+
+      // The database checked the model against the dimensions typed above and
+      // refused it. The product was created and the file was kept -- it is a
+      // draft, which no visitor can see -- so the dialog STAYS OPEN with the
+      // reason showing, because the thing to do next is fix the export and
+      // upload it again, not start over.
+      if (created.assetProblems?.length) {
+        setProblems([
+          `Saved as a draft -- the model did not pass its check, so it is not `
+          + `visible in the house yet.`,
+          ...created.assetProblems,
+        ]);
+        onCreated?.(created);
+        return;
+      }
+
       onCreated?.(created);
       onClose?.();
     } catch (error) {
