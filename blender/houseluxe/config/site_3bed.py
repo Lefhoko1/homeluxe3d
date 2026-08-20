@@ -129,15 +129,44 @@ POOL_ZONE = Rect("zone.pool", SHELL_X0, SHELL_Y0, SHELL_X1, SHELL_Y1)
 FLAT_ZONES = [HOUSE_ZONE, POOL_ZONE] + PAVING + BEDS
 
 
-def _shrub_row(prefix_seed, x_values, y_values, height=900.0, spread=1100.0):
-    """Shrubs on a grid. Kept as a helper so the bed lists stay readable."""
+def _shrubs_in(bed, seed, spacing=1600.0, height=900.0, spread=1100.0):
+    """Shrubs filling a bed, derived FROM the bed.
+
+    THE BED IS THE INPUT, and that is the whole point of this helper. These
+    rows used to carry their own coordinates: `_shrub_row(200, [-1100.0],
+    [2600.0, ...])`. When the garage was built the bed moved west to make room
+    for it and its planting stayed exactly where it was -- four shrubs growing
+    out of a concrete garage floor, and three more inside the new office wing.
+    Nothing complained, because nothing knew the two were related.
+
+    Planting that cannot be separated from its bed cannot be left behind by
+    one. Move a bed, dig it out, make it longer: the shrubs follow.
+
+    Spacing is a TARGET. The row is spread evenly across whatever length the
+    bed actually has, so a bed that grows by a metre gets slightly wider gaps
+    rather than one shrub hanging off the end.
+    """
+    inset = spread / 2.0
+
+    def along(a, b):
+        span = (b - inset) - (a + inset)
+        if span <= 0:
+            return [(a + b) / 2.0]
+        count = max(1, round(span / spacing) + 1)
+        if count == 1:
+            return [(a + b) / 2.0]
+        return [a + inset + span * i / (count - 1) for i in range(count)]
+
     out = []
-    seed = prefix_seed
-    for x in x_values:
-        for y in y_values:
+    for x in along(bed.x0, bed.x1):
+        for y in along(bed.y0, bed.y1):
             out.append(Plant("shrub", x, y, height, spread, seed))
             seed += 1
     return out
+
+
+#: The beds, by name, so planting can be derived from them.
+BED = {b.name: b for b in BEDS}
 
 
 # --------------------------------------------------------------------------
@@ -153,15 +182,19 @@ TREES = [
     Plant("tree", 4000.0, 20000.0, 7000.0, 4500.0, 4),
     Plant("tree", 14000.0, 21000.0, 6000.0, 3800.0, 5),
     Plant("tree", 21000.0, 16000.0, 5500.0, 3600.0, 6),
-    Plant("tree", -8000.0, 6000.0, 5000.0, 3400.0, 7),   # shades the garage
+    # REMOVED: a tree stood here to shade the west wall, and the garage is now
+    # built against that wall. Even pushed clear of the footings its 3.4m
+    # canopy reached over the roof, which is leaves in the gutter every autumn
+    # and a branch on the sheeting in the first storm. The bed below it still
+    # carries its shrubs.
     Plant("tree", 22000.0, 12800.0, 4500.0, 3000.0, 8),
 ]
 
 SHRUBS = (
-    _shrub_row(100, [8000.0, 9400.0, 10800.0, 12200.0], [-1550.0])
-    + _shrub_row(200, [-1100.0], [2600.0, 4200.0, 5800.0, 7400.0, 8600.0])
-    + _shrub_row(300, [1800.0, 3400.0, 5000.0, 6600.0, 8200.0, 9400.0], [12400.0])
-    + _shrub_row(400, [21900.0], [1800.0, 3600.0, 5400.0, 7200.0, 9000.0, 10600.0])
+    _shrubs_in(BED["bed.front"], 100)
+    + _shrubs_in(BED["bed.west"], 200)
+    + _shrubs_in(BED["bed.rear"], 300)
+    + _shrubs_in(BED["bed.pool"], 400, spacing=1800.0)
 )
 
 PLANTS = TREES + SHRUBS
