@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import ShopMembers from './ShopMembers';
+
 import {
   Async, Button, DataTable, Panel, Pill, Search, useAsync, useFilter, when,
 } from '../ui';
@@ -16,6 +18,7 @@ import {
 const Shops = ({ data, canManage }) => {
   const shops = useAsync(() => data.shops(), [data]);
   const [editing, setEditing] = useState(null);
+  const [members, setMembers] = useState(null);
   const [busy, setBusy] = useState(null);
   const [problem, setProblem] = useState(null);
   const { term, setTerm, filtered } = useFilter(shops.data ?? [], ['name', 'slug', 'city']);
@@ -75,6 +78,7 @@ const Shops = ({ data, canManage }) => {
       render: (s) => canManage && (
         <>
           <Button onClick={() => setEditing(s)} disabled={busy === s.id}>Edit</Button>
+          <Button onClick={() => setMembers(s)} disabled={busy === s.id}>Members</Button>
           {s.status === 'active' ? (
             <Button
               tone="danger"
@@ -115,6 +119,10 @@ const Shops = ({ data, canManage }) => {
       <Async state={shops} empty="No shops yet. Create one to start selling positions.">
         {() => <DataTable columns={columns} rows={filtered} rowKey={(s) => s.id} />}
       </Async>
+
+      {members && (
+        <ShopMembers data={data} shop={members} onClose={() => setMembers(null)} />
+      )}
 
       {editing && (
         <ShopDialog

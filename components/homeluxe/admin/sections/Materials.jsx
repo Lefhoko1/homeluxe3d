@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import MaterialMaps from './MaterialMaps';
+
 import {
   Async, Button, DataTable, Panel, Pill, Search, useAsync, useFilter, mm,
 } from '../ui';
@@ -125,6 +127,7 @@ const Materials = ({ data, canManage }) => {
   ];
 
   return (
+    <>
     <Panel
       title="Materials"
       subtitle="Floors, walls and finishes. Each one is somebody's product, and the surface it dresses is advertising space."
@@ -135,6 +138,9 @@ const Materials = ({ data, canManage }) => {
         {() => <DataTable columns={columns} rows={filtered} rowKey={(m) => m.id} />}
       </Async>
     </Panel>
+
+    <MaterialMaps data={data} canManage={canManage} />
+    </>
   );
 };
 

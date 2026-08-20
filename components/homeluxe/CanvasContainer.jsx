@@ -15,7 +15,12 @@ import {
 } from './house';
 import { loadProducts, loadOneProduct, disposeProducts, advertFor } from './products';
 import { applyFinishes } from './house/textures/finishOverrides';
+import {
+  applyDatabaseMaterials,
+  loadMaterialFinishes,
+} from './house/textures/databaseMaterials';
 import { publishScene, recordEvent } from '../../lib/catalog/repository';
+import { getSupabase } from '../../lib/supabase/client';
 import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import { createLighting } from './lighting/Lighting';
@@ -247,6 +252,39 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           finishSpecs,
           { anisotropy: renderer.capabilities.getMaxAnisotropy() }
         );
+
+        // ---- Textures somebody uploaded ---------------------------------
+        //
+        // AFTER the placed finishes, and over the WHOLE house rather than
+        // just the floors and walls. A material with an albedo map in the
+        // database is drawn from that photograph; everything else keeps the
+        // procedural texture it has always had, which is why the house looks
+        // finished before anyone has uploaded anything.
+        //
+        // Blender's material name is the key on both sides, so a shop
+        // supplying a photograph of their tile is now an upload rather than a
+        // constant in textures/materialLibrary.js and a deploy.
+        try {
+          const supabase = getSupabase();
+          const finishes = await loadMaterialFinishes(supabase);
+          const { applied: textured, codes } = applyDatabaseMaterials(
+            [house],
+            finishes,
+            {
+              publicUrl: (path) =>
+                supabase.storage.from('material-maps').getPublicUrl(path).data.publicUrl,
+              anisotropy: renderer.capabilities.getMaxAnisotropy(),
+            }
+          );
+          if (textured) {
+            console.info(
+              `[materials] ${codes.length} surface(s) drawn from uploaded ` +
+              `textures (${textured} mesh(es)): ${codes.join(', ')}`
+            );
+          }
+        } catch (error) {
+          console.error('[materials] uploaded textures not applied:', error?.message);
+        }
         if (finishSpecs.length) {
           console.info(
             `[finishes] ${finishSpecs.length} placed, applied to ${applied} mesh(es)`
