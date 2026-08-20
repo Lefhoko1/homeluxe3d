@@ -492,3 +492,60 @@
   max-width: 900px;
   margin: 0 auto;
 }
+
+/* -- the made-to-order queue ---------------------------------------------
+   Three across, for the row of price / due / priority and the row of
+   width / depth / height. Same gap as the 2 and 4 column grids above. */
+.admin-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.admin-hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* THE COLOUR SAYS WHOSE MOVE IT IS, which is the only thing an operator
+   scanning the queue needs to know before reading a single word. Amber is
+   ours to act on, slate is theirs and there is nothing to do, blue is in
+   hand, green has gone back to them for approval. */
+.admin-status.req-new           { background: #fef3c7; color: #92600a; }
+.admin-status.req-accepted      { background: #e0e7ff; color: #3730a3; }
+.admin-status.req-awaiting_info { background: #e2e8f0; color: #475569; }
+.admin-status.req-in_production { background: #dbeafe; color: #1e40af; }
+.admin-status.req-review        { background: #dcfce7; color: #15803d; }
+
+.admin-status.bad {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  border-bottom: 1px solid #d7dee8;
+}
+
+.admin-tab {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 9px 16px;
+  font: inherit;
+  font-size: 13px;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.admin-tab.on {
+  color: #1a2332;
+  font-weight: 600;
+  border-bottom-color: #1f6feb;
+}
