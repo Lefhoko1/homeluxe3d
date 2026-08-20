@@ -230,6 +230,12 @@ def check(slots: list[Slot], rooms: dict[str, Room]) -> list[str]:
             problems.append(f"duplicate slot id {slot.id}")
         seen.add(slot.id)
 
+        # A slot with no room belongs to the HOUSE: the exterior walls, the
+        # door hardware fitted throughout. There is nothing to be inside of,
+        # so there is nothing to check it against.
+        if not slot.room:
+            continue
+
         room = rooms.get(slot.room)
         if room is None:
             problems.append(f"{slot.id}: no room {slot.room!r}")

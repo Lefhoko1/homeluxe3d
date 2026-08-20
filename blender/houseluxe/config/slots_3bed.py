@@ -1,5 +1,12 @@
 """What can be sold in the 3-bedroom house, and where.
 
+AN ENVELOPE IS THE BIGGEST THING THAT FITS, not the size of the product
+somebody had in mind while writing the line. `suggest_slots` rejects anything
+larger, so a slot sized to one product refuses every product a millimetre
+bigger -- the Sandton three-seater was turned away from its own sofa position
+because the sofa is 1,020mm tall and the slot said 1,000, and the Slumberland
+queen was refused by three bedrooms whose slots were sized for a double.
+
 Every slot here comes from a list in Instructions.md -- sections 4 to 17 --
 rather than from what happens to be in the house today. That direction
 matters: the house is an inventory map drawn before anything is sold, and a
@@ -37,7 +44,7 @@ KITCHEN: list[Slot] = [
     # column, then the free-standing machines.
     *run(ROOM["kitchen"], "n", 5,
          prefix="SLOT_KITCHEN_APPLIANCE", slot_type="kitchen_appliance",
-         category="appliance", width=700.0, depth=700.0, height=1900.0,
+         category="appliance", width=760.0, depth=720.0, height=2000.0,
          priority=85, margin=150.0, label="Kitchen appliance"),
     # The unit run opposite, which is where a hob, an oven and a dishwasher
     # are built in. 600 modules, as kitchen units are.
@@ -135,19 +142,19 @@ KITCHEN_SURFACES: list[Slot] = [
 LIVING: list[Slot] = [
     at(ROOM["living"], 0.5, 0.16, slot_id="SLOT_LIVING_SOFA_001",
        slot_type="living_sofa", category="sofa",
-       width=2400.0, depth=950.0, height=1000.0, rotation=0.0,
+       width=2600.0, depth=1050.0, height=1150.0, rotation=0.0,
        priority=95, label="Three-seater sofa"),
     at(ROOM["living"], 0.14, 0.58, slot_id="SLOT_LIVING_SOFA_002",
        slot_type="living_sofa", category="sofa",
-       width=1800.0, depth=950.0, height=1000.0, rotation=90.0,
+       width=2000.0, depth=1050.0, height=1150.0, rotation=90.0,
        priority=80, label="Two-seater sofa"),
     at(ROOM["living"], 0.86, 0.58, slot_id="SLOT_LIVING_CHAIR_001",
        slot_type="living_chair", category="chair",
-       width=1160.0, depth=1000.0, height=1050.0, rotation=270.0,
+       width=1300.0, depth=1100.0, height=1150.0, rotation=270.0,
        priority=75, label="Armchair"),
     at(ROOM["living"], 0.5, 0.55, slot_id="SLOT_LIVING_TABLE_001",
        slot_type="occasional_table", category="table",
-       width=1200.0, depth=700.0, height=450.0,
+       width=1400.0, depth=800.0, height=550.0,
        priority=70, label="Coffee table"),
     at(ROOM["living"], 0.5, 0.55, slot_id="SLOT_LIVING_RUG_001",
        slot_type="floor_covering", category="rug",
@@ -179,7 +186,7 @@ LIVING: list[Slot] = [
 DINING: list[Slot] = [
     at(ROOM["dining"], 0.5, 0.5, slot_id="SLOT_DINING_TABLE_001",
        slot_type="dining_table", category="table",
-       width=1800.0, depth=1000.0, height=760.0,
+       width=2100.0, depth=1100.0, height=820.0,
        priority=90, label="Dining table"),
     at(ROOM["dining"], 0.5, 0.5, slot_id="SLOT_DINING_RUG_001",
        slot_type="floor_covering", category="rug",
@@ -201,11 +208,15 @@ def _bedroom(name: str, code: str, bed_w: float, priority: int) -> list[Slot]:
     return [
         at(room, 0.5, 0.76, slot_id=f"SLOT_{code}_BED_001",
            slot_type="bedroom_bed", category="bed",
-           width=bed_w, depth=2000.0, height=750.0, rotation=0.0,
+           # The envelope, not a mattress. A slot sized to the double
+           # somebody had in mind rejects the queen that would fit the
+           # room -- which is exactly what happened to the Slumberland:
+           # 1,520mm wide, refused by three 1,370mm slots.
+           width=bed_w + 400.0, depth=2200.0, height=1400.0, rotation=0.0,
            priority=priority, label="Bed"),
         at(room, 0.5 - (bed_w / 2 + 250) / (room.x1 - room.x0), 0.88,
            slot_id=f"SLOT_{code}_BEDSIDE_001", slot_type="bedside_table",
-           category="table", width=450.0, depth=400.0, height=550.0,
+           category="table", width=600.0, depth=450.0, height=700.0,
            priority=55, label="Bedside table"),
         at(room, 0.5 + (bed_w / 2 + 250) / (room.x1 - room.x0), 0.88,
            slot_id=f"SLOT_{code}_BEDSIDE_002", slot_type="bedside_table",
@@ -213,11 +224,11 @@ def _bedroom(name: str, code: str, bed_w: float, priority: int) -> list[Slot]:
            priority=55, label="Bedside table"),
         at(room, 0.12, 0.2, slot_id=f"SLOT_{code}_WARDROBE_001",
            slot_type="wardrobe", category="storage",
-           width=1200.0, depth=600.0, height=2100.0, rotation=90.0,
+           width=1500.0, depth=680.0, height=2200.0, rotation=90.0,
            priority=75, label="Wardrobe"),
         at(room, 0.85, 0.2, slot_id=f"SLOT_{code}_DRESSER_001",
            slot_type="dresser", category="storage",
-           width=1000.0, depth=450.0, height=800.0, rotation=270.0,
+           width=1200.0, depth=520.0, height=900.0, rotation=270.0,
            priority=60, label="Dresser"),
         at(room, 0.5, 0.5, slot_id=f"SLOT_{code}_RUG_001",
            slot_type="floor_covering", category="rug",
@@ -357,9 +368,29 @@ SURFACES: list[Slot] = [
 ]
 
 
+# --------------------------------------------------------------------------
+# House-wide surfaces -- sections 10 and 12.
+#
+# NOT IN ANY ROOM, which is the point. The exterior walls are not a room and
+# the hinges are on every door in the building, so neither can be declared
+# room by room -- and both are sold. They were the only two live placements
+# the authored inventory could not adopt, because it had nowhere to put them.
+# --------------------------------------------------------------------------
+HOUSE_WIDE: list[Slot] = [
+    Slot(id="SLOT_WALL_EXTERIOR", room="", slot_type="wall_surface",
+         category="paint", x=0.0, y=0.0, z=0.0,
+         width=0.0, depth=0.0, height=CEILING,
+         priority=70, label="Exterior walls"),
+    Slot(id="SLOT_DOOR_HARDWARE", room="", slot_type="door_hardware",
+         category="hardware", x=0.0, y=0.0, z=1040.0,
+         width=100.0, depth=44.0, height=100.0,
+         priority=40, label="Door hardware"),
+]
+
+
 SLOTS: list[Slot] = (
     KITCHEN + KITCHEN_COUNTER + KITCHEN_SINK + KITCHEN_SURFACES
     + LIVING + DINING + BEDROOMS
     + BATHROOM + ENSUITE + WC + LAUNDRY
-    + HALL + WIR + GARAGE + SURFACES
+    + HALL + WIR + GARAGE + SURFACES + HOUSE_WIDE
 )
