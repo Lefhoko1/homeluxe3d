@@ -27,6 +27,7 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(REPO, "blender"))
 
 from houseluxe.config.plan_3bed import PLAN  # noqa: E402
+from houseluxe.config.slots_3bed import SLOTS  # noqa: E402
 
 CATALOG_PATH = os.path.join(REPO, "public", "models", "products", "catalog.json")
 OUT_PATH = os.path.join(HERE, "seed.sql")
@@ -561,6 +562,94 @@ def main() -> int:
     w("  );")
     w("")
 
+    # -- The advertising inventory -----------------------------------------
+    #
+    # THE SLOTS ARE AUTHORED IN THE PLAN AND MIRRORED HERE. Blender is the
+    # master for structural positions -- a slot only means something if a
+    # product physically fits there, and that is a modelling fact -- so these
+    # rows are keyed on the stable `external_id` the plan controls and NOT on
+    # anything Blender generates. A rebuild republishes the same ids and this
+    # updates rather than duplicating. See migration 0006.
+    #
+    # 129 slots were declared and 30 existed, because the other 99 lived only
+    # in slots.json and nothing ever wrote them to the database. An inventory
+    # the commercial system cannot see is not inventory.
+    finish_types = {
+        "floor_surface", "wall_surface", "splashback", "worktop", "cabinet_front",
+    }
+
+    types = {}
+    for slot in SLOTS:
+        types.setdefault(slot.slot_type, (slot.category, slot.priority))
+
+    w("-- Slot types, from the kinds the plan actually declares.")
+    w("insert into slot_types (code, name, kind, category_code, default_priority)")
+    w("values")
+    rows = []
+    for code, (category, priority) in sorted(types.items()):
+        kind = "finish" if code in finish_types else "object"
+        label = code.replace("_", " ").title()
+        rows.append(f"  ({q(code)}, {q(label)}, {q(kind)}, {q(category or None)},"
+                    f" {priority})")
+    w(",\n".join(rows))
+    w("on conflict (code) do update set")
+    w("  name = excluded.name, kind = excluded.kind,")
+    w("  category_code = excluded.category_code;")
+    w("")
+
+    w("-- Slots. Keyed on the id the plan owns, so a rebuild updates them.")
+    w("insert into placement_slots (scene_id, room_id, code, external_id, label,")
+    w("                             category_code, kind, room_type, origin,")
+    w("                             slot_type_id, priority,")
+    w("                             x_mm, y_mm, z_mm, rotation_deg,")
+    w("                             max_width_mm, max_depth_mm, max_height_mm,")
+    w("                             last_seen_build)")
+    w("select sc.id, r.id, v.ext, v.ext, v.label,")
+    w("       v.cat, st.kind, r.room_type, 'blender'::slot_origin,")
+    w("       st.id, v.prio, v.x, v.y, v.z, v.rot, v.w, v.d, v.h, v.build")
+    w("from scenes sc")
+    w("join (values")
+    rows = []
+    build_stamp = datetime.now().isoformat(timespec="seconds")
+    for slot in SLOTS:
+        rows.append(
+            f"  ({q(slot.room)}, {q(slot.id)}, {q(slot.label)}, "
+            f"{q(slot.category or None)}, {q(slot.slot_type)}, {slot.priority},\n"
+            f"   {slot.x}, {slot.y}, {slot.z}, {slot.rotation}, "
+            f"{slot.width}, {slot.depth}, {slot.height}, {q(build_stamp)})"
+        )
+    w(",\n".join(rows))
+    w(") as v(room_code, ext, label, cat, stype, prio, x, y, z, rot, w, d, h, build)")
+    w("  on true")
+    w("join rooms r on r.scene_id = sc.id and r.code = v.room_code")
+    w("join slot_types st on st.code = v.stype")
+    w(f"where sc.slug = {q(SCENE_SLUG)}")
+    w("on conflict (scene_id, code) do update set")
+    w("  external_id = excluded.external_id, label = excluded.label,")
+    w("  category_code = excluded.category_code, origin = excluded.origin,")
+    w("  slot_type_id = excluded.slot_type_id, priority = excluded.priority,")
+    w("  x_mm = excluded.x_mm, y_mm = excluded.y_mm, z_mm = excluded.z_mm,")
+    w("  rotation_deg = excluded.rotation_deg,")
+    w("  max_width_mm = excluded.max_width_mm,")
+    w("  max_depth_mm = excluded.max_depth_mm,")
+    w("  max_height_mm = excluded.max_height_mm,")
+    w("  last_seen_build = excluded.last_seen_build, is_active = true;")
+    w("")
+
+    w("-- Retire a derived slot only when it is EMPTY and an authored slot now")
+    w("-- covers the same room and category. A derived slot holding a live")
+    w("-- placement is left exactly as it is: it says where a product actually")
+    w("-- stands, and deactivating it would take that product out of the house.")
+    w("update placement_slots d set is_active = false")
+    w(" where d.origin = 'derived' and d.is_active")
+    w("   and not exists (select 1 from placements p")
+    w("                    where p.slot_id = d.id and p.status = 'live')")
+    w("   and exists (select 1 from placement_slots a")
+    w("                where a.scene_id = d.scene_id and a.origin = 'blender'")
+    w("                  and a.room_id is not distinct from d.room_id")
+    w("                  and a.category_code is not distinct from d.category_code);")
+    w("")
+
     w("commit;")
     w("")
 
@@ -573,6 +662,7 @@ def main() -> int:
         "rooms": len(PLAN.rooms),
         "placements": len(placements),
         "finish slots": len(finishes),
+        "authored slots": len(SLOTS),
     }
     print(f"wrote {OUT_PATH}")
     for key, value in counts.items():
