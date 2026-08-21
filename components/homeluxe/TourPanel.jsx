@@ -1,11 +1,17 @@
 import React from 'react';
 
 /**
- * Room list and the items standing in the selected room.
+ * What is standing in the room you are looking at.
  *
- * Both come from the catalogue. Rooms are only listed if they actually
- * contain something, which is why "Outdoor" no longer appears and then
- * announces "coming soon" over a picture of the living room.
+ * ONLY THE PRODUCTS NOW. The room list used to sit above this, and the two
+ * together made the column enormous -- fourteen rooms and then however many
+ * things are in the one you picked, so the products started below the fold.
+ * Rooms moved to a strip under the shops, where a short fixed set of choices
+ * belongs; see RoomTabs.
+ *
+ * The heading names the room, because with the tabs at the top of the screen
+ * and this column beside the house, "which room is this list?" would
+ * otherwise be answered by looking somewhere else.
  */
 const TourPanel = ({
   currentRoom,
@@ -14,54 +20,45 @@ const TourPanel = ({
   rooms = [],
   shops = [],
   loading = false,
-  onRoomChange,
   onProductSelect,
 }) => {
   const shopsById = Object.fromEntries(shops.map((s) => [s.id, s]));
+  const room = rooms.find((r) => r.code === currentRoom) ?? null;
   const total = products.length;
   const progress = total > 0 ? ((currentIndex + 1) / total) * 100 : 0;
 
   return (
     <div id="tour-panel">
-      <div className="room-filter">
-        <div className="panel-title">Room Categories</div>
-
-        {loading && <div className="panel-empty">Loading catalogue…</div>}
-
-        {!loading && rooms.length === 0 && (
-          <div className="panel-empty">
-            No furnished rooms yet. Place a product in the catalogue to see it here.
-          </div>
-        )}
-
-        {rooms.map((room) => (
-          <button
-            type="button"
-            key={room.code}
-            className={`room-btn${room.code === currentRoom ? ' active' : ''}`}
-            onClick={() => onRoomChange?.(room.code)}
-          >
-            <span className="room-icon" aria-hidden>{room.icon}</span>
-            <span className="room-name">{room.label}</span>
-            <span className="room-count">{room.count}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="tour-section">
-        <div className="panel-title">Furniture Tour</div>
-        <div className="panel-sub">Click an item to focus it in the room</div>
+      <div className="panel-head">
+        <div className="panel-title">
+          {room ? (
+            <>
+              <span aria-hidden>{room.icon}</span> {room.label}
+            </>
+          ) : (
+            'In this room'
+          )}
+        </div>
+        <div className="panel-sub">
+          {total > 0
+            ? `${total} item${total === 1 ? '' : 's'} · click one to focus it`
+            : 'Click an item to focus it in the room'}
+        </div>
 
         {total > 0 && (
           <div className="tour-progress">
-            <div className="tour-progress-label">
-              Item {currentIndex + 1} of {total}
-            </div>
             <div className="tour-progress-bar">
               <div className="tour-progress-fill" style={{ width: `${progress}%` }} />
             </div>
+            <div className="tour-progress-label">
+              {currentIndex + 1} of {total}
+            </div>
           </div>
         )}
+      </div>
+
+      <div className="tour-section">
+        {loading && <div className="panel-empty">Loading catalogue…</div>}
 
         {products.map((product, index) => {
           const shop = shopsById[product.shopSlug];
@@ -91,7 +88,9 @@ const TourPanel = ({
         })}
 
         {!loading && total === 0 && (
-          <div className="panel-empty">Nothing placed in this room yet.</div>
+          <div className="panel-empty">
+            Nothing placed in this room yet. Pick another above.
+          </div>
         )}
       </div>
     </div>

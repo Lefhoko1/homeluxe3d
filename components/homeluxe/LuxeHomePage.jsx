@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Header from './Header';
 import ShopsBanner from './ShopsBanner';
+import RoomTabs from './RoomTabs';
 import TourPanel from './TourPanel';
 import CanvasContainer from './CanvasContainer';
 import ProductPanel from './ProductPanel';
@@ -297,6 +298,16 @@ const LuxeHomePage = () => {
         userId={session?.userId ?? null}
       />
 
+      {/* Rooms sit here, under the shops: two controls of the same kind, both
+          picking what the whole screen is about. The column on the left is
+          now only what is IN the chosen room. */}
+      <RoomTabs
+        rooms={rooms}
+        currentRoom={currentRoom}
+        loading={loading}
+        onRoomChange={handleRoomChange}
+      />
+
       <TourPanel
         currentRoom={currentRoom}
         currentIndex={currentIndex}
@@ -304,7 +315,6 @@ const LuxeHomePage = () => {
         rooms={rooms}
         shops={shops}
         loading={loading}
-        onRoomChange={handleRoomChange}
         onProductSelect={handleProductSelect}
       />
 

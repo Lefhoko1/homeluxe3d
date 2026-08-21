@@ -92,7 +92,11 @@ body {
 .app-container {
   display: grid;
   grid-template-columns: 320px 1fr 380px;
-  grid-template-rows: 70px 45px 1fr 90px;
+  /* header · shops · rooms · the house · controls. The rooms row is new: the
+     room list used to live down the left above the products, and the two
+     together pushed the products -- the thing that column is for -- below
+     the fold. */
+  grid-template-rows: 70px 45px 46px 1fr 90px;
   height: 100vh;
   gap: 0;
 }
@@ -206,59 +210,13 @@ body {
 
 /* Left Panel - Tour Navigation */
 #tour-panel {
-  grid-row: 3 / 4;
+  grid-row: 4 / 5;
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
-  padding: 20px;
-}
-
-.room-filter {
-  margin-bottom: 20px;
-}
-
-.room-filter-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--secondary);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.room-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.room-tab {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 10px 15px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.room-tab:hover {
-  background: var(--surface-2);
-  border-color: var(--accent);
-}
-
-.room-tab.active {
-  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
-  color: var(--on-dark);
-  border-color: var(--secondary);
-}
-
-.room-tab-icon {
-  font-size: 18px;
+  /* No padding here: the sticky head needs to reach the edges, and the list
+     below it carries its own. */
+  padding: 0;
 }
 
 .divider {
@@ -382,7 +340,7 @@ body {
 
 /* Center - 3D Canvas */
 #canvas-container {
-  grid-row: 3 / 4;
+  grid-row: 4 / 5;
   position: relative;
   background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
   overflow: hidden;
@@ -512,7 +470,7 @@ body {
 
 /* Right Panel - Product Details */
 #product-panel {
-  grid-row: 3 / 4;
+  grid-row: 4 / 5;
   background: var(--surface);
   border-left: 1px solid var(--border);
   overflow-y: auto;
@@ -656,6 +614,7 @@ body {
 /* Bottom Controls */
 #tour-controls {
   grid-column: 1 / -1;
+  grid-row: 5 / 6;
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding: 18px 30px;
@@ -788,12 +747,12 @@ body {
 @media (max-width: 1024px) {
   .app-container {
     grid-template-columns: 1fr;
-    grid-template-rows: 70px 45px auto 1fr 90px;
+    grid-template-rows: 70px 45px 46px auto 1fr 90px;
   }
 
   #tour-panel {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     max-height: 200px;
     border-right: none;
     border-bottom: 1px solid var(--border);
@@ -801,7 +760,7 @@ body {
 
   #canvas-container {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 5;
   }
 
   #product-panel {
@@ -876,42 +835,6 @@ body {
   text-align: center;
   line-height: 1.5;
 }
-
-/* -- Room list ----------------------------------------------------------- */
-.room-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px 16px;
-  margin-bottom: 8px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text);
-  text-align: left;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-.room-btn:hover { border-color: var(--secondary); transform: translateX(2px); }
-.room-btn.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  border-color: transparent;
-  color: var(--on-dark);
-}
-.room-icon { font-size: 18px; line-height: 1; }
-.room-name { flex: 1; font-weight: 600; }
-.room-count {
-  min-width: 22px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.07);
-  font-size: 11px;
-  font-weight: 700;
-  text-align: center;
-}
-.room-btn.active .room-count { background: rgba(255, 255, 255, 0.22); }
 
 /* -- Tour list ----------------------------------------------------------- */
 .tour-section { margin-top: 26px; }
@@ -1469,4 +1392,129 @@ body {
 @media (max-width: 720px) {
   #tour-controls.asking { flex-direction: column; gap: 8px; padding: 10px 14px; }
   .tour-ask-text { text-align: center; }
+}
+
+
+/* -- the rooms strip -------------------------------------------------------
+   A short, fixed set of choices that changes the whole screen: that is a row
+   of tabs, not a list in a column. It sits under the shops because the two
+   are the same kind of control -- pick a shop, pick a room -- and because
+   the column beside the house is now only for what is IN the room. */
+
+#room-tabs {
+  grid-column: 1 / -1;
+  grid-row: 3 / 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+.room-tabs-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: none;
+}
+
+.room-tabs-empty { font-size: 12px; color: var(--muted); }
+
+.room-tabs-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  /* The strip scrolls, and its scrollbar would sit across the house below
+     it. Hidden here and reachable by dragging, the arrow keys, or the
+     scroll-into-view in RoomTabs. */
+  scrollbar-width: none;
+  min-width: 0;
+  padding: 6px 0;
+}
+.room-tabs-strip::-webkit-scrollbar { display: none; }
+
+.room-tab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.room-tab:hover { border-color: var(--secondary); color: var(--secondary); }
+.room-tab:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
+
+.room-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-dark);
+  font-weight: 600;
+}
+
+.room-tab-icon { font-size: 14px; line-height: 1; }
+.room-tab-count {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.room-tab.active .room-tab-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--on-dark);
+}
+
+/* -- the left column, now products only ----------------------------------
+   The heading stays put while the list scrolls under it, so "which room is
+   this?" is answerable without scrolling back up. */
+
+.panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-head .panel-title { margin-bottom: 2px; }
+.panel-head .panel-sub { margin-bottom: 0; }
+
+/* Bar and count on one line: the count was a separate row above the bar,
+   which is two lines of chrome for six characters. */
+.panel-head .tour-progress {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 9px;
+}
+.panel-head .tour-progress-bar { flex: 1; margin: 0; }
+.panel-head .tour-progress-label {
+  margin: 0;
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+#tour-panel .tour-section { padding: 10px 14px 20px; }
+
+@media (max-width: 1024px) {
+  #room-tabs { grid-row: 3 / 4; padding: 0 12px; }
+  .room-tabs-label { display: none; }
 }
