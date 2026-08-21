@@ -290,6 +290,22 @@ export function createTourController(options = {}) {
   // visitor is driving.
   let route = null;
   let routeIndex = 0;
+
+  /**
+   * Held, but not forgotten.
+   *
+   * A PAUSE IS NOT A STOP, and the difference is the whole reason this flag
+   * exists rather than reusing `stopRoute`. Stopping throws the route away:
+   * `route`, `routeIndex`, the dwell timer and the showcase all go, and the
+   * only way back is to start again from the driveway. Somebody who broke off
+   * the tour to look at a sofa wants to carry on from the sofa's room, not
+   * from the front door.
+   *
+   * So everything is kept exactly as it was and the walk simply stops being
+   * stepped. The camera goes back to OrbitControls while this is true, which
+   * is what lets the caller fly it somewhere else.
+   */
+  let routeHeld = false;
   let dwellLeft = 0;
   let dwellTotal = 0;
   let surveyFrom = 0;
@@ -531,6 +547,40 @@ export function createTourController(options = {}) {
       return active;
     },
 
+    /** True while the route is held mid-way. See `routeHeld` above. */
+    get paused() {
+      return routeHeld;
+    },
+
+    /**
+     * Stop walking, keep the place.
+     *
+     * The character stays standing where they got to and stays VISIBLE --
+     * they are the bookmark, and a tour that resumes from an empty room
+     * leaves the visitor wondering where they were. The lens goes back to
+     * the one OrbitControls uses, so the view that flies off to a product is
+     * not the tour's slightly wider one.
+     */
+    pauseRoute() {
+      if (!active || routeHeld) return false;
+      routeHeld = true;
+      keys.clear();
+      input.forward = 0;
+      input.turn = 0;
+      restoreFov();
+      if (controls) controls.enabled = true;
+      return true;
+    },
+
+    /** Carry on from exactly where it stopped. */
+    resumeRoute() {
+      if (!active || !routeHeld) return false;
+      routeHeld = false;
+      applyFov();
+      if (controls) controls.enabled = false;
+      return true;
+    },
+
     get position() {
       return position.clone();
     },
@@ -578,6 +628,7 @@ export function createTourController(options = {}) {
     exit() {
       if (!active) return;
       active = false;
+      routeHeld = false;
       keys.clear();
       route = null;
       clearShowcase();
@@ -706,7 +757,14 @@ export function createTourController(options = {}) {
 
     /** Advance the walk. `delta` in seconds. */
     update(delta) {
-      if (!active) return;
+      // Held means held: nothing steps, nothing turns, nothing dwells, and
+      // the camera is somebody else's to move until `resumeRoute`.
+      //
+      // NOT called `held`: this function already has a local `const held =
+      // readKeys()` further down, and a `let held` in the closure would be
+      // shadowed by it for the whole body -- so this line read the local one
+      // before it existed and threw on the first frame.
+      if (!active || routeHeld) return;
 
       // Clamp: a long frame (tab regains focus) must not teleport anyone
       // through a wall by stepping further than the collision ray reaches.

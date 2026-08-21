@@ -43,7 +43,7 @@ import { PlacementService } from '../../lib/admin/PlacementService';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
                           shops = [], focusProduct = null, onSelect,
-                          onCatalogChanged, onTourApi }) => {
+                          onCatalogChanged, onTourApi, onTourState }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -74,6 +74,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // its own room rather than in the corridor outside it.
   const collisionRoomsRef = useRef([]);
   const [touring, setTouring] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [advert, setAdvert] = useState(null);
   // Guided-tour state, mirrored into React so the pad can draw itself.
   const routeRef = useRef(null);
@@ -693,7 +694,12 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
       // The tour takes the camera over when active; OrbitControls is
       // disabled then, so only one of these ever moves it.
-      if (tourRef.current?.active) {
+      //
+      // A HELD TOUR HANDS IT BACK. That is what makes "pause and show me
+      // that sofa" possible: the walk keeps its place and its character, and
+      // the camera is free to fly somewhere else in the meantime.
+      const walking = tourRef.current?.active && !tourRef.current.paused;
+      if (walking) {
         tourRef.current.update(delta);
       } else {
         orbitControls.update();
@@ -712,7 +718,13 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       if (doorsNow) {
         doorsNow.update(
           delta,
-          tourRef.current?.active ? tourRef.current.position : orbitControls.target
+          // While the tour is HELD the character is standing still somewhere
+          // else entirely, so the doors follow the camera instead -- opening
+          // a door two rooms away because the paused walker is near it would
+          // be a door opening for nobody.
+          tourRef.current?.active && !tourRef.current.paused
+            ? tourRef.current.position
+            : orbitControls.target
         );
         walkVolumeRef.current?.setDynamic([
           ...furnitureRectsRef.current,
@@ -829,7 +841,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   }, [currentRoom, currentIndex, advert]);
 
   // Selecting in the list flies the camera to that product. Skipped while
-  // walking, since the tour owns the camera then.
+  // the tour is WALKING, since it owns the camera then -- but allowed while
+  // it is held, because being held is exactly what the visitor asked for in
+  // order to look at this.
   useEffect(() => {
     const controls = controlsRef.current;
     const camera = cameraRef.current;
@@ -837,7 +851,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     // Finishes have no position -- they dress the whole surface, so there
     // is nowhere to fly to.
     if (!focusProduct?.position || !controls || !camera || !house) return;
-    if (tourRef.current?.active) return;
+    if (tourRef.current?.active && !tourRef.current.paused) return;
 
     // Placement positions are house-local; the house group carries the
     // recentring offset, so add it to get world space.
@@ -1106,6 +1120,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const exitTour = () => {
     tourRef.current?.exit();
     setTouring(false);
+    setPaused(false);
     setGuided(false);
     setStopLabel(null);
     setShowing(null);
@@ -1217,13 +1232,47 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     if (character) character.visible = visible;
   }, []);
 
+  /**
+   * Hold the tour so the camera can go and look at something.
+   *
+   * Returns whether it actually held, so the caller can tell "paused for you"
+   * from "there was nothing playing" and word its own message accordingly.
+   */
+  const holdTour = useCallback(() => {
+    const held = tourRef.current?.pauseRoute() ?? false;
+    if (held) setPaused(true);
+    return held;
+  }, []);
+
+  const resumeTour = useCallback(() => {
+    const resumed = tourRef.current?.resumeRoute() ?? false;
+    if (resumed) setPaused(false);
+    return resumed;
+  }, []);
+
+  /**
+   * Tell the page what the tour is doing.
+   *
+   * The page has to know BEFORE it acts on a click in the product list: while
+   * the tour is walking it must ask rather than fly the camera away. Reading
+   * it through a function on the api object would work once and then go
+   * stale, because nothing re-renders the page when the tour changes.
+   */
+  useEffect(() => {
+    onTourState?.({ touring, guided, paused });
+  }, [onTourState, touring, guided, paused]);
+
   useEffect(() => {
     onTourApi?.({
       startGuided: toggleGuided,
       setWalkerVisible,
+      holdTour,
+      resumeTour,
       isTouring: () => Boolean(tourRef.current?.active),
+      isGuided: () => Boolean(tourRef.current?.active && tourRef.current.progress),
+      isPaused: () => Boolean(tourRef.current?.paused),
     });
-  }, [onTourApi, toggleGuided, setWalkerVisible]);
+  }, [onTourApi, toggleGuided, setWalkerVisible, holdTour, resumeTour]);
 
   const toggleTourView = () => {
     const tour = tourRef.current;
@@ -1366,6 +1415,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           stopLabel={stopLabel}
           progress={progress}
           showing={showing}
+          paused={paused}
+          onResume={resumeTour}
         />
       )}
 

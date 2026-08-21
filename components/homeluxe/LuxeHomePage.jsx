@@ -22,6 +22,32 @@ const LuxeHomePage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shopFilter, setShopFilter] = useState(null);
 
+  // What the tour is doing, reported by the scene, and what the visitor
+  // picked while it was walking.
+  //
+  // DECLARED UP HERE WITH THE REST OF THE STATE, and that is not tidiness.
+  // `confirmFocus` below names `askingFor` in its dependency array, which is
+  // evaluated during render -- so with the state declared further down the
+  // page threw "Cannot access before initialization" on the very first
+  // render, and only the production prerender caught it.
+  const [tourState, setTourState] = useState({
+    touring: false, guided: false, paused: false,
+  });
+  const handleTourState = useCallback((next) => setTourState(next), []);
+
+  /**
+   * A product somebody picked while the tour was walking.
+   *
+   * Held rather than acted on, because the tour owns the camera and flying
+   * off would abandon a walk they may be halfway through. The bar under the
+   * house asks; this is the question it is asking about.
+   */
+  const [askingFor, setAskingFor] = useState(null);
+
+  // The scene lends the page its tour controls. Declared before the handlers
+  // that call them, for the same reason.
+  const tourApi = useRef(null);
+
   // Real identity, not `?admin=true`. The old parameter showed the admin
   // chrome to anyone who guessed it and granted nothing when they used it --
   // every write policy in the database resolves through auth.uid().
@@ -72,10 +98,46 @@ const LuxeHomePage = () => {
     setSelectedProduct(null);
   };
 
+  /**
+   * Somebody picked something from the list.
+   *
+   * WITH THE TOUR WALKING THIS IS NOT A SIMPLE CLICK. The tour owns the
+   * camera, so flying to the product would abandon a walk they may be
+   * halfway through -- and doing nothing would look broken. So the choice
+   * goes to them, in the bar under the house, and nothing moves until they
+   * answer. The panel still updates either way: reading about a sofa while
+   * the tour carries on is a perfectly reasonable thing to want.
+   *
+   * A tour that is already held needs no permission -- being held is what
+   * they asked for last time.
+   */
   const handleProductSelect = (index) => {
+    const product = currentProducts[index] ?? null;
+    setSelectedProduct(product);
+
+    if (tourState.guided && !tourState.paused && product?.position) {
+      setAskingFor({ index, name: product.name });
+      return;
+    }
+    setAskingFor(null);
     setCurrentIndex(index);
-    setSelectedProduct(currentProducts[index] ?? null);
   };
+
+  /** Hold the walk where it is, then fly to what they picked. */
+  const confirmFocus = useCallback(() => {
+    if (!askingFor) return;
+    tourApi.current?.holdTour?.();
+    setCurrentIndex(askingFor.index);
+    setAskingFor(null);
+  }, [askingFor]);
+
+  /** Carry on walking; the panel keeps whatever they clicked. */
+  const dismissFocus = useCallback(() => setAskingFor(null), []);
+
+  /** Back to the walk, from exactly where it stopped. */
+  const resumeTour = useCallback(() => {
+    tourApi.current?.resumeTour?.();
+  }, []);
 
   // Picking a shop narrows the catalogue AND takes the visitor to that
   // shop's first product, so the click visibly does something in the room
@@ -87,8 +149,9 @@ const LuxeHomePage = () => {
   };
 
   // The 3D scene owns the tour controller -- it needs the camera, the
-  // character and the geometry -- and lends this button its start function.
-  const tourApi = useRef(null);
+  // character and the geometry -- and lends the page its controls. The ref
+  // itself is declared with the state above, because the click handlers name
+  // it before this point in the file.
 
   /**
    * The house introduces itself.
@@ -199,6 +262,7 @@ const LuxeHomePage = () => {
    * scene at sixty frames a second costs more than it is worth.
    */
   const [unread, setUnread] = useState(0);
+
   useEffect(() => {
     const id = session?.userId;
     if (!id) { setUnread(0); return undefined; }
@@ -255,6 +319,7 @@ const LuxeHomePage = () => {
         // lists have to re-read or they keep showing the old layout.
         onCatalogChanged={refresh}
         onTourApi={handleTourApi}
+        onTourState={handleTourState}
       />
 
       <ProductPanel
@@ -270,6 +335,13 @@ const LuxeHomePage = () => {
         onPrevious={() => handleProductSelect(Math.max(0, currentIndex - 1))}
         onNext={() => handleProductSelect(Math.min(currentProducts.length - 1, currentIndex + 1))}
         onAutoPlay={() => { takeControl(); tourApi.current?.startGuided(); }}
+        touring={tourState.touring}
+        guided={tourState.guided}
+        paused={tourState.paused}
+        askingFor={askingFor}
+        onConfirmFocus={confirmFocus}
+        onDismissFocus={dismissFocus}
+        onResume={resumeTour}
       />
 
       {showLogin && (

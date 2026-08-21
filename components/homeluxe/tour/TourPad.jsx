@@ -53,6 +53,7 @@ const TourPad = ({
   onPress, onRelease, onExit,
   onGuided, onToggleView,
   guided = false, view = 'third', stopLabel = null, progress = null,
+  paused = false, onResume,
   showing = null,
 }) => {
   const hold = (dir) => ({
@@ -96,7 +97,7 @@ const TourPad = ({
             "guided tour", and "any key to take over" -- went to the buttons'
             tooltips, where it is available and not in the way. */}
         {guided
-          ? `${stopLabel ?? 'Guided tour'}${
+          ? `${paused ? 'Paused' : stopLabel ?? 'Guided tour'}${
               progress ? ` · ${progress.at} of ${progress.total}` : ''
             }`
           : 'Walking · arrow keys or WASD'}
@@ -123,6 +124,28 @@ const TourPad = ({
         >
           {`Looking at ${showing.caption} · ${showing.at}/${showing.of}`}
         </div>
+      )}
+
+      {/* HELD, AND SAYING SO. The tour is standing still somewhere in the
+          house while the camera is off looking at a product the visitor
+          picked from the list. This is the way back, and it is the first
+          thing in the pad because it is the only thing they want from it. */}
+      {guided && paused && (
+        <button
+          type="button"
+          onClick={onResume}
+          style={{
+            ...wide,
+            background: '#C08A2E',
+            borderColor: '#C08A2E',
+            color: '#1B1405',
+            fontWeight: 700,
+            marginBottom: 4,
+          }}
+          title="Carry on from where the tour stopped"
+        >
+          ▶ Resume the tour
+        </button>
       )}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
