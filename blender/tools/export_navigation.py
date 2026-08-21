@@ -27,6 +27,13 @@ _REPO = os.path.dirname(_BLENDER)
 if _BLENDER not in sys.path:
     sys.path.insert(0, _BLENDER)
 
+# So the drift check at the end can be imported. It lives with the seed it
+# tells you to re-run rather than with this tool, because it is about the
+# database and this tool is not.
+_SUPABASE = os.path.join(_REPO, "supabase")
+if _SUPABASE not in sys.path:
+    sys.path.insert(0, _SUPABASE)
+
 from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER     # noqa: E402
 from houseluxe.config.slots import check as check_slots     # noqa: E402
 from houseluxe.catalog import CATALOG                        # noqa: E402
@@ -153,6 +160,31 @@ def main() -> int:
     problems = verify_tour(plan, route, furniture)
     print(tour_report(route, problems))
     print(f"  {TOUR_PATH}")
+
+    # ---- AND THE DATABASE HAS NOT HEARD ABOUT ANY OF THIS -------------
+    #
+    # This tool rewrites catalog.json and slots.json. It does NOT reseed, and
+    # that arrow of the pipeline is manual:
+    #
+    #     plan -> manifests -> seed.sql -> database
+    #             ^^^^^^^^^ this tool     ^^^^^^^^^ somebody, by hand
+    #
+    # So a sofa moved here lands in the route and the collision model while
+    # the database keeps yesterday's coordinates, and both halves stay
+    # internally consistent -- which is exactly why nobody notices. The
+    # recliner sat 250mm apart in the two for several commits.
+    #
+    # Reporting rather than reseeding is deliberate: this tool needs no
+    # database to do its job, is run without one, and writing to production
+    # as a side effect of regenerating a JSON file would be a worse surprise
+    # than the drift.
+    try:
+        from check_drift import main as check_drift          # noqa: E402
+        print()
+        if check_drift() != 0:
+            print("  ! the manifests above are ahead of the database")
+    except ImportError:
+        pass            # no psycopg2 here: nothing to compare against
 
     # A route that does not verify is one the tour will walk into a wall on,
     # so it is a failure and not a warning.

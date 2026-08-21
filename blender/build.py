@@ -296,6 +296,21 @@ def main(
         bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
         print(f"  saved:  {BLEND_PATH}")
 
+    # THE DATABASE HAS NOT HEARD ABOUT ANY OF THIS. A build rewrites
+    # catalog.json and slots.json; the seed is generated and applied by hand,
+    # so a placement moved here keeps yesterday's coordinates in the database
+    # until somebody does it. Both halves stay internally consistent, which is
+    # exactly why the drift goes unnoticed -- the recliner sat 250mm apart in
+    # the two for several commits before anybody printed them side by side.
+    #
+    # This cannot check for itself: Blender's Python has no psycopg2. The tool
+    # that runs outside it does -- blender/tools/export_navigation.py compares
+    # the two and names the difference.
+    print("\nThe database is NOT updated by this build. To bring it into line:")
+    print("    python supabase/generate_seed.py")
+    print("    python supabase/apply.py --seed-only")
+    print("    python supabase/check_drift.py      # says whether they agree")
+
     print("\nDone.")
     return 0
 
