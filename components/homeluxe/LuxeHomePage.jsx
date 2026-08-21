@@ -330,6 +330,7 @@ const LuxeHomePage = () => {
         onCatalogChanged={refresh}
         onTourApi={handleTourApi}
         onTourState={handleTourState}
+        roomLabel={rooms.find((r) => r.code === currentRoom)?.label ?? null}
       />
 
       <ProductPanel

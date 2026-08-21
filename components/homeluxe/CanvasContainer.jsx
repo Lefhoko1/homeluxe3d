@@ -21,7 +21,6 @@ import {
 } from './house/textures/databaseMaterials';
 import { publishScene, recordEvent } from '../../lib/catalog/repository';
 import { getSupabase } from '../../lib/supabase/client';
-import { ROOM_LABELS } from '../../lib/catalog/useCatalog';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import { createLighting } from './lighting/Lighting';
 import {
@@ -43,7 +42,8 @@ import { PlacementService } from '../../lib/admin/PlacementService';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
                           shops = [], focusProduct = null, onSelect,
-                          onCatalogChanged, onTourApi, onTourState }) => {
+                          onCatalogChanged, onTourApi, onTourState,
+                          roomLabel = null }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -829,16 +829,17 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   }, []);
 
   useEffect(() => {
-    // The room label, from the catalogue. The old version hardcoded
-    // 'living-room' and announced "Coming soon" for every other value --
-    // including the real room codes the scene actually uses.
+    // The room label, handed down from the catalogue -- which gets it from
+    // the database. It used to come from a lookup table of thirteen room
+    // names in useCatalog, which is one place too many for a fact the
+    // `rooms` table has always held.
     const el = document.getElementById('canvas-title');
     if (!el) return;
-    const label = ROOM_LABELS[currentRoom]?.label ?? currentRoom;
+    const label = roomLabel ?? currentRoom;
     el.textContent = advert
       ? `${advert.name} — ${advert.shopName ?? advert.shop}`
       : `${label} — click an item to see the advert`;
-  }, [currentRoom, currentIndex, advert]);
+  }, [currentRoom, currentIndex, advert, roomLabel]);
 
   // Selecting in the list flies the camera to that product. Skipped while
   // the tour is WALKING, since it owns the camera then -- but allowed while
@@ -848,22 +849,67 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     const controls = controlsRef.current;
     const camera = cameraRef.current;
     const house = houseRef.current;
-    // Finishes have no position -- they dress the whole surface, so there
-    // is nowhere to fly to.
-    if (!focusProduct?.position || !controls || !camera || !house) return;
+    if (!focusProduct || !controls || !camera || !house) return;
     if (tourRef.current?.active && !tourRef.current.paused) return;
 
-    // Placement positions are house-local; the house group carries the
-    // recentring offset, so add it to get world space.
-    const target = new THREE.Vector3(...focusProduct.position).add(house.position);
+    // A FINISH HAS NO POSITION, AND USED TO GET NO FOCUS. Paint, tile and
+    // coatings dress a whole surface rather than standing anywhere, so the
+    // old version returned here and the click did nothing at all -- and
+    // thirteen of the nineteen things in the house are finishes. Six rooms
+    // contain nothing else, so in those rooms every click was silently
+    // ignored.
+    //
+    // They do belong somewhere: the ROOM they dress. Flying to the middle of
+    // it and standing back far enough to see the walls and floor is what
+    // "show me this tile" actually means.
+    let target;
+    let distance;
+
+    if (focusProduct.position) {
+      // Placement positions are house-local; the house group carries the
+      // recentring offset, so add it to get world space.
+      target = new THREE.Vector3(...focusProduct.position).add(house.position);
+      distance = 4.5;
+    } else {
+      const room = collisionRoomsRef.current?.find(
+        (entry) => entry.room === focusProduct.room
+      );
+
+      if (room?.rect) {
+        const [x0, z0, x1, z1] = room.rect;
+        target = new THREE.Vector3(
+          (x0 + x1) / 2 + house.position.x,
+          0,
+          (z0 + z1) / 2 + house.position.z
+        );
+        // Far enough back to see the surface being advertised. Scaled to the
+        // room, because 4.5m from the middle of a WC is outside it.
+        distance = Math.max(3.2, Math.hypot(x1 - x0, z1 - z0) * 0.75);
+      } else {
+        // NO ROOM AT ALL, and that is a real case rather than bad data: the
+        // exterior coating dresses the OUTSIDE, and the door hardware is
+        // fitted to every door in the building. Neither is anywhere in
+        // particular, so the honest answer to "show me this" is the whole
+        // house, framed from outside.
+        const box = new THREE.Box3().setFromObject(house);
+        if (box.isEmpty()) return;
+        target = box.getCenter(new THREE.Vector3());
+        target.y = box.min.y;
+        distance = box.getSize(new THREE.Vector3()).length() * 0.62;
+      }
+    }
+
     controls.target.copy(target);
 
     // Stand back along the current view direction so the move reads as a
     // dolly rather than a teleport to a fixed angle.
     const back = camera.position.clone().sub(controls.target).setY(0);
     if (back.lengthSq() < 0.01) back.set(0, 0, 1);
-    back.normalize().multiplyScalar(4.5);
-    camera.position.set(target.x + back.x, target.y + 2.6, target.z + back.z);
+    back.normalize().multiplyScalar(distance);
+    // Eye height for a product, standing height for a room, and well above
+    // the roof when the whole house is being framed.
+    const lift = focusProduct.position ? 2.6 : distance > 12 ? distance * 0.45 : 1.9;
+    camera.position.set(target.x + back.x, target.y + lift, target.z + back.z);
     controls.update();
   }, [focusProduct]);
 
