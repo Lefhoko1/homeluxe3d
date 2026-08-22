@@ -337,3 +337,171 @@
 @media (max-width: 720px) {
   .luxe-shops { grid-template-columns: 1fr; }
 }
+
+/* -- asking a shop something ---------------------------------------------- */
+
+.ask-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(23, 33, 46, 0.42);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 16px 24px;
+  overflow-y: auto;
+}
+
+.ask-dialog {
+  width: min(30rem, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(23, 33, 46, 0.22);
+  overflow: hidden;
+}
+
+.ask-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ask-eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  font-weight: 600; color: var(--accent-deep);
+}
+.ask-title {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600; font-size: 20px; line-height: 1.2;
+  color: var(--primary);
+  text-wrap: balance;
+}
+.ask-close {
+  appearance: none; border: 0; background: none; font-size: 17px;
+  color: var(--muted); cursor: pointer; line-height: 1; padding: 2px 4px;
+}
+.ask-close:hover { color: var(--text); }
+
+.ask-body {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 22px 22px;
+}
+.ask-body textarea {
+  font: inherit; font-size: 14px; line-height: 1.55;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+.ask-body textarea:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
+}
+
+/* The shop's own phone and email. Somebody who wants an answer in ten
+   minutes should ring; the form is for everyone else. */
+.ask-or {
+  margin: 2px 0 -6px;
+  font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase;
+  font-weight: 600; color: var(--muted);
+}
+.ask-contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 7px; }
+.ask-contacts a {
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--secondary);
+  text-decoration: none;
+}
+.ask-contacts a:hover { border-color: var(--secondary); background: var(--surface); }
+
+.ask-foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding-top: 6px; border-top: 1px solid var(--border); margin-top: 2px;
+}
+
+/* -- your questions, and what came back ----------------------------------- */
+
+.ask-thread {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ask-thread.answered { border-color: var(--live); }
+
+.ask-thread-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ask-thread-head strong { font-size: 15px; color: var(--primary); }
+.ask-thread-head .ask-when { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+.ask-status {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+}
+.ask-status.replied { background: #E8F5EE; color: #1E5F42; }
+.ask-status.new { background: #FFF6E5; color: var(--accent-deep); }
+
+.ask-bubbles { display: flex; flex-direction: column; gap: 8px; }
+.ask-bubble {
+  padding: 10px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 46ch;
+}
+/* Yours on the left in plain grey, theirs on the right in the shop's colour.
+   Side and colour both, because colour alone fails for anybody who cannot
+   distinguish the two. */
+.ask-bubble.mine { background: var(--surface-2); color: var(--text); align-self: flex-start; }
+.ask-bubble.theirs {
+  background: #EAF3F7; color: #123B4B; align-self: flex-end;
+  border: 1px solid #CFE4EC;
+}
+.ask-bubble-who {
+  display: block; font-size: 10px; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 3px;
+}
+
+.ask-reply { display: flex; gap: 8px; align-items: flex-start; }
+.ask-reply textarea {
+  flex: 1; font: inherit; font-size: 13px; padding: 9px 11px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); resize: vertical;
+}
+
+/* -- searching for a shop to follow --------------------------------------- */
+
+.shop-search { position: relative; margin-bottom: 16px; }
+.shop-search input {
+  width: 100%;
+  font: inherit; font-size: 14px;
+  padding: 11px 13px 11px 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.shop-search input:focus {
+  outline: none; border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
+}
+.shop-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 14px; pointer-events: none;
+}
+.shop-search-count { margin: 6px 2px 0; font-size: 12px; color: var(--muted); }

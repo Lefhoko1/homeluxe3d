@@ -8,6 +8,7 @@ import Assets from './sections/Assets';
 import AuditLog from './sections/AuditLog';
 import Campaigns from './sections/Campaigns';
 import Dashboard from './sections/Dashboard';
+import Enquiries from './sections/Enquiries';
 import Materials from './sections/Materials';
 import People from './sections/People';
 import Placements from './sections/Placements';
@@ -52,6 +53,7 @@ const SECTIONS = [
 
   { id: 'shops',      label: 'Shops',        group: 'Commercial', platformOnly: true },
   { id: 'campaigns',  label: 'Campaigns',    group: 'Commercial' },
+  { id: 'enquiries',  label: 'Enquiries',    group: 'Commercial' },
   { id: 'analytics',  label: 'Analytics',    group: 'Commercial' },
 
   { id: 'people',     label: 'People & roles', group: 'Platform', platformOnly: true },
@@ -149,6 +151,9 @@ const AdminShell = ({ session, shops = [], onSignOut }) => {
         {active === 'requests'   && <RequestQueue shops={shops} />}
         {active === 'shops'      && <Shops data={data} canManage={canManage} />}
         {active === 'campaigns'  && <Campaigns data={data} canManage={canManage} shops={shops} />}
+        {active === 'enquiries'  && (
+          <Enquiries data={data} me={session?.userId} canManage={canManage} />
+        )}
         {active === 'analytics'  && <Analytics data={data} />}
         {active === 'people'     && (
           <People data={data} canManage={isPlatform} me={session?.userId} />

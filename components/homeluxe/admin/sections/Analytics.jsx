@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-import { Async, DataTable, Panel, Pill, useAsync, when } from '../ui';
+import { Async, DataTable, Panel, useAsync, when } from '../ui';
 
 /**
  * What the visitors did (sections 90 to 93).
@@ -15,11 +15,16 @@ import { Async, DataTable, Panel, Pill, useAsync, when } from '../ui';
  * attributed to anyone, so they are counted separately rather than quietly
  * dropped -- a number that disagrees with the raw table is worse than a
  * number with an explanation next to it.
+ *
+ * Enquiries used to be listed here, read-only. They are a conversation now
+ * rather than a number, so they have a screen of their own -- see
+ * sections/Enquiries.jsx.
  */
 const Analytics = ({ data }) => {
+  const traffic = useAsync(() => data.traffic(30), [data]);
+  const signups = useAsync(() => data.signups(30), [data]);
   const daily = useAsync(() => data.shopStats(), [data]);
   const performance = useAsync(() => data.productPerformance(), [data]);
-  const enquiries = useAsync(() => data.enquiries(), [data]);
 
   const totals = useMemo(() => {
     const rows = daily.data ?? [];
@@ -35,10 +40,81 @@ const Analytics = ({ data }) => {
     );
   }, [daily.data]);
 
+  const totalPeople = (traffic.data ?? []).reduce(
+    (n, r) => n + Number(r.people ?? 0), 0
+  );
+
   return (
     <>
       <Panel
-        title="Traffic"
+        title="Who is in the house"
+        subtitle="Sessions and people, by day. `interaction_events.user_id` was never set until migration 0019, so every session before then looks anonymous — including the ones that were not."
+      >
+        <Async
+          state={traffic}
+          empty="No traffic recorded yet. Walking the house and clicking a product writes the first row."
+        >
+          {(rows) => (
+            <>
+              <p className="ad-sub">
+                {rows.reduce((n, r) => n + Number(r.sessions ?? 0), 0).toLocaleString()} sessions
+                {' · '}{totalPeople.toLocaleString()} signed-in visitors
+                {' · '}{rows.reduce((n, r) => n + Number(r.events ?? 0), 0).toLocaleString()} events
+                {' over '}{rows.length} day{rows.length === 1 ? '' : 's'}
+              </p>
+              <DataTable
+                rows={rows}
+                rowKey={(r) => r.day}
+                columns={[
+                  { key: 'day', header: 'Day', render: (r) => when(r.day).split(',')[0] },
+                  { key: 'sessions', header: 'Sessions', align: 'right' },
+                  {
+                    key: 'known_sessions',
+                    header: 'Signed in',
+                    align: 'right',
+                    render: (r) => (
+                      <>
+                        {r.known_sessions}
+                        {Number(r.sessions) > 0 && (
+                          <span className="ad-dim">
+                            {' '}({Math.round((r.known_sessions / r.sessions) * 100)}%)
+                          </span>
+                        )}
+                      </>
+                    ),
+                  },
+                  { key: 'people', header: 'People', align: 'right' },
+                  { key: 'views', header: 'Views', align: 'right' },
+                  { key: 'clicks', header: 'Clicks', align: 'right' },
+                  { key: 'enquiries', header: 'Enquiries', align: 'right' },
+                ]}
+              />
+            </>
+          )}
+        </Async>
+      </Panel>
+
+      <Panel
+        title="New accounts"
+        subtitle="Somebody has to register before they can follow a shop or ask a question, so this is the audience the platform actually has."
+      >
+        <Async state={signups} empty="Nobody has registered yet.">
+          {(rows) => (
+            <DataTable
+              rows={rows}
+              rowKey={(r) => r.day}
+              columns={[
+                { key: 'day', header: 'Day', render: (r) => when(r.day).split(',')[0] },
+                { key: 'accounts', header: 'Accounts', align: 'right' },
+                { key: 'staff', header: 'of them staff', align: 'right' },
+              ]}
+            />
+          )}
+        </Async>
+      </Panel>
+
+      <Panel
+        title="Traffic by shop"
         subtitle="By shop and day. A view is a placement being looked at; a click is somebody choosing it."
       >
         <Async
@@ -100,40 +176,6 @@ const Analytics = ({ data }) => {
         </Async>
       </Panel>
 
-      <Panel
-        title="Enquiries"
-        subtitle="Somebody asking about a product. This is the end of the funnel."
-      >
-        <Async state={enquiries} empty="No enquiries yet.">
-          {(rows) => (
-            <DataTable
-              columns={[
-                {
-                  key: 'name',
-                  header: 'From',
-                  render: (e) => (
-                    <>
-                      <strong>{e.name || 'Anonymous'}</strong>
-                      <div className="ad-dim">{e.email || e.phone || '—'}</div>
-                    </>
-                  ),
-                },
-                { key: 'product', header: 'About', render: (e) => e.products?.name ?? '—' },
-                { key: 'shop', header: 'Shop', render: (e) => e.shops?.name ?? '—' },
-                { key: 'message', header: 'Message', render: (e) => e.message || '—' },
-                {
-                  key: 'status',
-                  header: 'Status',
-                  render: (e) => <Pill tone={e.status === 'new' ? 'warn' : ''}>{e.status}</Pill>,
-                },
-                { key: 'created_at', header: 'When', render: (e) => when(e.created_at) },
-              ]}
-              rows={rows}
-              rowKey={(e) => e.id}
-            />
-          )}
-        </Async>
-      </Panel>
     </>
   );
 };

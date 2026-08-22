@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { VisitorService } from '../../../lib/visitor/VisitorService';
+import MyEnquiries from './MyEnquiries';
 import '../homeluxe.css';
 import '../visitor.css';
 
@@ -27,6 +28,18 @@ const Following = ({ userId, displayName, onSignOut }) => {
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState(null);
   const [busyShop, setBusyShop] = useState(null);
+
+  /**
+   * Narrowing the list of shops.
+   *
+   * FILTERED HERE, NOT RE-QUERIED. `service.shops()` already returns every
+   * active shop WITH this visitor's follow state attached; searching the
+   * database again would return shops without it, and every Follow button
+   * would flicker to the wrong state while the second answer arrived. When
+   * there are more shops than one page can hold, `searchShops` exists for
+   * exactly that and returns the primary key with each result.
+   */
+  const [term, setTerm] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +99,14 @@ const Following = ({ userId, displayName, onSignOut }) => {
     }
   };
 
+  const needle = term.trim().toLowerCase();
+  const visible = needle
+    ? shops.filter((s) =>
+        `${s.name} ${s.slug} ${s.tagline ?? ''} ${s.where ?? ''}`
+          .toLowerCase()
+          .includes(needle))
+    : shops;
+
   const followed = shops.filter((s) => s.following);
   const unread = feed.filter((n) => !n.read_at).length;
 
@@ -119,8 +140,25 @@ const Following = ({ userId, displayName, onSignOut }) => {
 
       {!loading && (
         <>
+          <div className="shop-search">
+            <span className="shop-search-icon" aria-hidden>⌕</span>
+            <input
+              type="search"
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
+              placeholder="Search shops by name…"
+              aria-label="Search shops"
+            />
+            {needle && (
+              <p className="shop-search-count">
+                {visible.length} of {shops.length} shop
+                {shops.length === 1 ? '' : 's'} match &ldquo;{term.trim()}&rdquo;
+              </p>
+            )}
+          </div>
+
           <div className="luxe-shops">
-            {shops.map((shop) => (
+            {visible.map((shop) => (
               <article
                 key={shop.id}
                 className={`luxe-shop${shop.following ? ' following' : ''}`}
@@ -195,6 +233,22 @@ const Following = ({ userId, displayName, onSignOut }) => {
               </article>
             ))}
           </div>
+
+          {needle && visible.length === 0 && (
+            <p className="luxe-empty">
+              No shop matches &ldquo;{term.trim()}&rdquo;. Only shops that are
+              currently trading are listed.
+            </p>
+          )}
+
+          <h2 className="luxe-lede" id="enquiries" style={{ fontSize: 24, margin: '38px 0 6px' }}>
+            Your questions
+          </h2>
+          <p className="luxe-sub">
+            What you asked a shop, and what they said back. Their reply also
+            reaches you by email.
+          </p>
+          <MyEnquiries userId={userId} />
 
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, margin: '38px 0 14px' }}>
             <h2 className="luxe-lede" style={{ fontSize: 24 }}>

@@ -443,3 +443,41 @@
 .ad-map-action {
   font-size: 11px; color: #1f6feb; white-space: nowrap;
 }
+
+/* -- enquiries ------------------------------------------------------------ */
+
+.ad-enquiry-head { display: flex; align-items: flex-start; gap: 12px; }
+
+/* The customer's words and the shop's, told apart by side AND by colour --
+   colour alone fails for anybody who cannot distinguish the two. */
+.ad-enquiry-message,
+.ad-enquiry-reply {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 64ch;
+}
+.ad-enquiry-message { background: #F1F0EB; color: #1B1D21; }
+.ad-enquiry-reply {
+  background: #EAF3F7;
+  border: 1px solid #CFE4EC;
+  color: #123B4B;
+  margin-left: auto;
+}
+
+.ad-enquiry-compose { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; }
+.ad-enquiry-compose textarea {
+  flex: 1;
+  font: inherit; font-size: 13px; line-height: 1.5;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid #d7dee8;
+  background: #fff;
+  resize: vertical;
+}
+.ad-enquiry-compose textarea:focus {
+  outline: none; border-color: #1f6feb;
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.15);
+}

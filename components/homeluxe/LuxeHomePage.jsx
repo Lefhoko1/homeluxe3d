@@ -7,6 +7,7 @@ import CanvasContainer from './CanvasContainer';
 import ProductPanel from './ProductPanel';
 import TourControls from './TourControls';
 import LoginModal from './LoginModal';
+import EnquiryDialog from './EnquiryDialog';
 import { useCatalog } from '../../lib/catalog/useCatalog';
 import { recordEvent } from '../../lib/catalog/repository';
 import { VisitorService } from '../../lib/visitor/VisitorService';
@@ -215,8 +216,22 @@ const LuxeHomePage = () => {
     tourApi.current?.setWalkerVisible?.(true);
   }, []);
 
+  /**
+   * The product somebody is asking about, or null.
+   *
+   * The dialog needs the SHOP ROW -- its id, phone, email -- and the panel
+   * only has a slug, so the shop is resolved here where the catalogue is.
+   */
+  const [asking, setAsking] = useState(null);
+
   const handleEnquire = (product) => {
     if (!product) return;
+
+    // The dialog resolves the shop itself, from its slug. The catalogue is a
+    // scene rather than a directory: it has no shop uuid and no contacts, and
+    // the enquiry is written against the shop's PRIMARY KEY.
+    setAsking({ product, shopSlug: product.shopSlug ?? product.shop });
+
     // The variant is what makes this attributable: a product panel enquiry
     // names no placement -- nothing was clicked in the house -- but a variant
     // belongs to exactly one product and one shop, and migration 0014 works
@@ -354,6 +369,16 @@ const LuxeHomePage = () => {
         onDismissFocus={dismissFocus}
         onResume={resumeTour}
       />
+
+      {asking && (
+        <EnquiryDialog
+          product={asking.product}
+          shopSlug={asking.shopSlug}
+          userId={session?.userId ?? null}
+          onClose={() => setAsking(null)}
+          onSent={refresh}
+        />
+      )}
 
       {showLogin && (
         <LoginModal
