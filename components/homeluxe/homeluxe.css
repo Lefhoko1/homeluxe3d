@@ -28,7 +28,9 @@
    block rather than a search-and-replace through 1,300 lines.
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap');
+/* The faces are linked from app/layout.tsx rather than @imported here: an
+   @import cannot begin downloading until this file has arrived and been
+   parsed, so the fonts queue behind the CSS instead of loading beside it. */
 
 :root {
   /* Grounds, lightest first. The page is a warm off-white and the cards are
@@ -1518,3 +1520,8 @@ body {
   #room-tabs { grid-row: 3 / 4; padding: 0 12px; }
   .room-tabs-label { display: none; }
 }
+
+/* The wordmark in the showroom header is a link home now: the house is no
+   longer the whole site, and the logo is the first place anybody looks. */
+.header-brand { text-decoration: none; color: inherit; display: block; }
+.header-brand:hover h1 { color: var(--secondary); }

@@ -24,10 +24,13 @@ const Header = ({
   onLogout,
 }) => (
   <div id="header">
-    <div>
+    {/* THE WORDMARK IS THE WAY OUT. The house used to be the whole site, so
+        there was nowhere to go back to; now there is a front page, and the
+        first place anybody looks for it is the logo. */}
+    <a className="header-brand" href="/">
       <h1>HomeLuxe 3D</h1>
       <div className="header-subtitle">Virtual furniture showroom</div>
-    </div>
+    </a>
 
     <div id="admin-controls">
       {isSignedIn ? (

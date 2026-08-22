@@ -7,14 +7,24 @@ import { Providers } from "./providers";
 import { fontSans } from "@/config/fonts";
 
 export const metadata: Metadata = {
-  title: "HomeLuxe 3D - Virtual Furniture Showroom",
-  description: "Immersive 3D furniture showroom with virtual tours",
+  // Says what it IS. "Immersive 3D experiences" could be about anything, and
+  // this is the line that appears in a search result and in a shared link.
+  title: {
+    default: "HomeLuxe 3D — walk through a furnished house",
+    template: "%s · HomeLuxe 3D",
+  },
+  description:
+    "A virtual house furnished with real products from Gaborone shops. " +
+    "Walk through it room by room, see furniture at its own size, and ask " +
+    "the shop about anything in it.",
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#1a2332" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a2332" },
+    // The browser chrome matches the page, which is paper now rather than
+    // the navy this was written against.
+    { media: "(prefers-color-scheme: light)", color: "#FAF9F6" },
+    { media: "(prefers-color-scheme: dark)", color: "#17212E" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -28,9 +38,23 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning lang="en">
       <head>
-        {/* Load Google Fonts for HomeLuxe */}
+        {/*
+          The site's two faces, linked here rather than @imported from CSS.
+
+          An @import inside a stylesheet cannot start downloading until that
+          stylesheet has itself arrived and been parsed, so the fonts queue up
+          behind the CSS instead of alongside it. A <link> in the head starts
+          both at once. Preconnecting to the font host saves the DNS and TLS
+          round trip on top of that.
+
+          These were Inter and Playfair Display, which the site stopped using
+          when it was rethemed -- so every page was downloading two typefaces
+          it never rendered a character in.
+        */}
+        <link href="https://fonts.googleapis.com" rel="preconnect" />
+        <link crossOrigin="" href="https://fonts.gstatic.com" rel="preconnect" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
         {/*

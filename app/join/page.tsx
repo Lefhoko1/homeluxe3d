@@ -28,7 +28,7 @@ export default function JoinPage() {
           <strong>HomeLuxe 3D</strong>
           <span>virtual showroom</span>
         </a>
-        <a className="luxe-btn ghost" href="/">Back to the house</a>
+        <a className="luxe-btn ghost" href="/showroom">Back to the house</a>
       </div>
 
       {loading ? (

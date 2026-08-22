@@ -31,7 +31,7 @@ export default function FollowingPage() {
           <strong>HomeLuxe 3D</strong>
           <span>virtual showroom</span>
         </a>
-        <a className="luxe-btn ghost" href="/">
+        <a className="luxe-btn ghost" href="/showroom">
           Back to the house
         </a>
       </div>

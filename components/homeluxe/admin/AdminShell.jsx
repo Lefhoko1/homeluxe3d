@@ -135,7 +135,7 @@ const AdminShell = ({ session, shops = [], onSignOut }) => {
             <strong>{session?.displayName ?? 'Signed in'}</strong>
             <span>{isPlatform ? 'platform admin' : `${shops.length} shop(s)`}</span>
           </div>
-          <a className="ad-btn" href="/">Open the showroom</a>
+          <a className="ad-btn" href="/showroom">Open the showroom</a>
           <button type="button" className="ad-btn" onClick={onSignOut}>Sign out</button>
         </div>
       </nav>
