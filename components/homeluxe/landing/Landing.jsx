@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { getSupabase } from '../../../lib/supabase/client';
 import ContactForm from './ContactForm';
+import Showcase from './Showcase';
 import '../homeluxe.css';
 import '../visitor.css';
 import './landing.css';
@@ -43,6 +44,10 @@ const Landing = () => {
     <main className="lp">
       <SiteHeader />
       <Hero counts={counts} />
+      {/* Proof before the click. The page has just claimed a house full of
+          real furniture at real scale; this is one of those pieces, turning,
+          read from the same published catalogue the showroom reads. */}
+      <Showcase />
       <HowItWorks />
       <Services />
       <ForShops counts={counts} />
@@ -60,6 +65,7 @@ const SiteHeader = () => (
       <span>Gaborone</span>
     </a>
     <nav className="lp-nav">
+      <a href="#showcase">Showroom</a>
       <a href="#how">How it works</a>
       <a href="#services">Services</a>
       <a href="#about">About</a>

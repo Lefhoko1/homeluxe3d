@@ -345,6 +345,257 @@
   .lp-counts { gap: 18px; }
 }
 
+/* -- the little showroom --------------------------------------------------
+   A real product turning on a stand, and the shops it came from. The section
+   has to look like a shop window rather than a diagram: one large object with
+   room around it, its price where the eye lands after the object, and the
+   shops underneath as an invitation rather than a legend.
+   ------------------------------------------------------------------------ */
+
+.lp-showcase-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: clamp(24px, 4vw, 48px);
+  align-items: center;
+}
+
+/* The stand. A tinted well rather than a white card -- the object needs a
+   ground to sit against, and pure white leaves a pale sofa floating. */
+.lp-stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  min-height: 300px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(70% 58% at 50% 42%, #FFFFFF 0%, var(--surface-2) 78%);
+  box-shadow: 0 2px 4px rgba(23, 33, 46, 0.03), 0 22px 50px rgba(23, 33, 46, 0.07);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  /* So a drag turns the sofa instead of selecting the page. */
+  touch-action: pan-y;
+  cursor: grab;
+}
+.lp-stage:active { cursor: grabbing; }
+
+.lp-stage-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.lp-stage-note {
+  position: relative;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.lp-stage-note.bad { color: var(--stop); max-width: 34ch; text-align: center; }
+
+/* Said once, quietly, in the corner. An instruction across the middle of the
+   object would be covering the thing it is talking about. */
+.lp-stage-hint {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  margin: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* -- what it is ----------------------------------------------------------- */
+
+.lp-showcase-from {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+.lp-showcase-from span { color: var(--muted); font-weight: 600; }
+
+.lp-showcase-name {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(22px, 2.4vw, 30px);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  color: var(--primary);
+  margin: 8px 0 10px;
+}
+
+.lp-showcase-desc {
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--muted);
+  max-width: 42ch;
+}
+
+/* The price is the point of the panel, so it gets the display face and the
+   only amber on this side of the section. */
+.lp-showcase-price {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.lp-showcase-amount {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.lp-showcase-was {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.lp-showcase-promo {
+  display: inline-block;
+  margin: 4px 0 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lp-showcase-dims {
+  margin: 12px 0 20px;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- the shops ------------------------------------------------------------ */
+
+.lp-shop-rail {
+  margin-top: clamp(32px, 5vh, 56px);
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.lp-rail-title {
+  margin: 0 0 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lp-shop-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 18px;
+}
+
+.lp-shop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 18px 20px;
+}
+
+.lp-shop-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.lp-shop-head strong {
+  display: block;
+  font-size: 15px;
+  color: var(--primary);
+}
+.lp-shop-count {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lp-shop-logo,
+.lp-shop-initial {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  flex: none;
+}
+.lp-shop-logo { object-fit: cover; border: 1px solid var(--border); }
+
+/* Every shop has an initial; not every shop has uploaded a mark. */
+.lp-shop-initial {
+  display: grid;
+  place-items: center;
+  background: var(--primary);
+  color: var(--on-dark);
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.lp-shop-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.lp-chip {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+.lp-chip:hover { border-color: var(--accent); }
+.lp-chip.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-dark);
+}
+
+.lp-shop-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .lp-showcase-grid { grid-template-columns: 1fr; }
+  .lp-stage { aspect-ratio: 1 / 1; min-height: 260px; }
+}
+
 /* -- landing where you meant to ------------------------------------------- */
 
 /* The bar's links are anchors into this page, and while the body could not

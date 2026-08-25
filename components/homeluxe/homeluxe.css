@@ -103,111 +103,37 @@ body {
   gap: 0;
 }
 
-/* Header */
+/* -- the title bar --------------------------------------------------------
+   THE SAME BAR AS THE FRONT PAGE. The wordmark and the buttons are now
+   `.luxe-wordmark` and `.luxe-btn`, shared with `/`, `/join` and `/following`
+   -- so what is left here is only the part that is genuinely different: this
+   one is a row of a 100vh grid rather than a block in a document, and it has
+   a rule under it because there is a house directly below it.
+
+   What went: an <h1> at 24px with a second line under it, and buttons with
+   2px borders and a teal fill that exist nowhere else on the site. Walking
+   from the front page into the showroom read as leaving for another
+   company's product.
+   ------------------------------------------------------------------------ */
+
 #header {
   grid-column: 1 / -1;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 0 30px;
+  /* 24px matches .lp-top's inner padding, so the wordmark does not jump
+     sideways between the two pages. */
+  padding: 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-#header h1 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 24px;
-  color: var(--primary);
-  font-weight: 700;
-}
-
-.header-subtitle {
-  font-size: 11px;
-  color: var(--secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-/* Thin Featured Shops Banner */
-.shops-banner {
-  grid-column: 1 / -1;
-  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
-  border-bottom: 1px solid var(--border);
-  padding: 8px 20px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.banner-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--secondary);
-  font-weight: 600;
-  white-space: nowrap;
-  padding-right: 15px;
-  border-right: 2px solid var(--border);
-}
-
-.shops-scroll {
-  flex: 1;
-  overflow: hidden;
-}
-
-.shops-track {
-  display: flex;
   gap: 20px;
-  animation: scroll 25s linear infinite;
 }
 
-.shops-track:hover {
-  animation-play-state: paused;
-}
-
-@keyframes scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.shop-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 15px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--primary);
-  white-space: nowrap;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.shop-badge:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.shop-badge.active {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
-  color: var(--on-accent);
-  border-color: var(--accent);
-  animation: beep 0.6s ease-out;
-  box-shadow: 0 4px 15px rgba(212, 165, 116, 0.4);
-}
-
-@keyframes beep {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-.shop-badge-icon {
-  font-size: 16px;
+/* The bar is 70px, and .luxe-btn is sized for a document with room around
+   it. A touch shorter here, where five controls share a fixed row. */
+#header .luxe-btn {
+  padding: 9px 15px;
+  font-size: 12.5px;
 }
 
 /* Left Panel - Tour Navigation */
@@ -480,9 +406,15 @@ body {
 }
 
 .product-header {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  color: var(--on-dark);
-  padding: 25px;
+  /* WHITE, LIKE EVERY OTHER HEADING ON THE SITE. This was a navy-to-teal
+     gradient with white type on it -- the last surviving piece of the dark
+     theme, sitting directly beside the amber price card, so the top of the
+     panel shouted in one colour scheme and the middle of it in another.
+     The front page introduces a product with an eyebrow, a serif name and
+     the price under it; so does this now. */
+  background: var(--surface);
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -491,18 +423,15 @@ body {
 
 
 
-.product-header h2 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 22px;
-  font-weight: 700;
-  flex: 1;
-}
+/* The name is styled by `.product-name` further down -- one rule, near the
+   price it sits above. This used to set a second, different size here. */
+.product-header h2 { margin: 0; }
 
 .product-category {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: var(--accent);
+  color: var(--accent-deep);
   font-weight: 600;
 }
 
@@ -998,12 +927,19 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* SCROLLS, RATHER THAN CLIPPING. `overflow: hidden` is the same mistake the
+   note on #shops-banner describes: with three shops it looks fine, and the
+   fourth one silently does not exist. Hidden scrollbar because the house is
+   directly underneath -- the rooms strip below solves it the same way. */
 .shops-scroll {
   display: flex;
   align-items: center;
-  overflow: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
   flex: 1;
+  min-width: 0;
 }
+.shops-scroll::-webkit-scrollbar { display: none; }
 
 /* A finish is advertised in the room list but is not a placed object, so it
    reads differently from the furniture around it. */
@@ -1019,14 +955,14 @@ body {
   padding: 13px 16px;
   border: 0;
   border-radius: 10px;
-  background: var(--secondary);
+  background: var(--primary);
   color: var(--on-dark);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: filter 0.15s;
+  transition: background 0.15s;
 }
-.product-enquire:hover { filter: brightness(1.1); }
+.product-enquire:hover { background: #22303F; }
 
 /* Shop chips are filters, so they must look pressable and show which one is
    active. `shops` in useCatalog stays unfiltered on purpose -- the banner
@@ -1100,9 +1036,12 @@ body {
   align-items: center;
 }
 
+/* WHITE TEXT ON A WHITE BAR. Left behind when the chrome went from dark to
+   paper: a signed-in visitor's own name was invisible, and the only reason
+   nobody reported it is that you have to be signed in to see nothing. */
 .header-user {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1523,5 +1462,30 @@ body {
 
 /* The wordmark in the showroom header is a link home now: the house is no
    longer the whole site, and the logo is the first place anybody looks. */
-.header-brand { text-decoration: none; color: inherit; display: block; }
-.header-brand:hover h1 { color: var(--secondary); }
+.header-brand { text-decoration: none; }
+.header-brand:hover strong { color: var(--secondary); }
+
+
+/* -- the unread badge -----------------------------------------------------
+   Rendered by Header.jsx since notifications were added and styled by
+   nothing: the count appeared as a bare numeral run up against the word
+   "shops", which reads as part of the label rather than as a count.
+   ------------------------------------------------------------------------ */
+
+.header-unread {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  /* Amber means "there is something here for you", the same as it means
+     money on the price card -- both are the thing worth stopping for. Ink on
+     top, never white; white on amber does not clear contrast at this size. */
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}

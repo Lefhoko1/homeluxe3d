@@ -17,6 +17,30 @@ import './visitor.css';
 import { useAdmin } from './admin';
 import './homeluxe.css';
 
+/**
+ * Find a product named in the query string, wherever it stands.
+ *
+ * TWO SPELLINGS OF THE SAME THING REACH HERE and both have to work. The
+ * catalogue keys products by QUALIFIED id -- `bradlows.sandton-sofa-3` --
+ * while the notification triggers in migration 0020 build their links from
+ * the product's own slug, `sandton-sofa-3`, because that is the column the
+ * trigger has. Accepting only one of the two would break whichever set of
+ * links was not written by the person who last edited this file.
+ */
+const findProduct = (productsByRoom, wanted) => {
+  const tail = (id) => String(id).split('.').pop();
+
+  for (const [room, list] of Object.entries(productsByRoom)) {
+    const index = list.findIndex(
+      (p) => p.id === wanted || tail(p.id) === tail(wanted),
+    );
+
+    if (index >= 0) return { room, index, product: list[index] };
+  }
+
+  return null;
+};
+
 const LuxeHomePage = () => {
   const [currentRoom, setCurrentRoom] = useState('living');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -170,6 +194,50 @@ const LuxeHomePage = () => {
    * like a broken autoplay.
    */
   const [cinematic, setCinematic] = useState(true);
+
+  /**
+   * Somebody arrived asking for one particular thing.
+   *
+   * `/showroom?product=<slug>` is the link in every notification email and on
+   * the front page's showcase, and until now NOTHING READ IT: the parameter
+   * arrived, sat in the address bar, and the visitor was dropped into the
+   * living room to find the wardrobe they had been emailed about themselves.
+   *
+   * It also cancels the opening film. The tour exists to explain the house to
+   * somebody who does not know what it is; a visitor who clicked "see the
+   * Sandton sofa" knows exactly what it is and wants that sofa, and walking
+   * them round the kitchen first is taking something away from them.
+   *
+   * DECLARED AFTER `cinematic`, not with the other effects further up. It
+   * calls `setCinematic`, and the file has been bitten once already by
+   * naming state above the line that declares it.
+   */
+  const deepLinked = useRef(false);
+
+  useEffect(() => {
+    if (deepLinked.current || !rooms.length) return;
+
+    const wanted = new URLSearchParams(window.location.search).get('product');
+
+    if (!wanted) {
+      deepLinked.current = true;
+
+      return;
+    }
+
+    const hit = findProduct(productsByRoom, wanted);
+
+    // Nothing yet -- the room lists may still be filling. Only give up once
+    // there is a catalogue to have failed to find it in.
+    if (!hit) return;
+
+    deepLinked.current = true;
+    landed.current = true;          // beat the "open on the first room" rule
+    setCurrentRoom(hit.room);
+    setCurrentIndex(hit.index);
+    setSelectedProduct(hit.product);
+    setCinematic(false);
+  }, [rooms, productsByRoom]);
 
   // The scene hands its controls over once, asynchronously, and the opening
   // has to wait for that. A piece of state rather than a ref, because the
