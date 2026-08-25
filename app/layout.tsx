@@ -68,20 +68,33 @@ export default function RootLayout({
           imported" and blocked first render on five synchronous scripts.
         */}
       </head>
+      {/*
+        THE PAGE SCROLLS. It did not, and the reason is worth keeping: when
+        this was written `/` WAS the showroom, a 3D canvas in a 100vh grid
+        that must never move, so scrolling was switched off here -- on the
+        <body>, for the whole site -- and every page was locked into one
+        screen with the rest of its content clipped away below the fold.
+
+        There are five pages now and four of them are ordinary documents.
+        The front page, /join, /following and /admin all run past the bottom
+        of the viewport by design.
+
+        So the rule goes back where it belongs: the showroom locks scrolling
+        itself, while it is on screen, and puts it back when you leave. A
+        page that must not scroll is one page's business, not the layout's.
+      */}
       <body
         className={clsx(
           "min-h-screen bg-background font-sans antialiased",
           fontSans.variable,
         )}
-        style={{
-          margin: 0,
-          padding: 0,
-          overflow: "hidden", // Prevent scrolling for fullscreen experience
-        }}
+        style={{ margin: 0, padding: 0 }}
       >
         <Providers>
-          {/* Fullscreen container with no padding or margins */}
-          <div className="w-screen h-screen">{children}</div>
+          {/* Full width, and at LEAST the viewport tall -- `h-screen` was
+              exactly the viewport tall, which is a different thing: it made
+              the box that clipped everything below it. */}
+          <div className="w-full min-h-screen">{children}</div>
         </Providers>
       </body>
     </html>
