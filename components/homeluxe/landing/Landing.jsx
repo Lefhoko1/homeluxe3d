@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { getSupabase } from '../../../lib/supabase/client';
 import ContactForm from './ContactForm';
+import HouseView from './HouseView';
 import Showcase from './Showcase';
+import { useFeatured } from './useFeatured';
 import '../homeluxe.css';
 import '../visitor.css';
 import './landing.css';
@@ -28,6 +30,12 @@ import './landing.css';
 const Landing = () => {
   const [counts, setCounts] = useState(null);
 
+  // What the platform is leading with, and which of them is on screen. Held
+  // here rather than inside the view so that the caption, the dots and the
+  // camera can never disagree about which advert is showing.
+  const { featured } = useFeatured('3bed');
+  const [showing, setShowing] = useState(0);
+
   useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) return;
@@ -43,7 +51,12 @@ const Landing = () => {
   return (
     <main className="lp">
       <SiteHeader />
-      <Hero counts={counts} />
+      <Hero
+        counts={counts}
+        featured={featured}
+        showing={showing}
+        setShowing={setShowing}
+      />
       {/* Proof before the click. The page has just claimed a house full of
           real furniture at real scale; this is one of those pieces, turning,
           read from the same published catalogue the showroom reads. */}
@@ -85,7 +98,7 @@ const SiteHeader = () => (
  * 3D experiences" says nothing and could be about anything. A house you walk
  * through, full of furniture you can actually buy, from shops down the road.
  */
-const Hero = ({ counts }) => (
+const Hero = ({ counts, featured, showing, setShowing }) => (
   <section className="lp-hero">
     <div className="lp-hero-text">
       <p className="luxe-eyebrow">A virtual furniture showroom</p>
@@ -120,12 +133,24 @@ const Hero = ({ counts }) => (
       )}
     </div>
 
-    {/* A drawing of the plan rather than a photograph of the render. The
-        house is one click away and will always look better than a still of
-        it; this says "there is a real, surveyed building here", which a
-        screenshot does not. */}
-    <div className="lp-hero-art" aria-hidden="true">
-      <PlanSketch />
+    {/* THE HOUSE ITSELF, FROM INSIDE IT.
+
+        This was a line drawing of the floor plan, on the argument that a
+        still of the render would never beat the real thing one click away.
+        True, and it answered the wrong question: a plan says a building was
+        surveyed, and what somebody arriving needs to know is what it is LIKE
+        to stand in it. So they stand in it -- in the room, at eye height,
+        looking at whatever the platform is leading with today.
+
+        The plan is still the fallback, and an honest one: it is drawn from
+        the same manifest, and if nothing has been featured yet there is
+        genuinely nothing to look at. */}
+    <div className="lp-hero-art">
+      {featured.length > 0 ? (
+        <HouseView featured={featured} index={showing} onIndexChange={setShowing} />
+      ) : (
+        <PlanSketch />
+      )}
     </div>
   </section>
 );

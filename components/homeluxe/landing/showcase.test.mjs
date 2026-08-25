@@ -24,7 +24,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { arrange, opener, money } from "./showcaseData.js";
+import { arrange, opener, money, featuredCards, EYE } from "./showcaseData.js";
 import { rowsToManifest } from "../../../lib/catalog/repository.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -152,4 +152,85 @@ if (beds.length) {
 }
 
 console.log(`\n  opens with: ${first.name} (${first.shopName})\n`);
+// ===========================================================================
+// THE FRONT PAGE'S CAMERA
+//
+// The hero puts a camera INSIDE a room and looks at whatever an admin has
+// ranked. The way that goes wrong is geometric and invisible from here
+// without checking: a camera placed outside the room it is meant to be in
+// renders the back of a wall, and looks exactly like a broken load.
+// ===========================================================================
+
+const collision = JSON.parse(
+  readFileSync(join(ROOT, "public", "models", "house", "collision.json"), "utf8"),
+);
+
+const featuredRows = await fetch(
+  `${URL_BASE}/rest/v1/v_landing_showcase?select=*`,
+  { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } },
+).then((r) => r.json());
+
+assert.ok(
+  Array.isArray(featuredRows),
+  `v_landing_showcase did not answer: ${JSON.stringify(featuredRows)}`,
+);
+
+// An empty front page is a legitimate state -- nobody has featured anything
+// yet -- and the hero falls back to the floor plan. It is not an error.
+if (featuredRows.length === 0) {
+  console.log("");
+  console.log("  nothing is featured; the hero draws the floor plan");
+  console.log("");
+} else {
+  const cards = featuredCards(
+    rowsToManifest(featuredRows, "3bed"),
+    collision.rooms,
+    "3bed",
+  );
+
+  assert.equal(
+    cards.length,
+    featuredRows.length,
+    "a featured placement produced no camera position -- its room is missing " +
+      "from collision.json",
+  );
+
+  console.log("");
+  for (const card of cards) {
+    const room = collision.rooms.find((r) => r.label === card.room || r.room === card.room);
+
+    assert.ok(room, `${card.name}: no room rectangle for "${card.room}"`);
+
+    const [x0, z0, x1, z1] = room.rect;
+    const [ex, ey, ez] = card.view.eye;
+    const [tx, , tz] = card.view.target;
+
+    // INSIDE THE ROOM, both ends. Outside and the camera renders the back of
+    // a wall; the target outside and it looks through one.
+    assert.ok(
+      ex >= x0 && ex <= x1 && ez >= z0 && ez <= z1,
+      `${card.name}: the camera stands at ${ex.toFixed(2)}, ${ez.toFixed(2)}, ` +
+        `outside ${room.label} (${x0}..${x1}, ${z0}..${z1})`,
+    );
+    assert.ok(
+      tx >= x0 - 0.6 && tx <= x1 + 0.6 && tz >= z0 - 0.6 && tz <= z1 + 0.6,
+      `${card.name}: looking at ${tx.toFixed(2)}, ${tz.toFixed(2)}, outside ${room.label}`,
+    );
+
+    assert.equal(ey, EYE, `${card.name}: the camera is not at eye height`);
+
+    // Standing ON the product is not a view of it.
+    const gap = Math.hypot(ex - tx, ez - tz);
+
+    assert.ok(gap > 0.5, `${card.name}: the camera is ${gap.toFixed(2)}m from it`);
+
+    console.log(
+      `  #${String(cards.indexOf(card) + 1)}  ${card.name.slice(0, 42).padEnd(42)} ` +
+        `${String(card.room).padEnd(16)} ${gap.toFixed(2)}m back`,
+    );
+  }
+
+  console.log("");
+}
+
 console.log("showcase: ok");

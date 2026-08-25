@@ -16,7 +16,7 @@ import {
  * -- `v_live_placements` coalesces the two -- so a blank here means "wherever
  * the slot is", which is the normal case and not a missing value.
  */
-const Placements = ({ data, canManage }) => {
+const Placements = ({ data, canManage, isPlatform = false }) => {
   const placements = useAsync(() => data.placements(), [data]);
   const [busy, setBusy] = useState(null);
   const [problem, setProblem] = useState(null);
@@ -26,6 +26,35 @@ const Placements = ({ data, canManage }) => {
     (p) => showEnded || p.status !== 'removed'
   );
   const { term, setTerm, filtered } = useFilter(rows, ['status', 'note']);
+
+  /**
+   * Put this placement on the front page, or take it off.
+   *
+   * THE RANK IS WORKED OUT, not typed. Asking an admin to pick a number
+   * invites two placements at rank 2 and a front page whose order depends on
+   * whichever row the database happened to return first. Featuring appends;
+   * removing leaves a gap, which is harmless -- the view orders by the
+   * column, it does not require the numbers to be consecutive.
+   */
+  const setShowcase = async (placement) => {
+    setBusy(placement.id);
+    setProblem(null);
+    try {
+      const ranks = (placements.data ?? [])
+        .map((p) => p.showcase_rank)
+        .filter((r) => r != null);
+      const next = placement.showcase_rank == null
+        ? Math.max(0, ...ranks) + 1
+        : null;
+
+      await data.setShowcaseRank(placement.id, next);
+      placements.refresh();
+    } catch (e) {
+      setProblem(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const setStatus = async (placement, status) => {
     setBusy(placement.id);
@@ -80,6 +109,29 @@ const Placements = ({ data, canManage }) => {
         </Pill>
       ),
     },
+    // PLATFORM ADMINS ONLY. The column is hidden from a shop manager because
+    // the database refuses them anyway -- see set_showcase_rank -- and a
+    // button that always errors is worse than no button.
+    ...(isPlatform ? [{
+      key: 'showcase',
+      header: 'Front page',
+      render: (p) => (
+        p.status !== 'live'
+          ? <span className="ad-dim">—</span>
+          : (
+            <>
+              {p.showcase_rank != null && <Pill tone="good">#{p.showcase_rank}</Pill>}
+              {' '}
+              <Button
+                disabled={busy === p.id}
+                onClick={() => setShowcase(p)}
+              >
+                {p.showcase_rank == null ? 'Feature' : 'Remove'}
+              </Button>
+            </>
+          )
+      ),
+    }] : []),
     { key: 'note', header: 'Note', render: (p) => p.note || <span className="ad-dim">—</span> },
     { key: 'updated_at', header: 'Changed', render: (p) => when(p.updated_at ?? p.created_at) },
     {
@@ -101,11 +153,17 @@ const Placements = ({ data, canManage }) => {
   ];
 
   const live = (placements.data ?? []).filter((p) => p.status === 'live').length;
+  const featured = (placements.data ?? []).filter((p) => p.showcase_rank != null).length;
 
   return (
     <Panel
       title="Placements"
-      subtitle={`${live} live. Taking one out retires it — the row stays, so the analytics that reference it still resolve.`}
+      subtitle={
+        `${live} live` +
+        (isPlatform ? `, ${featured} on the front page` : '') +
+        '. Taking one out retires it — the row stays, so the analytics that ' +
+        'reference it still resolve.'
+      }
       actions={
         <>
           <Search value={term} onChange={setTerm} placeholder="Search…" />

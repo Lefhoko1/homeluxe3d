@@ -345,41 +345,30 @@
   .lp-counts { gap: 18px; }
 }
 
-/* -- the little showroom --------------------------------------------------
-   A real product turning on a stand, and the shops it came from. The section
-   has to look like a shop window rather than a diagram: one large object with
-   room around it, its price where the eye lands after the object, and the
-   shops underneath as an invitation rather than a legend.
+/* -- the house, in the hero ----------------------------------------------
+   The hero's right-hand box used to hold a line drawing of the floor plan.
+   It holds the building now, seen from inside one of its rooms, so the box
+   itself has to stop looking like a card with a picture in it and start
+   looking like a window.
    ------------------------------------------------------------------------ */
 
-.lp-showcase-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
-  gap: clamp(24px, 4vw, 48px);
-  align-items: center;
-}
-
-/* The stand. A tinted well rather than a white card -- the object needs a
-   ground to sit against, and pure white leaves a pale sofa floating. */
-.lp-stage {
+.lp-house {
   position: relative;
+  width: 100%;
   aspect-ratio: 4 / 3;
-  min-height: 300px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  background:
-    radial-gradient(70% 58% at 50% 42%, #FFFFFF 0%, var(--surface-2) 78%);
-  box-shadow: 0 2px 4px rgba(23, 33, 46, 0.03), 0 22px 50px rgba(23, 33, 46, 0.07);
+  border-radius: 14px;
   overflow: hidden;
+  background: var(--surface-2);
   display: grid;
   place-items: center;
-  /* So a drag turns the sofa instead of selecting the page. */
+  /* So a drag turns the view instead of selecting the page or, on a phone,
+     fighting the vertical scroll. */
   touch-action: pan-y;
   cursor: grab;
 }
-.lp-stage:active { cursor: grabbing; }
+.lp-house:active { cursor: grabbing; }
 
-.lp-stage-canvas {
+.lp-house-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -387,107 +376,103 @@
   display: block;
 }
 
-.lp-stage-note {
+.lp-house-note {
   position: relative;
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--muted);
 }
-.lp-stage-note.bad { color: var(--stop); max-width: 34ch; text-align: center; }
+.lp-house-note.bad { color: var(--stop); max-width: 32ch; text-align: center; }
 
-/* Said once, quietly, in the corner. An instruction across the middle of the
-   object would be covering the thing it is talking about. */
-.lp-stage-hint {
+/* The advert, over the room it is standing in.
+   SMALL, AND ONLY AS WIDE AS ITS WORDS. The first version stretched the full
+   width of the box and stood four lines tall, which in a 4:3 window is over a
+   third of the picture -- and the third it covered was the bottom, where a
+   bed or a sofa sits. It hid the exact thing it was captioning. */
+.lp-house-card {
   position: absolute;
-  right: 14px;
+  left: 12px;
   bottom: 12px;
-  margin: 0;
-  padding: 5px 11px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid var(--border);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--muted);
-  pointer-events: none;
+  max-width: min(62%, 20rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 9px 12px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(9px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 24px rgba(23, 33, 46, 0.13);
 }
 
-/* -- what it is ----------------------------------------------------------- */
-
-.lp-showcase-from {
-  margin: 0;
-  font-size: 11px;
+.lp-house-shop {
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.3px;
   text-transform: uppercase;
   color: var(--accent-deep);
 }
-.lp-showcase-from span { color: var(--muted); font-weight: 600; }
+.lp-house-shop span { color: var(--muted); }
 
-.lp-showcase-name {
+.lp-house-name {
   font-family: 'Fraunces', Georgia, serif;
   font-optical-sizing: auto;
   font-weight: 600;
-  font-size: clamp(22px, 2.4vw, 30px);
-  line-height: 1.14;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-  color: var(--primary);
-  margin: 8px 0 10px;
-}
-
-.lp-showcase-desc {
-  margin: 0 0 18px;
-  font-size: 14.5px;
-  line-height: 1.62;
-  color: var(--muted);
-  max-width: 42ch;
-}
-
-/* The price is the point of the panel, so it gets the display face and the
-   only amber on this side of the section. */
-.lp-showcase-price {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-.lp-showcase-amount {
-  font-family: 'Fraunces', Georgia, serif;
-  font-optical-sizing: auto;
-  font-weight: 700;
-  font-size: clamp(28px, 3vw, 38px);
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--primary);
-  font-variant-numeric: tabular-nums;
-}
-.lp-showcase-was {
   font-size: 14px;
-  color: var(--muted);
-  text-decoration: line-through;
+  line-height: 1.2;
+  color: var(--primary);
+  /* A product name can be sixty characters ("Slumberland Maharani Queen
+     152cm Pillow-Top Medium Bed Set"). One line, then ellipsis -- the card
+     must not grow until it covers the room behind it. */
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.lp-showcase-promo {
-  display: inline-block;
-  margin: 4px 0 0;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.lp-showcase-dims {
-  margin: 12px 0 20px;
-  font-size: 12.5px;
-  color: var(--muted);
+.lp-house-price {
+  margin-top: 2px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
+
+.lp-house-link {
+  margin-top: 4px;
+  align-self: flex-start;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--secondary);
+  text-decoration: none;
+}
+.lp-house-link:hover { text-decoration: underline; }
+
+/* The only control on the thing, and only when an admin has ranked more than
+   one advert. Anything more would ask somebody to operate a page they are
+   still deciding whether to read. */
+.lp-house-dots {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.lp-house-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(23, 33, 46, 0.35);
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.lp-house-dot:hover { transform: scale(1.25); }
+.lp-house-dot.on { background: var(--accent); border-color: var(--accent); }
+.lp-house-dot:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
 
 /* -- the shops ------------------------------------------------------------ */
 
@@ -567,6 +552,8 @@
 }
 
 .lp-chip {
+  display: inline-block;
+  text-decoration: none;
   font: inherit;
   font-size: 12.5px;
   padding: 6px 12px;
@@ -592,8 +579,9 @@
 }
 
 @media (max-width: 900px) {
-  .lp-showcase-grid { grid-template-columns: 1fr; }
-  .lp-stage { aspect-ratio: 1 / 1; min-height: 260px; }
+  /* Squarer, because on a phone the hero is stacked and a 4:3 window eats
+     the headline above it. */
+  .lp-house { aspect-ratio: 1 / 1; }
 }
 
 /* -- landing where you meant to ------------------------------------------- */

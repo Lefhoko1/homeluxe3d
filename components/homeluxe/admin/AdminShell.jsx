@@ -143,7 +143,9 @@ const AdminShell = ({ session, shops = [], onSignOut }) => {
       <main className="ad-main">
         {active === 'dashboard'  && <Dashboard data={data} go={go} />}
         {active === 'slots'      && <Slots data={data} canManage={canManage} />}
-        {active === 'placements' && <Placements data={data} canManage={canManage} />}
+        {active === 'placements' && (
+          <Placements data={data} canManage={canManage} isPlatform={isPlatform} />
+        )}
         {active === 'publishing' && <Publishing data={data} canManage={canManage} />}
         {active === 'products'   && <AdminList shops={shops} inline />}
         {active === 'materials'  && <Materials data={data} canManage={canManage} />}
