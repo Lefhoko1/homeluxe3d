@@ -51,6 +51,32 @@ export const DOORS_MANIFEST_URL = "/models/house/doors.json";
 const OPEN_WITHIN = 3.0;
 
 /**
+ * How far off a SLIDER starts moving, in metres.
+ *
+ * FURTHER OUT THAN A HINGED DOOR, AND THE DIFFERENCE IS ARITHMETIC RATHER
+ * THAN TASTE. A hinged leaf swings out of the doorway sideways: it is clear
+ * of the gap you walk through almost as soon as it starts. A sash slides
+ * ACROSS THAT GAP -- shut, it is standing exactly where you are about to put
+ * your feet, and it has a full sash-width to travel before it is not.
+ *
+ * The walk is pushed out of the sash at whatever position it has reached, as
+ * it must be (a half-open door is a real obstacle), so a walker who arrives
+ * early does not pass through it -- they grind along it and squeeze in at the
+ * end, which is what this is fixing.
+ *
+ * The number: a walker at the free-walk 2.4 m/s must not reach the near edge
+ * of the aperture before the sash has finished travelling.
+ *
+ *     trigger  >=  speed x OPEN_SECONDS  +  half the aperture  +  walk radius
+ *              >=  2.4 x 0.85  +  1.16  +  0.26   =   3.46 m
+ *
+ * 3.0 was short of that by half a metre, which at 2.4 m/s is the fifth of a
+ * second of scraping. 4.4 leaves most of a metre of margin for somebody
+ * arriving at an angle, or from a stop closer than the trigger.
+ */
+export const SLIDE_OPEN_WITHIN = 4.4;
+
+/**
  * And how far away before it closes again.
  *
  * Wider than it opens, on purpose. With one distance a visitor standing right
@@ -58,6 +84,9 @@ const OPEN_WITHIN = 3.0;
  * the gap between the two is what stops that.
  */
 const CLOSE_BEYOND = 3.9;
+
+/** Kept the same margin past the slider's own trigger, so it cannot flap. */
+const SLIDE_CLOSE_BEYOND = 5.3;
 
 /** How far a door opens with nothing in its way. A little past square. */
 const OPEN_ANGLE = THREE.MathUtils.degToRad(96);
@@ -83,11 +112,31 @@ const SWING_STEPS = 48;
 const MIN_PASS = 0.52;
 
 /** Seconds to swing fully open, and fully shut. */
-const OPEN_SECONDS = 0.85;
+export const OPEN_SECONDS = 0.85;
 const CLOSE_SECONDS = 1.6;
 
 /** How thick a leaf is for collision, in metres. */
 const LEAF_THICKNESS = 0.05;
+
+/**
+ * How far outside a rectangle the leaf's CENTRELINE still counts as hitting.
+ *
+ * Half the leaf, because that is how much of it hangs off the centreline the
+ * samples are taken on, plus 15mm so a leaf coming to rest exactly on a
+ * bounding box does not read as touching the thing inside it.
+ */
+const LEAF_MARGIN = LEAF_THICKNESS / 2 + 0.015;
+
+/**
+ * Where along the leaf the swing is tested.
+ *
+ * SEVEN POINTS, NOT FIVE, AND STARTING NEARER THE HINGE. The first two
+ * fifths of a leaf used to be untested: a sofa arm pushed up against the
+ * hinge side of a doorway sat in a gap in the sampling, and the door swung
+ * through it. The tip matters most and is still tested, but a door meets
+ * furniture along its whole length.
+ */
+const LEAF_SAMPLES = [0.15, 0.3, 0.45, 0.6, 0.75, 0.88, 1.0];
 
 /**
  * How many boxes a swinging leaf is modelled as.
@@ -185,8 +234,13 @@ export function createDoorSet(entries = [], { offsetX = 0, offsetZ = 0 } = {}) {
           : door.anchorZ + door.alongZ * door.width * 0.5;
         const distance = Math.hypot(viewer.x - cx, viewer.z - cz);
 
-        if (distance < OPEN_WITHIN) door.wanted = 1;
-        else if (distance > CLOSE_BEYOND) door.wanted = 0;
+        // A slider has to start sooner: its sash crosses the gap you walk
+        // through, where a hinged leaf swings out of it.
+        const opensAt = door.sliding ? SLIDE_OPEN_WITHIN : OPEN_WITHIN;
+        const shutsAt = door.sliding ? SLIDE_CLOSE_BEYOND : CLOSE_BEYOND;
+
+        if (distance < opensAt) door.wanted = 1;
+        else if (distance > shutsAt) door.wanted = 0;
 
         const rate = door.wanted === 1 ? 1 / OPEN_SECONDS : -1 / CLOSE_SECONDS;
         const next = Math.min(1, Math.max(0, door.openness + rate * delta));
@@ -355,11 +409,25 @@ function leafClear(door, angle, rects) {
   const dx = door.alongX * c + door.alongZ * s;
   const dz = -door.alongX * s + door.alongZ * c;
 
-  for (const f of [0.3, 0.5, 0.7, 0.85, 1.0]) {
+  for (const f of LEAF_SAMPLES) {
     const x = door.anchorX + dx * door.width * f;
     const z = door.anchorZ + dz * door.width * f;
     for (const [x0, z0, x1, z1] of rects) {
-      if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return false;
+      // GROWN BY THE LEAF'S OWN HALF-THICKNESS, plus a hair.
+      //
+      // The samples above are points on the leaf's CENTRELINE, and a door is
+      // not a line -- it is a 50mm slab with 25mm of itself either side of
+      // that line. Tested as a line, a leaf "clears" a sofa while a
+      // centimetre of its edge is buried in the arm, which is the sofa going
+      // through the door that this whole mechanism exists to prevent. It
+      // stopped at 84 degrees against the three-seater with its centreline
+      // 5cm outside the sofa's box -- and its edge inside it.
+      //
+      // The extra 15mm is not padding for its own sake: furniture is measured
+      // as an axis-aligned box round a shape that is rarely a box, and a
+      // leaf resting exactly on that boundary reads as touching.
+      if (x >= x0 - LEAF_MARGIN && x <= x1 + LEAF_MARGIN
+        && z >= z0 - LEAF_MARGIN && z <= z1 + LEAF_MARGIN) return false;
     }
   }
   return true;

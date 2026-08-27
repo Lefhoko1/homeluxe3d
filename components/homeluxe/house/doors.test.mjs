@@ -24,8 +24,8 @@ import { dirname, join } from "node:path";
 
 import * as THREE from "three";
 
-import { createDoorSet } from "./doors.js";
-import { createTourController } from "../tour/TourController.js";
+import { createDoorSet, SLIDE_OPEN_WITHIN, OPEN_SECONDS } from "./doors.js";
+import { createTourController, WALK_SPEED } from "../tour/TourController.js";
 import { createWalkVolume, settleRoute, WALK_RADIUS } from "../tour/collision.js";
 import { ARRIVE_RADIUS } from "../tour/TourController.js";
 
@@ -359,6 +359,51 @@ const furnitureRects = catalog.houses["3bed"]
     "a door is held so nearly shut by furniture that nobody can get past it"
   );
   console.log("  passage: every obstructed door still opens wide enough to pass");
+}
+
+
+
+
+// ---------------------------------------------------------------------------
+// A SLIDER MUST BE OUT OF THE WAY BEFORE ANYBODY REACHES THE GAP.
+//
+// A hinged leaf swings sideways out of the doorway and is clear of the gap you
+// walk through almost immediately. A sash slides ALONG that gap: shut, it is
+// standing exactly where the next footstep goes, and it has a whole sash-width
+// to travel before it is not.
+//
+// The walk is pushed out of the sash wherever it has got to -- as it must be,
+// a half-open door being a real obstacle -- so a walker who arrives early does
+// not pass through it. They grind along it and squeeze in at the end, which is
+// what a visitor reported at the dining slider.
+//
+// The trigger distance is therefore not a matter of taste. It has to cover the
+// travel time at full walking speed, plus the half-aperture the walker crosses
+// before reaching the sash, plus their own radius.
+// ---------------------------------------------------------------------------
+{
+  const sliders = doorsManifest.doors.filter((d) => d.motion === "slide");
+
+  assert.ok(sliders.length, "no sliding door in the manifest to check");
+
+  for (const slider of sliders) {
+    // The aperture is the sash plus the fixed panel it slides over.
+    const halfAperture = slider.width_m;
+    const needed = WALK_SPEED * OPEN_SECONDS + halfAperture + WALK_RADIUS;
+
+    assert.ok(
+      SLIDE_OPEN_WITHIN >= needed,
+      `${slider.label}: opens at ${SLIDE_OPEN_WITHIN}m but a walker at ` +
+      `${WALK_SPEED}m/s needs ${needed.toFixed(2)}m of warning -- ` +
+      `${((needed - SLIDE_OPEN_WITHIN) / WALK_SPEED).toFixed(2)}s of scraping`
+    );
+
+    console.log(
+      `  slider: ${slider.label} opens at ${SLIDE_OPEN_WITHIN}m, needs ` +
+      `${needed.toFixed(2)}m -- ` +
+      `${((SLIDE_OPEN_WITHIN - needed) / WALK_SPEED).toFixed(2)}s of margin`
+    );
+  }
 }
 
 console.log("doors: ok");
