@@ -6,6 +6,7 @@ import TourPanel from './TourPanel';
 import CanvasContainer from './CanvasContainer';
 import ProductPanel from './ProductPanel';
 import TourControls from './TourControls';
+import RoomTotal from './RoomTotal';
 import LoginModal from './LoginModal';
 import EnquiryDialog from './EnquiryDialog';
 import { useCatalog } from '../../lib/catalog/useCatalog';
@@ -374,34 +375,22 @@ const LuxeHomePage = () => {
         onLogout={signOut}
       />
 
-      <ShopsBanner
-        shops={shops}
-        activeShop={shopFilter}
-        onShopSelect={handleShopSelect}
-        userId={session?.userId ?? null}
-      />
+      {/*
+        THE HOUSE IS THE PAGE NOW.
 
-      {/* Rooms sit here, under the shops: two controls of the same kind, both
-          picking what the whole screen is about. The column on the left is
-          now only what is IN the chosen room. */}
-      <RoomTabs
-        rooms={rooms}
-        currentRoom={currentRoom}
-        loading={loading}
-        onRoomChange={handleRoomChange}
-      />
+        It used to be the middle cell of a three-column grid -- 320px of room
+        list, the house, 380px of product detail -- so on a 1440px screen the
+        thing the entire business is about got half the width and, after the
+        header, the shops strip, the room strip and the tour bar, about
+        two-thirds of the height. The yard never appeared at all.
 
-      <TourPanel
-        currentRoom={currentRoom}
-        currentIndex={currentIndex}
-        products={currentProducts}
-        rooms={rooms}
-        shops={shops}
-        loading={loading}
-        onProductSelect={handleProductSelect}
-      />
-
-      <CanvasContainer
+        So the canvas fills everything below the bar, and the panels float on
+        top of it as cards. Nothing that was on screen has been taken away;
+        it has been lifted off the layout and put over the picture, which is
+        how every 3D application anybody actually uses is arranged.
+      */}
+      <div className="stage">
+        <CanvasContainer
         currentRoom={currentRoom}
         currentIndex={currentIndex}
         isAdmin={isAdmin}
@@ -413,17 +402,58 @@ const LuxeHomePage = () => {
         onCatalogChanged={refresh}
         onTourApi={handleTourApi}
         onTourState={handleTourState}
-        roomLabel={rooms.find((r) => r.code === currentRoom)?.label ?? null}
-      />
+          roomLabel={rooms.find((r) => r.code === currentRoom)?.label ?? null}
+        />
 
-      <ProductPanel
-        product={selectedProduct ?? currentProducts[currentIndex] ?? null}
-        shops={shops}
-        loading={loading}
-        onEnquire={handleEnquire}
-      />
+        {/* Rooms, over the top of the house. A pill bar rather than a strip
+            in the layout: it is a place to go, not a thing to read. */}
+        <RoomTabs
+          rooms={rooms}
+          currentRoom={currentRoom}
+          loading={loading}
+          onRoomChange={handleRoomChange}
+        />
 
-      <TourControls
+        {/* The left dock: who is advertising, then what is in this room.
+            Two cards rather than two rows of chrome, and the shops strip is
+            here because it is a FILTER on the list underneath it -- which is
+            what it always was, sitting at the top of the page pretending to
+            be a banner. */}
+        <div className="dock-left">
+          <ShopsBanner
+            shops={shops}
+            activeShop={shopFilter}
+            onShopSelect={handleShopSelect}
+            userId={session?.userId ?? null}
+          />
+
+          <TourPanel
+            currentRoom={currentRoom}
+            currentIndex={currentIndex}
+            products={currentProducts}
+            rooms={rooms}
+            shops={shops}
+            loading={loading}
+            onProductSelect={handleProductSelect}
+          />
+        </div>
+
+        <ProductPanel
+          product={selectedProduct ?? currentProducts[currentIndex] ?? null}
+          shops={shops}
+          loading={loading}
+          onEnquire={handleEnquire}
+        />
+
+        {/* What the room comes to. Real arithmetic over the same prices the
+            cards show -- see RoomTotal. */}
+        <RoomTotal
+          products={currentProducts}
+          roomLabel={rooms.find((r) => r.code === currentRoom)?.label ?? null}
+          onShowAll={() => handleProductSelect(0)}
+        />
+
+        <TourControls
         currentIndex={currentIndex}
         totalItems={currentProducts.length}
         onPrevious={() => handleProductSelect(Math.max(0, currentIndex - 1))}
@@ -435,8 +465,9 @@ const LuxeHomePage = () => {
         askingFor={askingFor}
         onConfirmFocus={confirmFocus}
         onDismissFocus={dismissFocus}
-        onResume={resumeTour}
-      />
+          onResume={resumeTour}
+        />
+      </div>
 
       {asking && (
         <EnquiryDialog

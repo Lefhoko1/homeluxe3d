@@ -78,8 +78,16 @@ export const SITE_PARTS = [
  * its centre sits at roughly +2.7 X, +2.7 Z once the house is centred.
  */
 export const HOUSE_VIEWS = {
-  // Pulled back to take in the yard now that there is one.
-  overview: { position: [24, 17, 26], target: [1, 1.0, 0] },
+  // PULLED BACK IN. This was set when the canvas was the middle cell of a
+  // three-column grid -- 740 x 610 on a laptop -- and it had to stand well
+  // off to fit the yard into a small, nearly square picture. At full bleed
+  // the same numbers leave the house floating in a field of lawn with a
+  // third of the frame empty at the top and bottom.
+  //
+  // Closer, and lower: 16 degrees above the horizon rather than 25, which is
+  // an estate agent's photograph rather than a site plan. The pool, the
+  // drive and the boundary are all still in shot.
+  overview: { position: [19, 11.5, 20.5], target: [1.5, 1.0, 0] },
   living:   { position: [4.5, 2.2, 6.5], target: [2.7, 1.2, 2.7] },
   kitchen:  { position: [1.5, 2.2, 1.5], target: [-0.6, 1.2, -1.6] },
   entry:    { position: [-1.0, 2.0, 9.0], target: [-1.0, 1.3, 4.5] },
