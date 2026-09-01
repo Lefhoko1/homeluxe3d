@@ -74,6 +74,44 @@
   --over-canvas-hover: rgba(23, 33, 46, 0.97);
 
   --light: var(--surface-2);   /* kept: older rules still name it */
+
+  /* -- GLASS ---------------------------------------------------------------
+     The cards that float over the showroom. They are see-through on purpose:
+     the house is the page, and a row of solid white slabs sitting on it
+     turns the picture back into a small picture with panels round it.
+
+     THE TINT IS THE ELEGANCE. Not a colour -- a colour over a moving 3D
+     scene fights whatever it happens to be over. It is a slow gradient from
+     the barest cool at the top left to the barest warm at the bottom right,
+     which is what real glass does with a sky at one end and a room at the
+     other, plus a lit top edge. You cannot name the colour, which is the
+     point; you can see that it is not flat white.
+
+     0.68 IS A MEASURED NUMBER, not a taste. It is as transparent as the
+     cards can be while the darkest thing the house shows -- the roof -- is
+     still a legible ground for text. See --glass-muted. */
+  --glass-face:
+    linear-gradient(152deg,
+      rgba(255, 255, 255, 0.74) 0%,
+      rgba(240, 245, 248, 0.60) 46%,      /* a breath of the teal */
+      rgba(252, 249, 243, 0.68) 100%);    /* and of the paper */
+  --glass-edge: rgba(255, 255, 255, 0.60);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 2px 6px rgba(23, 33, 46, 0.06),
+    0 18px 44px rgba(23, 33, 46, 0.19);
+
+  /* SECONDARY TEXT HAS TO GET DARKER TO SURVIVE THE GLASS. On paper, --muted
+     at #71736F clears 4.5:1 comfortably. On a 68% card floating over a dark
+     roof the card lands near #bbbcbf and the same grey measures 2.5:1 --
+     unreadable, and only over part of the house, which is the worst kind of
+     unreadable because it comes and goes as the camera moves.
+
+     #46483F is the lightest ink that clears 4.5:1 against every ground the
+     house shows: lawn 7.0, roof 4.9, sky 8.5, pool 6.4. It is redefined ON
+     the glass containers rather than swapped at every call site, so every
+     descendant that already says var(--muted) simply gets the darker one. */
+  --glass-muted: #46483F;
 }
 
 html, body {
@@ -139,21 +177,25 @@ body {
 }
 .dock-left > * { pointer-events: auto; }
 
-/* The shared look of everything that floats: white, but not opaque -- the
-   room shows faintly through, which is what keeps them reading as panels
-   over a photograph rather than as a page with a picture in it. */
+/* The shared face of everything that floats. See --glass-face above for why
+   it is transparent and why it is tinted rather than white.
+
+   `saturate` on the backdrop is what stops the blurred lawn behind the card
+   going to grey mush: blur alone averages colour towards neutral, and a
+   little saturation back gives the glass something to be tinted BY. */
 .dock-left > *,
 #product-panel,
 #room-tabs,
 #tour-controls,
 .room-total {
-  background: rgba(255, 255, 255, 0.93);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow:
-    0 1px 2px rgba(23, 33, 46, 0.05),
-    0 12px 34px rgba(23, 33, 46, 0.15);
+  background: var(--glass-face);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  /* One line instead of hunting every muted-coloured descendant: custom
+     properties inherit, so redefining it here darkens all of them. */
+  --muted: var(--glass-muted);
 }
 
 /* -- the title bar --------------------------------------------------------
@@ -266,8 +308,10 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  /* Barely there. A solid white row inside a see-through card is a white
+     card with a translucent margin round it. */
+  background: rgba(255, 255, 255, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .furniture-item:hover {
@@ -478,10 +522,9 @@ body {
      panel shouted in one colour scheme and the middle of it in another.
      The front page introduces a product with an eyebrow, a serif name and
      the price under it; so does this now. */
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.62);
   padding: 18px 18px 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 18px 18px 0 0;
   position: sticky;
   top: 0;
@@ -639,11 +682,38 @@ body {
   max-width: min(30rem, 60vw);
 }
 
+/* THE QUIET ONES GO TRANSLUCENT; THE CALL TO ACTION DOES NOT.
+   `#tour-controls .control-btn` outranks `.control-btn.primary` -- one id
+   beats two classes -- so the first version of this rule washed the fill out
+   of Auto Tour, which is the one button on the bar anybody is meant to
+   press. `:not()` keeps the specificity where it is and hands the filled
+   states back. */
+#tour-controls .control-btn:not(.primary):not(.accent) {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.34);
+}
+#tour-controls .control-btn:not(.primary):not(.accent):hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.62);
+}
+
 #tour-controls .control-btn {
-  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 9px 16px;
   font-size: 12.5px;
+}
+
+/* Solid, and a shade deeper than the navy on paper: a filled button on glass
+   over a bright lawn needs more weight than the same button on a white page
+   to read as the same button. */
+#tour-controls .control-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-dark);
+}
+#tour-controls .control-btn.primary:hover:not(:disabled) {
+  background: #22303F;
+  border-color: #22303F;
+  color: var(--on-dark);
 }
 
 .control-btn {
@@ -883,13 +953,16 @@ body {
   width: 100%;
   padding: 12px 14px;
   margin-bottom: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 12px;
-  background: var(--surface);
+  /* Barely there. A solid white row inside a see-through card is a white
+     card with a translucent margin around it. */
+  background: rgba(255, 255, 255, 0.32);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
+.tour-item:hover { background: rgba(255, 255, 255, 0.52); }
 .tour-item:hover { border-color: var(--secondary); transform: translateX(2px); }
 .tour-item.active {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -925,9 +998,9 @@ body {
   gap: 8px;
   padding: 7px 16px;
   margin-right: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 999px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.34);
   font-size: 13px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1320,8 +1393,8 @@ body {
   margin: 18px 20px 0;
   padding: 16px 18px 17px;
   border-radius: 14px;
-  background: linear-gradient(160deg, #FDF6E7 0%, #FBF0DA 100%);
-  border: 1px solid #EAD6A9;
+  background: linear-gradient(160deg, rgba(253, 246, 231, 0.94) 0%, rgba(251, 240, 218, 0.9) 100%);
+  border: 1px solid rgba(234, 214, 169, 0.9);
 }
 
 .product-price-label {
@@ -1495,8 +1568,8 @@ body {
   flex: none;
   padding: 5px 12px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.3);
   color: var(--text);
   font: inherit;
   font-size: 12.5px;
@@ -1537,9 +1610,13 @@ body {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--surface);
+  /* Opaque ENOUGH to hide the list scrolling under it, and no more. It sits
+     on blurred glass already, so it needs no backdrop-filter of its own --
+     stacking those over a live WebGL canvas costs frames for nothing. */
+  background: rgba(255, 255, 255, 0.62);
   padding: 14px 18px 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px 18px 0 0;
 }
 .panel-head .panel-title { margin-bottom: 2px; }
 .panel-head .panel-sub { margin-bottom: 0; }
@@ -1657,15 +1734,15 @@ body {
 .camera-btn {
   width: 38px;
   height: 38px;
-  background: rgba(255, 255, 255, 0.93);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: var(--glass-face);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-edge);
   color: var(--primary);
-  box-shadow: 0 1px 2px rgba(23, 33, 46, 0.05), 0 8px 22px rgba(23, 33, 46, 0.14);
+  box-shadow: var(--glass-shadow);
   font-size: 16px;
 }
-.camera-btn:hover { background: #fff; transform: scale(1.06); }
+.camera-btn:hover { background: rgba(255, 255, 255, 0.86); transform: scale(1.06); }
 .camera-btn.active { background: var(--primary); color: var(--on-dark); }
 
 /* The room caption and the 360 chip sat top-centre and bottom-centre, which
