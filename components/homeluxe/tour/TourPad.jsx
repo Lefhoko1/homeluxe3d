@@ -68,15 +68,22 @@ const TourPad = ({
 
   return (
     <div
+      /* WHERE THIS SITS IS THE PAGE'S BUSINESS, NOT THIS COMPONENT'S.
+         It used to place itself at the bottom-left with an inline style,
+         which was correct while the canvas was the middle column of a grid:
+         bottom-left of the canvas was empty space. The canvas is the whole
+         screen now, so bottom-left is underneath the product dock -- same
+         z-index, later in the DOM, so the dock covered this completely and
+         the tour's stop, resume and steering controls all vanished. An
+         inline style cannot be overridden from a stylesheet without
+         `!important`, so the position moves to CSS where the dock's width is
+         already written down. See `.tour-pad` in homeluxe.css. */
+      className="tour-pad"
       style={{
-        position: 'absolute',
-        left: 18,
-        bottom: 18,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: 6,
-        zIndex: 20,
       }}
     >
       <div

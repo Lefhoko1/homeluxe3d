@@ -1794,3 +1794,39 @@ body {
   #room-tabs { max-width: calc(100% - 32px); left: 16px; transform: none; }
   #product-panel { width: calc(100% - 32px); max-height: 40%; }
 }
+
+/* -- the walking pad -------------------------------------------------------
+   Stop, resume, steer, and how far through the room's list the tour has got.
+
+   IT WAS INVISIBLE FOR THREE COMMITS. The pad placed itself bottom-left with
+   an inline style, which was right while the canvas was the middle column of
+   a three-column grid: bottom-left of the canvas was empty. Making the house
+   full screen moved bottom-left underneath the product dock -- same z-index,
+   later in the DOM, so the dock won and every control on the pad went with
+   it. The tour still ran; there was simply no longer any way to stop it, take
+   it over, or resume it after looking at something.
+
+   So it clears the dock, by the same 322px the room caption uses: 290 of dock
+   plus its 16 either side. One number, stated twice; if the dock changes
+   width both move together because both are written against it.
+   ------------------------------------------------------------------------ */
+
+.tour-pad {
+  position: absolute;
+  z-index: 22;            /* above the docks, not merely equal to them */
+  left: 322px;
+  bottom: 16px;
+}
+
+/* The room caption and the 360 chip live in this corner too, but never at the
+   same time: they belong to orbiting and the pad belongs to walking. */
+
+@media (max-width: 1180px) {
+  .tour-pad { left: 276px; }     /* the dock narrows to 244 */
+}
+
+@media (max-width: 820px) {
+  /* The dock is a floating card at the top on a phone, so the pad takes the
+     bottom-left corner back. */
+  .tour-pad { left: 16px; }
+}
