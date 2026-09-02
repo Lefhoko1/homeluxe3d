@@ -75,6 +75,19 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const collisionRoomsRef = useRef([]);
   const [touring, setTouring] = useState(false);
   const [paused, setPaused] = useState(false);
+  /**
+   * Whether there is a route to walk yet.
+   *
+   * THE AUTO TOUR BUTTON WAS DEAD FOR THE FIRST FEW SECONDS AND SAID NOTHING.
+   * `toggleGuided` returns early on a missing route -- correctly, there is
+   * nothing to walk -- but the route is loaded at the END of the scene chain,
+   * after the house, the products, the finishes and the textures. Press the
+   * button before that and it silently does nothing, which is indistinguish-
+   * able from a broken button; and because the guided tour never starts, the
+   * one interruption in the application -- "pause and go to that product?" --
+   * can never fire either. The whole feature looked deleted.
+   */
+  const [routeReady, setRouteReady] = useState(false);
   const [advert, setAdvert] = useState(null);
   // Guided-tour state, mirrored into React so the pad can draw itself.
   const routeRef = useRef(null);
@@ -628,6 +641,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // The solved route through the house. House-local in the manifest,
         // converted to world here because the character lives in the scene.
         routeRef.current = await loadRoute(house);
+        setRouteReady(Boolean(routeRef.current?.waypoints?.length));
 
         // Deep link: /#tour drops the visitor straight onto the driveway.
         // Handy for "take the tour" links in an advert.
@@ -805,6 +819,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       slotsRef.current?.dispose();
       slotsRef.current = null;
       furnitureRectsRef.current = [];
+      setRouteReady(false);
       collisionRoomsRef.current = [];
       disposeCharacter(characterRef.current);
       characterRef.current = null;
@@ -1305,8 +1320,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
    * stale, because nothing re-renders the page when the tour changes.
    */
   useEffect(() => {
-    onTourState?.({ touring, guided, paused });
-  }, [onTourState, touring, guided, paused]);
+    onTourState?.({ touring, guided, paused, ready: routeReady });
+  }, [onTourState, touring, guided, paused, routeReady]);
 
   useEffect(() => {
     onTourApi?.({

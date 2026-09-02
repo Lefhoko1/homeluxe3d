@@ -58,7 +58,7 @@ const LuxeHomePage = () => {
   // page threw "Cannot access before initialization" on the very first
   // render, and only the production prerender caught it.
   const [tourState, setTourState] = useState({
-    touring: false, guided: false, paused: false,
+    touring: false, guided: false, paused: false, ready: false,
   });
   const handleTourState = useCallback((next) => setTourState(next), []);
 
@@ -263,13 +263,23 @@ const LuxeHomePage = () => {
    * looks exactly like a broken autoplay.
    */
   useEffect(() => {
-    if (!cinematic || !sceneControls?.startGuided) return undefined;
-    const timer = setTimeout(() => {
-      sceneControls.setWalkerVisible?.(false);
-      sceneControls.startGuided();
-    }, 900);
-    return () => clearTimeout(timer);
-  }, [cinematic, sceneControls]);
+    // WAIT FOR THE ROUTE, NOT FOR A STOPWATCH.
+    //
+    // This used to fire on a 900ms timer, on the reasoning that the tour
+    // needs the scene and starting before it exists is a no-op. Both halves
+    // were right and the conclusion was wrong: 900ms is not how long the
+    // scene takes. The house is most of a megabyte of Draco-compressed
+    // geometry, and the route is loaded last of all -- after the products,
+    // the finishes and the uploaded textures -- so on every machine anybody
+    // owns the timer fired into an empty scene and the opening never played.
+    //
+    // The scene now says when it is ready. A slow phone waits longer and
+    // still gets its tour; a fast desktop starts sooner than 900ms ever did.
+    if (!cinematic || !tourState.ready || !sceneControls?.startGuided) return;
+
+    sceneControls.setWalkerVisible?.(false);
+    sceneControls.startGuided();
+  }, [cinematic, tourState.ready, sceneControls]);
 
   /**
    * They want to walk it themselves. Give them the figure back.
@@ -331,8 +341,24 @@ const LuxeHomePage = () => {
     if (advert.room && advert.room !== currentRoom) setCurrentRoom(advert.room);
     const list = productsByRoom[advert.room] ?? currentProducts;
     const index = list.findIndex((p) => p.id === advert.productId);
-    if (index >= 0) setCurrentIndex(index);
+
     setSelectedProduct(advert);
+
+    if (index < 0) return;
+
+    // CLICKING THE SOFA ITSELF IS THE SAME DECISION AS CLICKING ITS NAME.
+    // The list asked before flying the camera off a walk in progress; this
+    // did not, so pointing at a thing in the room quietly changed the
+    // selection and moved nothing, and the visitor was left pressing the
+    // furniture harder. One question, wherever the click came from.
+    if (tourState.guided && !tourState.paused && list[index]?.position) {
+      setAskingFor({ index, name: list[index].name });
+
+      return;
+    }
+
+    setAskingFor(null);
+    setCurrentIndex(index);
   };
 
   // Sign-in is Supabase's, and the session is persisted by its client -- so
@@ -459,6 +485,7 @@ const LuxeHomePage = () => {
         onPrevious={() => handleProductSelect(Math.max(0, currentIndex - 1))}
         onNext={() => handleProductSelect(Math.min(currentProducts.length - 1, currentIndex + 1))}
         onAutoPlay={() => { takeControl(); tourApi.current?.startGuided(); }}
+        ready={tourState.ready}
         touring={tourState.touring}
         guided={tourState.guided}
         paused={tourState.paused}
