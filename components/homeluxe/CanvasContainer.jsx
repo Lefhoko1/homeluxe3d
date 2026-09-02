@@ -1289,8 +1289,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
    * IS them and they need to see where they are standing.
    */
   const setWalkerVisible = useCallback((visible) => {
-    const character = characterRef.current;
-    if (character) character.visible = visible;
+    // THROUGH THE CONTROLLER, not straight at the mesh. This used to assign
+    // `character.visible` directly, which knew nothing about which view was
+    // current -- so asking for the figure back while in first person put the
+    // camera inside its head. The controller weighs the request against the
+    // view; see `showWalker` in TourController.
+    const tour = tourRef.current;
+
+    if (tour) tour.setWalkerVisible(visible);
+    else if (characterRef.current) characterRef.current.visible = visible;
   }, []);
 
   /**

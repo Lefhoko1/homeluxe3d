@@ -283,6 +283,44 @@ export function createTourController(options = {}) {
   let lastGroundY = 0;
 
   let view = VIEWS.third;
+
+  /**
+   * Whether the PAGE wants the figure shown, as distinct from whether the
+   * VIEW can show one.
+   *
+   * The opening film hides it -- a third-person character standing in shot
+   * turns "here is a house" into "here is a video game about a house" -- and
+   * taking the controls brings it back, because then it is you and you need
+   * to see where you are standing. That is a legitimate preference and it is
+   * what this records.
+   *
+   * It is only ever half the answer. First person has no figure to show: the
+   * camera is inside the head. See `showWalker`.
+   */
+  let wantCharacter = true;
+
+  /**
+   * The single rule for whether the avatar is drawn.
+   *
+   * IT USED TO BE WRITTEN IN THREE PLACES AND SET FROM A FOURTH. `enter` and
+   * `setView` both applied `view.showCharacter`, correctly; the page also had
+   * a `setWalkerVisible` that assigned `character.visible` directly, which
+   * knew nothing about the view. Press Auto Tour while already in eye level
+   * and that last one won: the figure came back with the camera inside its
+   * skull, and the visitor got a face filling the screen.
+   *
+   * The camera makes it worse rather than causing it. First person sits five
+   * centimetres AHEAD of the eyes so there is no nose in frame, but the rig
+   * eases into position at CAMERA_LERP -- so while turning or setting off it
+   * trails its target and ends up behind the eye point. Widening the canvas
+   * to full screen widened the horizontal field from about 34 degrees either
+   * side to 46, which is why a lag that had always been there started
+   * catching the head. Hiding the figure removes the possibility entirely,
+   * which is better than tuning the lag until it usually misses.
+   */
+  const showWalker = () => {
+    character.visible = active && wantCharacter && view.showCharacter;
+  };
   let viewName = "third";
 
   // -- Guided route -------------------------------------------------------
@@ -599,7 +637,7 @@ export function createTourController(options = {}) {
       if (y !== null) lastGroundY = y;
       position.y = lastGroundY;
 
-      character.visible = view.showCharacter;
+      showWalker();
       character.position.copy(position);
       character.rotation.y = heading;
 
@@ -649,12 +687,29 @@ export function createTourController(options = {}) {
       if (!VIEWS[name]) return;
       viewName = name;
       view = VIEWS[name];
-      character.visible = active && view.showCharacter;
+      showWalker();
       if (active) applyFov();
     },
 
     toggleView() {
       this.setView(viewName === "third" ? "first" : "third");
+    },
+
+    /**
+     * The page asking for the figure to be shown or hidden.
+     *
+     * A REQUEST, NOT AN ASSIGNMENT. Whether it is honoured depends on the
+     * view, and only this object knows which view is current -- which is
+     * exactly what the old direct assignment from the page did not.
+     */
+    setWalkerVisible(visible) {
+      wantCharacter = Boolean(visible);
+      showWalker();
+    },
+
+    /** Whether the current view shows a figure at all. */
+    get showsCharacter() {
+      return view.showCharacter;
     },
 
     // -- The guided tour --------------------------------------------------
