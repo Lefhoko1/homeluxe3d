@@ -1822,7 +1822,12 @@ body {
    same time: they belong to orbiting and the pad belongs to walking. */
 
 @media (max-width: 1180px) {
-  .tour-pad { left: 276px; }     /* the dock narrows to 244 */
+  /* The dock narrows to 244, and the mode switcher stops being a small pill
+     in the middle and grows towards the full width -- so the pad has to clear
+     it VERTICALLY as well as horizontally. It wins on z-index either way, but
+     a pad sitting on top of the tour's own buttons is not much better than a
+     pad underneath the product list. */
+  .tour-pad { left: 276px; bottom: 88px; }
 }
 
 @media (max-width: 820px) {

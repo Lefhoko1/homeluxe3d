@@ -46,6 +46,13 @@
 
 import * as THREE from "three";
 
+import {
+  approach,
+  damp,
+  frameRateSafe,
+  smoothDampAngle,
+} from "./easing.js";
+
 /** Metres per second. A relaxed walking pace, not a sprint. */
 export const WALK_SPEED = 2.4;
 
@@ -232,6 +239,27 @@ export const VIEWS = {
 const CAMERA_MIN = 0.45;
 
 /**
+ * How long a turn takes to complete, roughly, in seconds.
+ *
+ * The turn is a critically damped spring now rather than a constant angular
+ * velocity -- see easing.js. Constant velocity means a head that snaps to
+ * full speed, holds it, and stops dead on the heading, which is how a turret
+ * turns and not how a person does. The spring accelerates in and decelerates
+ * out, and the max speeds below are ceilings for the middle of the move
+ * rather than the speed of the whole of it.
+ */
+const TURN_SMOOTH_GUIDED = 0.30;
+const TURN_SMOOTH_SHOWCASE = 0.34;
+const TURN_SMOOTH_MANUAL = 0.16;   // a key press should feel connected
+
+/** Metres per second per second. Asymmetric on purpose -- see `pace`. */
+const ACCELERATE = 3.2;
+const BRAKE = 9.0;
+
+/** Seconds to change lens when the view is switched. */
+const FOV_SECONDS = 0.42;
+
+/**
  * How quickly the camera catches up. 1 = instant, lower = smoother.
  *
  * Deliberately high: the camera has to feel bolted behind the character. Too
@@ -298,6 +326,31 @@ export function createTourController(options = {}) {
    * camera is inside the head. See `showWalker`.
    */
   let wantCharacter = true;
+
+  /**
+   * The state a spring needs and a curve does not: how fast we are already
+   * going. Carried between frames so a turn that is interrupted by another
+   * turn continues from the speed it had rather than starting again.
+   */
+  const turnVelocity = { value: 0 };
+
+  /**
+   * How fast the character is actually walking, 0..1 of the view's speed.
+   *
+   * The old code set `drive` to 0 or 1 and multiplied, so the walk went from
+   * a standstill to 2.4 m/s between two frames and back again -- which on a
+   * guided tour happens at every corner, because the route turns before it
+   * walks. Ramping it is most of what makes the tour watchable.
+   *
+   * ASYMMETRIC: braking is nearly three times as quick as accelerating. That
+   * is true of walking, and it matters here for a specific reason -- the
+   * guided route stops driving when it needs to turn, and anything still
+   * rolling at that moment arcs into the door jamb it was lining up on.
+   */
+  let pace = 0;
+
+  /** Which way the last press was going, so a coast keeps its direction. */
+  let lastDrive = 1;
 
   /**
    * The single rule for whether the avatar is drawn.
@@ -440,14 +493,48 @@ export function createTourController(options = {}) {
    * unaffected.
    */
   let savedFov = null;
+
+  /**
+   * The lens the view wants, arrived at over FOV_SECONDS rather than cut to.
+   *
+   * Switching between third and first person is a change of 7 degrees, and
+   * snapping it is a visible pop in the middle of a walk -- the whole room
+   * jumps a step nearer. Eased, it reads as leaning in. `fovTarget` is what
+   * the view asked for; the update loop damps towards it.
+   */
+  let fovTarget = null;
+
   function applyFov() {
     if (!camera?.isPerspectiveCamera) return;
     if (savedFov === null) savedFov = camera.fov;
-    camera.fov = view.fov;
+    fovTarget = view.fov;
+    // Entering the tour from the overview is a cut, not a lean: there is
+    // nothing on screen yet to be continuous with.
+    if (!active) {
+      camera.fov = view.fov;
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  /** Called once per frame; a no-op once the lens has arrived. */
+  function stepFov(dt) {
+    if (fovTarget === null || !camera?.isPerspectiveCamera) return;
+    if (Math.abs(camera.fov - fovTarget) < 0.01) {
+      if (camera.fov !== fovTarget) {
+        camera.fov = fovTarget;
+        camera.updateProjectionMatrix();
+      }
+
+      return;
+    }
+
+    // 1/FOV_SECONDS as a rate gives the same settle time at any frame rate.
+    camera.fov = damp(camera.fov, fovTarget, 1 / (FOV_SECONDS / 3), dt);
     camera.updateProjectionMatrix();
   }
 
   function restoreFov() {
+    fovTarget = null;
     if (savedFov === null || !camera?.isPerspectiveCamera) return;
     camera.fov = savedFov;
     camera.updateProjectionMatrix();
@@ -502,9 +589,14 @@ export function createTourController(options = {}) {
 
     if (dx * dx + dz * dz > 1e-4) {
       const wanted = Math.atan2(dx, -dz);
-      const diff = angleTo(heading, wanted);
-      const maxTurn = SHOWCASE_TURN_SPEED * step;
-      heading += Math.abs(diff) < maxTurn ? diff : Math.sign(diff) * maxTurn;
+
+      // Turning to look at a product is the most watched motion in the whole
+      // application -- it is what happens at every stop on the tour -- so it
+      // gets the longest smoothing of the three.
+      heading = smoothDampAngle(
+        heading, wanted, turnVelocity,
+        TURN_SMOOTH_SHOWCASE, step, SHOWCASE_TURN_SPEED * 1.5
+      );
     }
 
     aimTarget.copy(point);
@@ -953,10 +1045,17 @@ export function createTourController(options = {}) {
 
             const wanted = Math.atan2(dx, -dz);
             const diff = angleTo(heading, wanted);
-            const maxTurn = GUIDED_TURN_SPEED * step;
 
-            if (Math.abs(diff) > 0.02) {
-              heading += Math.abs(diff) < maxTurn ? diff : Math.sign(diff) * maxTurn;
+            if (Math.abs(diff) > 0.015) {
+              heading = smoothDampAngle(
+                heading, wanted, turnVelocity,
+                TURN_SMOOTH_GUIDED, step, GUIDED_TURN_SPEED * 1.5
+              );
+            } else {
+              // Settle exactly, and shed the velocity, so the next corner
+              // starts from rest rather than from whatever was left over.
+              heading = wanted;
+              turnVelocity.value = 0;
             }
             // TURN FIRST, THEN WALK. The tolerance here is the whole
             // difference between following the route and grinding along a
@@ -973,12 +1072,35 @@ export function createTourController(options = {}) {
         }
       }
 
-      if (turn) heading += turn * TURN_SPEED * step;
+      // A HELD KEY IS A TARGET HEADING, NOT AN ANGULAR VELOCITY. Adding a
+      // fixed rate per frame starts and stops the turn instantly; springing
+      // towards a point a little way round means the turn accelerates when
+      // the key goes down and settles when it comes up, without adding any
+      // lag to the press itself -- the smoothing time is 0.16s.
+      if (turn) {
+        heading = smoothDampAngle(
+          heading, heading + turn * 0.6, turnVelocity,
+          TURN_SMOOTH_MANUAL, step, TURN_SPEED
+        );
+      } else if (!route && Math.abs(turnVelocity.value) > 0.001) {
+        // Key released: let the turn run down rather than stopping dead.
+        heading += turnVelocity.value * step;
+        turnVelocity.value = damp(turnVelocity.value, 0, 12, step);
+      }
 
-      if (drive) {
+      // Ramp towards the pace the controls are asking for. Braking is quicker
+      // than accelerating, so letting go stops you sooner than pressing sets
+      // you off -- and the guided route, which drops to 0 to turn a corner,
+      // is standing still by the time the turn matters.
+      if (drive) lastDrive = Math.sign(drive);
+      pace = approach(pace, drive ? 1 : 0, drive ? ACCELERATE : BRAKE, step);
+
+      if (pace > 0.001) {
         forward.set(Math.sin(heading), 0, -Math.cos(heading));
         const speed = route ? GUIDED_WALK_SPEED : WALK_SPEED;
-        const distance = drive * speed * step;
+        // `drive` carries the direction; `pace` carries how much of it.
+        const heldDirection = drive === 0 ? lastDrive : Math.sign(drive);
+        const distance = heldDirection * pace * speed * step;
         desired.copy(forward).multiplyScalar(Math.sign(distance));
 
         const nextX = position.x + forward.x * distance;
@@ -1059,7 +1181,15 @@ export function createTourController(options = {}) {
         }
       }
 
-      camera.position.lerp(camTarget, CAMERA_LERP);
+      // FRAME-RATE INDEPENDENT. `lerp(target, 0.35)` per frame means "35% of
+      // the way there, however often we happen to be called" -- two and a
+      // half times faster on a 144Hz screen than on a 60Hz one, and slower
+      // exactly when the frame rate dips and the camera most needs to hold
+      // steady. `frameRateSafe` converts the constant this was tuned at into
+      // the factor for the frame actually being drawn, so the feel is the one
+      // that was chosen and it is now the same feel everywhere.
+      stepFov(step);
+      camera.position.lerp(camTarget, frameRateSafe(CAMERA_LERP, step));
 
       // WHERE THE CAMERA IS POINTED.
       //
@@ -1076,7 +1206,10 @@ export function createTourController(options = {}) {
           position.z + forward.z * view.lookAhead
         );
       }
-      aim.lerp(aimTarget, showing ? AIM_LERP_SHOW : AIM_LERP_WALK);
+      aim.lerp(
+        aimTarget,
+        frameRateSafe(showing ? AIM_LERP_SHOW : AIM_LERP_WALK, step)
+      );
       camera.lookAt(aim);
     },
   };

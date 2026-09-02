@@ -37,6 +37,7 @@ import {
   TourPad,
   TOUR_START,
 } from './tour';
+import { createTween, easeInOutCubic } from './tour/easing';
 import { AdminBar, AdminGate, AdminList, PlacementEditor, UploadDialog } from './admin';
 import { PlacementService } from '../../lib/admin/PlacementService';
 
@@ -70,6 +71,20 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const [slotCount, setSlotCount] = useState(0);
   // Cached because it only changes when an admin moves something.
   const furnitureRectsRef = useRef([]);
+  /**
+   * The camera flight currently in progress, if any.
+   *
+   * CLICKING A PRODUCT USED TO TELEPORT. The camera was assigned its new
+   * position and the orbit target with it, so the house cut from one view to
+   * another with nothing in between -- and because the two views are often in
+   * different rooms, there was no way to tell what had moved or which way you
+   * were now facing. Flown, the same move explains itself: the walls slide
+   * past and you arrive knowing where you are.
+   *
+   * Stepped by the render loop rather than by a timer of its own, so it
+   * shares the clock with everything else on screen.
+   */
+  const flightRef = useRef(null);
   // Room extents, so a stop displaced by new furniture is re-seated inside
   // its own room rather than in the corridor outside it.
   const collisionRoomsRef = useRef([]);
@@ -713,6 +728,19 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       // that sofa" possible: the walk keeps its place and its character, and
       // the camera is free to fly somewhere else in the meantime.
       const walking = tourRef.current?.active && !tourRef.current.paused;
+
+      // ONE THING MOVES THE CAMERA PER FRAME. A flight is only ever started
+      // while the walk is stopped or held -- the focus effect returns early
+      // otherwise -- but a held tour can be resumed while one is still in the
+      // air, and then both would write to camera.position on the same frame
+      // and the camera would judder between two answers. The walk wins; the
+      // flight is dropped where it is, which is somewhere sensible because it
+      // was easing towards somewhere sensible.
+      if (walking) {
+        flightRef.current = null;
+      } else if (flightRef.current && !flightRef.current.step(delta)) {
+        flightRef.current = null;
+      }
       if (walking) {
         tourRef.current.update(delta);
       } else {
@@ -914,8 +942,6 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       }
     }
 
-    controls.target.copy(target);
-
     // Stand back along the current view direction so the move reads as a
     // dolly rather than a teleport to a fixed angle.
     const back = camera.position.clone().sub(controls.target).setY(0);
@@ -924,8 +950,35 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     // Eye height for a product, standing height for a room, and well above
     // the roof when the whole house is being framed.
     const lift = focusProduct.position ? 2.6 : distance > 12 ? distance * 0.45 : 1.9;
-    camera.position.set(target.x + back.x, target.y + lift, target.z + back.z);
-    controls.update();
+    const destination = new THREE.Vector3(
+      target.x + back.x,
+      target.y + lift,
+      target.z + back.z
+    );
+
+    // A second click before the first lands finishes the first rather than
+    // blending two flights, which would curve the camera through a wall.
+    flightRef.current?.finish();
+
+    const fromPosition = camera.position.clone();
+    const fromTarget = controls.target.clone();
+    // Long flights get longer, but not proportionally -- crossing the whole
+    // site should not take four seconds.
+    const reach = fromPosition.distanceTo(destination);
+    const seconds = Math.min(1.5, 0.45 + Math.sqrt(reach) * 0.16);
+
+    flightRef.current = createTween({
+      seconds,
+      // Slow away, slow in. The camera is not reacting to a physical push;
+      // it is being shown something, and the arrival is the point.
+      ease: easeInOutCubic,
+      onUpdate: (t) => {
+        camera.position.lerpVectors(fromPosition, destination, t);
+        controls.target.lerpVectors(fromTarget, target, t);
+        controls.update();
+      },
+      onDone: () => { flightRef.current = null; },
+    });
   }, [focusProduct]);
 
   // ---- The placement editor ----------------------------------------------
