@@ -1,24 +1,17 @@
 /**
  * Making the ground look like ground.
  *
- * Two jobs, both of which need the yard's real extent and so can only be done
- * once it has loaded: fitting the lawn photograph to the site, and continuing
- * the ground past it.
+ * ONE JOB, which needs the yard's real extent and so can only be done once it
+ * has loaded: continuing the ground past it.
+ *
+ * There were two. The other fitted a photograph of a lawn across the whole
+ * site -- one copy, stretched -- because tiling the photograph produced a
+ * visible grid. Stretching it produced a smear instead, which is not better,
+ * and the yard is paved now: drawn rather than photographed, repeated at its
+ * true size. Nothing to fit.
  *
  * ---------------------------------------------------------------------------
- * 1. THE LAWN IS FITTED, NOT TILED
- *
- * Tiling a photograph of a real lawn cannot be made to look right. Every copy
- * carries the same blades, the same bare patch, the same bright corner, so the
- * eye finds the grid immediately -- and the levelling that removes the seams
- * makes each copy MORE identical, not less. The result was a chequerboard.
- *
- * One copy stretched over the whole site has no grid to find. It is softer,
- * and that is the trade: soft grass reads as grass, repeated grass reads as a
- * texture.
- *
- * ---------------------------------------------------------------------------
- * 2. THE GROUND BEYOND THE YARD
+ * THE GROUND BEYOND THE YARD
  *
  * The site is a 30x40 rectangle of contoured turf sitting on a block of soil.
  * That is the whole world -- outside it there is nothing, so from any camera
@@ -48,7 +41,6 @@
 
 import * as THREE from "three";
 
-import { fitTextureToSpan } from "./textures/photoTextures";
 
 /** How far out the ground runs. Comfortably past the backdrop at 260m. */
 const EXTENT = 700;
@@ -105,6 +97,9 @@ export function addFarGround(house, materials) {
   return mesh;
 }
 
+/** Keep a sampled point inside the yard rectangle rather than past its corner. */
+const clampUnit = (v) => Math.max(-1, Math.min(1, v));
+
 /**
  * The lowest point of the turf around the edge of the yard.
  *
@@ -143,36 +138,9 @@ function lowestPerimeterY(yard, box, centre, size) {
   return lowest;
 }
 
-const clampUnit = (v) => Math.max(-1, Math.min(1, v));
-
-/**
- * Stretch one copy of the lawn photograph over the whole site.
- *
- * The UV frame is the Blender one. `uv_project_box` writes u = x and v = y in
- * metres, and glTF maps Blender (x, y, z) onto three (x, z, -y) -- so for a
- * point in the house group's local space, u is its x and v is MINUS its z.
- * Getting that sign wrong flips the lawn north-to-south, which is invisible
- * on a photograph of grass and would therefore never be noticed; it is
- * written out here rather than left to be re-derived.
- */
-export function fitLawnToYard(house, materials) {
-  const yard = house?.userData?.parts?.yard_ground;
-  const map = materials?.get("lawn")?.map;
-  if (!yard || !map) return null;
-
-  house.updateMatrixWorld(true);
-
-  // World bounds, less the group's offset, gives local. The house group is
-  // only ever translated -- no rotation, no scale -- so this is a subtraction
-  // rather than a full transform.
-  const box = new THREE.Box3().setFromObject(yard);
-  const min = box.min.clone().sub(house.position);
-  const max = box.max.clone().sub(house.position);
-
-  return fitTextureToSpan(map, {
-    uMin: min.x,
-    uMax: max.x,
-    vMin: -max.z,
-    vMax: -min.z,
-  });
-}
+/* THE LAWN STRETCHER LIVED HERE, and it is gone with the lawn.
+   `fitLawnToYard` set one copy of a grass photograph to span the whole site,
+   computing the repeat and offset from the yard's extent. It solved the
+   tiling grid by replacing it with a smear, and the yard is paved now --
+   drawn, repeated at its true size, and needing no fitting at all. See
+   createBlockPavingTexture. */

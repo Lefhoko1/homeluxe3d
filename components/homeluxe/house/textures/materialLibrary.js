@@ -25,20 +25,20 @@ import {
   createConcreteTexture,
   createCorrugatedTexture,
   createFoliageTexture,
-  createGrassTexture,
   createJuteTexture,
   createLeatherTexture,
   createQuiltedKnitTexture,
   createUpholsteryWeaveTexture,
   createMulchTexture,
   createPavingTexture,
+  createBlockPavingTexture,
+  createBlockPavingBumpTexture,
   createPlasterTexture,
   createTilePhotoTexture,
   createTileTexture,
   createTimberTexture,
   toTexture,
 } from "./proceduralTextures";
-import { loadPhotoTexture } from "./photoTextures";
 
 /**
  * Photographic finishes supplied by a shop.
@@ -236,46 +236,52 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
   // -- Site / landscaping -------------------------------------------------
   // Names match `blender/houseluxe/materials/library.py`, same contract as
   // the house: Blender says what a surface is, this says what it looks like.
-  // The lawn is a photograph, and it is NOT TILED.
   //
-  // Tiled at 3m it was unusable: a photograph of a real lawn carries the same
-  // blades, the same bare patch and the same bright corner in every copy, so
-  // the eye finds the grid instantly however well the seams are levelled --
-  // and levelling the seams is exactly what makes each copy identical.
+  // THE KEY IS STILL "lawn" AND THE SURFACE IS NOW PAVED. The key is
+  // Blender's material name on the yard mesh, so it cannot change without a
+  // rebuild -- and it does not need to. This map is precisely the place to
+  // decide what a named surface looks like.
   //
-  // So one copy is stretched over the whole site. `fitLawnToYard` sets the
-  // repeat and offset once the yard is loaded and its extent is known; until
-  // then this is just an unfitted clamped texture. Resampled larger than the
-  // other surfaces because it has thirty metres to cover rather than three.
+  // It wore a photograph of grass, stretched: ONE COPY over thirty metres.
+  // Tiling it had been tried first and failed, because every copy carries the
+  // same blades and the same bare patch, so the eye finds the grid at once.
+  // Stretching removed the grid and put a smear in its place -- two metres of
+  // real grass blurred across the whole site, soft everywhere and sharp
+  // nowhere.
   //
-  // The drawn grass stays as the fallback if the file is missing -- a lawn
-  // that is the wrong green beats a lawn that is white.
+  // Both failures are the same failure: a photograph of an irregular surface
+  // can be neither repeated nor scaled. Paving can. It is genuinely made of
+  // repeated units at a size somebody chose, so it is drawn rather than
+  // photographed, tiles at its true size without pretending, and holds up
+  // from the overview and from eye level. See createBlockPavingTexture.
   materials.set(
     "lawn",
     new THREE.MeshStandardMaterial({
-      name: "lawn",
-      map: loadPhotoTexture("/lawnTexture.png", {
-        metresPerTile: null,      // fitted, not tiled
-        size: 2048,
-        anisotropy,
-        fallback: createGrassTexture(),
-      }),
-      roughness: 1.0,
+      name: "yard_paving",
+      map: color(createBlockPavingTexture()),
+      // Without relief the yard is a flat plane with a grid drawn on it,
+      // which from a low camera looks like lino. The sun rakes across this.
+      bumpMap: data(createBlockPavingBumpTexture()),
+      bumpScale: 0.35,
+      roughness: 0.92,
       metalness: 0.0,
     })
   );
 
-  // The ground beyond the property line. Flat colour, not the photograph:
-  // stretching one copy across seven hundred metres would be a smear, and
-  // tiling it there brings back the grid this whole change is removing. The
-  // colour is the photograph's own mean once levelled, so the join at the
-  // fence is a change of detail rather than a change of hue -- and the fog
-  // has washed it halfway to sky by the time it is far enough to notice.
+  // The ground beyond the property line. Flat colour, because there is no
+  // detail worth resolving seven hundred metres out and the fog has washed it
+  // halfway to sky by then anyway.
+  //
+  // MUTED, NOT VIVID. It was 0x51aa10 to match the lawn photograph, and with
+  // the yard paved that reading of bright green filled the horizon and made
+  // the whole site look like it was standing on a snooker table. This is dry
+  // veld: the colour the ground outside a Gaborone plot actually is for most
+  // of the year, and quiet enough that the eye stays on the house.
   materials.set(
     "far_ground",
     new THREE.MeshStandardMaterial({
       name: "far_ground",
-      color: 0x51aa10,
+      color: 0x8d9070,
       roughness: 1.0,
       metalness: 0.0,
     })

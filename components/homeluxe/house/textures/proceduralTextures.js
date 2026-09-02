@@ -763,3 +763,158 @@ export function createQuiltedKnitTexture(options = {}) {
   addGrain(ctx, size, { count: 24000, alpha: 0.05, spread: 14, seed });
   return canvas;
 }
+
+/* ===========================================================================
+   THE YARD, PAVED
+   ===========================================================================
+
+   The yard wore a photograph of a lawn, stretched -- ONE COPY over thirty
+   metres. That was a considered choice and it was the wrong one. Tiling the
+   photograph had failed first, because every copy carries the same blades,
+   the same bare patch and the same bright corner, so the eye finds the grid
+   instantly; stretching one copy removed the grid and replaced it with a
+   smear, two metres of real grass blurred across the whole site.
+
+   Both failures have the same cause: a PHOTOGRAPH of an irregular surface
+   cannot be repeated and cannot be scaled. Paving is the opposite kind of
+   thing. It is genuinely made of repeated units, at a size somebody chose,
+   with joints in a pattern -- so drawing it beats photographing it, tiles
+   without a lie, and holds up from twenty metres and from two.
+
+   WHAT MAKES IT NOT LOOK TILED IS THE PER-UNIT VARIATION. Real pavers come
+   out of the mould at slightly different shades and weather differently; a
+   grid of identical rectangles reads as graph paper. Each unit here gets its
+   own lightness, keyed to its position so that a paver crossing the tile
+   boundary is drawn the same colour on both sides.
+   ========================================================================== */
+
+/**
+ * Everything both the colour and the bump pass need to agree about.
+ *
+ * They must be built from the same numbers or the joints in the relief land
+ * somewhere other than the joints in the picture, which reads as a printing
+ * misregistration and is very hard to un-see.
+ */
+const PAVER = {
+  /** 500 x 250mm units: two across and four down to the metre.
+   *  WHOLE NUMBERS PER METRE ARE NOT OPTIONAL. The UVs are in metres and the
+   *  texture repeats once per metre, so a unit that does not divide 1m evenly
+   *  is cut in half at every tile edge. Four rows also keeps the running bond
+   *  seamless top to bottom -- alternate rows shift by half a unit, so an odd
+   *  number of rows would meet its own offset at the seam. */
+  width: 0.5,
+  height: 0.25,
+  /** 8mm, the joint a contractor actually leaves between slabs. */
+  jointMm: 8,
+};
+
+/** Deterministic per-unit shade, matched across the tile seam. */
+function paverShade(row, col, cols, seed, swing) {
+  // The column index is taken MODULO the tile, so the copy of a unit that
+  // wraps round the edge is given the same number as the original.
+  const wrapped = ((col % cols) + cols) % cols;
+  const random = makeRandom(seed + row * 2749 + wrapped * 9187);
+
+  random();                       // discard the first, which is weakly mixed
+  return Math.round((random() - 0.5) * 2 * swing);
+}
+
+/**
+ * Draw the bond once, handing each unit to `paint`.
+ *
+ * Shared by the colour and the bump pass so the two cannot drift. Units are
+ * drawn one column beyond each edge, so a unit that straddles the seam
+ * appears on both sides and the texture tiles invisibly.
+ */
+function eachPaver(size, paint) {
+  const cols = Math.round(1 / PAVER.width);
+  const rows = Math.round(1 / PAVER.height);
+  const w = size * PAVER.width;
+  const h = size * PAVER.height;
+  const joint = Math.max(2, Math.round((PAVER.jointMm / 1000) * size));
+
+  for (let row = 0; row < rows; row += 1) {
+    // Running bond: every other course shifted half a unit, the way paving
+    // is actually laid -- a stack bond makes continuous joints that the eye
+    // follows straight to the horizon.
+    const shift = row % 2 ? w / 2 : 0;
+
+    for (let col = -1; col <= cols; col += 1) {
+      paint({
+        x: col * w + shift + joint / 2,
+        y: row * h + joint / 2,
+        w: w - joint,
+        h: h - joint,
+        row,
+        col,
+        cols,
+      });
+    }
+  }
+}
+
+/** Block paving in running bond, for the yard. */
+export function createBlockPavingTexture(options = {}) {
+  const {
+    base = "#a8a399",
+    joint = "#6b6760",
+    seed = 907,
+    swing = 15,        // how far a single unit may stray in shade
+  } = options;
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  // hexToRgb returns an OBJECT, not a tuple. Destructuring it as an array
+  // threw "not a function or its return value is not iterable" -- from the
+  // minified bundle, where the name it blames is a letter.
+  const { r: br, g: bg, b: bb } = hexToRgb(base);
+
+  // The joint shows only where the units do not cover, so it is the ground.
+  ctx.fillStyle = joint;
+  ctx.fillRect(0, 0, size, size);
+
+  eachPaver(size, ({ x, y, w, h, row, col, cols }) => {
+    const shade = paverShade(row, col, cols, seed, swing);
+
+    ctx.fillStyle = `rgb(${clamp(br + shade)},${clamp(bg + shade)},${clamp(bb + shade)})`;
+    ctx.fillRect(x, y, w, h);
+
+    // A lit top-left edge and a shaded bottom-right one. Two 1px lines, and
+    // they are what stop the units reading as flat coloured rectangles --
+    // a cast paver has an arris, and the arris is what you actually see.
+    ctx.fillStyle = "rgba(255,255,255,0.20)";
+    ctx.fillRect(x, y, w, 1);
+    ctx.fillRect(x, y, 1, h);
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.fillRect(x, y + h - 1, w, 1);
+    ctx.fillRect(x + w - 1, y, 1, h);
+  });
+
+  // Fine aggregate over the whole surface, joints included.
+  addGrain(ctx, size, { count: 24000, alpha: 0.07, spread: 20, seed: seed + 3 });
+
+  return canvas;
+}
+
+/**
+ * The same bond as height rather than colour.
+ *
+ * Units light, joints dark, so the sun rakes across the paving and picks the
+ * pattern out. Without this the yard is a flat plane with a grid drawn on
+ * it, which from a low camera looks like lino.
+ */
+export function createBlockPavingBumpTexture() {
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#404040";          // the joint, recessed
+  ctx.fillRect(0, 0, size, size);
+
+  eachPaver(size, ({ x, y, w, h }) => {
+    ctx.fillStyle = "#d8d8d8";        // the face, proud
+    ctx.fillRect(x, y, w, h);
+  });
+
+  return canvas;
+}

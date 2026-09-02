@@ -21,7 +21,7 @@ import {
   SITE_PARTS,
 } from "./houseConfig";
 import { createHouseMaterials } from "./textures/materialLibrary";
-import { addFarGround, fitLawnToYard } from "./siteGround";
+import { addFarGround } from "./siteGround";
 import { addTrees } from "./trees";
 import { addRoomLights } from "../lighting/roomLights";
 
@@ -240,7 +240,6 @@ export async function loadHouse(options = {}) {
   // over the site, and ground continuing past it so the yard does not read as
   // a slab of turf floating in mid air.
   if (includeSite) {
-    fitLawnToYard(house, materials);
     addFarGround(house, materials);
     // Trees are a model instanced from a manifest, not baked geometry. This
     // is awaited so callers get a finished yard rather than one that grows
