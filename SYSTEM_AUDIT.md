@@ -7,10 +7,10 @@ Supabase instance while writing. Where something is **not** built, or is built
 but not working end to end, it says so — see §14, which is the part worth
 reading first if you are deciding what to do next.
 
-This supersedes `PROJECT_REPORT.md`, which was written at commit `ba1f9de` and
-predates twenty-one commits, eleven migrations, the visitor pages, the front
-page, the enquiry system and the full-screen showroom. That file should
-probably be deleted.
+This replaces `PROJECT_REPORT.md`, which was written at commit `ba1f9de` and
+predated the visitor pages, the front page, the enquiry system, eleven
+migrations and the full-screen showroom. It has been deleted — two overlapping
+reports, one of them wrong, is worse than one.
 
 ---
 
@@ -573,8 +573,6 @@ Read this section before planning.
 
 11. **The database password** is in `.env.local` (gitignored, confirmed
     untracked) and was pasted in chat. To be rotated when development ends.
-12. **`PROJECT_REPORT.md` is stale** by twenty-one commits and should be
-    deleted in favour of this file.
 
 ---
 
