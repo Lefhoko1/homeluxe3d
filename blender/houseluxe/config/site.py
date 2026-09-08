@@ -208,7 +208,22 @@ class PoolFence:
 
 @dataclass(frozen=True)
 class FenceRun:
-    """Boundary fence: posts at centres, with rails between them."""
+    """Boundary fence: posts at centres, rails between them, and an infill.
+
+    THE INFILL IS A SURFACE, NOT A DECISION MADE HERE. Posts and rails are
+    structure and the plan owns them; what fills the bay between them is a
+    product somebody is selling -- diamond mesh from one shop, a precast
+    screen wall from another -- and that is a database decision, dressed onto
+    `infill_finish` at run time exactly as paint is dressed onto a wall.
+
+    So this generates a panel and names the surface. It does not know or care
+    whether the panel ends up woven wire or concrete.
+
+    `infill_thickness` is the one thing the two genuinely disagree about: a
+    chain-link fabric is a few millimetres and a screen wall is a hundred and
+    forty. The plan states it per run, because it is a property of what was
+    built rather than of what is advertised on it this month.
+    """
 
     name: str
     start: tuple[float, float]
@@ -219,6 +234,13 @@ class FenceRun:
     rail_thickness: float = 32.0
     rail_count: int = 3
     finish: str = "fence_timber"
+
+    #: Blender material name for the bay infill, or None for an open frame.
+    infill_finish: str | None = "fence.boundary"
+    infill_thickness: float = 24.0
+    #: How far the panel stops short of the ground, so it does not bury itself
+    #: in the turf as the contour falls between two posts.
+    infill_ground_gap: float = 40.0
 
 
 @dataclass

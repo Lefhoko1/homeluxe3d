@@ -269,7 +269,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
               material: variant?.material ?? p.product?.material ?? p.surface,
               texture: variant?.texture ?? p.product?.texture,
               swatch: variant?.swatch ?? p.product?.swatch,
-              tileMm: p.product?.dimensions?.width,
+              // The variant's own repeat first; the product's width only as a
+              // fallback for older rows that carry no module. See repository.js.
+              tileMm: p.product?.textureTileMm ?? p.product?.dimensions?.width,
               product: p.product,
               room: p.room,
               variantName: variant?.name,
@@ -277,7 +279,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           });
 
         const { applied } = applyFinishes(
-          [house.userData.parts?.floors, house.userData.parts?.wall_finishes],
+          // THE FENCE IS A ROOT TOO. Finishes are only found on the roots
+          // they are handed; the boundary infill is a dressable surface
+          // like a wall, and leaving it out means a placed fencing
+          // product silently changes nothing.
+          [
+            house.userData.parts?.floors,
+            house.userData.parts?.wall_finishes,
+            house.userData.parts?.yard_fence,
+          ],
           finishSpecs,
           { anisotropy: renderer.capabilities.getMaxAnisotropy() }
         );

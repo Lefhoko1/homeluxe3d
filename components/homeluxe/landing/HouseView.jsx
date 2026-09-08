@@ -297,7 +297,9 @@ const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
               material: variant?.material ?? p.product?.material ?? p.surface,
               texture: variant?.texture ?? p.product?.texture,
               swatch: variant?.swatch ?? p.product?.swatch,
-              tileMm: p.product?.dimensions?.width,
+              // The variant's own repeat first; the product's width only as a
+              // fallback for older rows that carry no module. See repository.js.
+              tileMm: p.product?.textureTileMm ?? p.product?.dimensions?.width,
               product: p.product,
               room: p.room,
               variantName: variant?.name,
@@ -306,7 +308,11 @@ const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
 
         setStage('finishes');
         applyFinishes(
-          [house.userData.parts?.floors, house.userData.parts?.wall_finishes],
+          [
+            house.userData.parts?.floors,
+            house.userData.parts?.wall_finishes,
+            house.userData.parts?.yard_fence,
+          ],
           finishSpecs,
           { anisotropy: renderer.capabilities.getMaxAnisotropy() },
         );

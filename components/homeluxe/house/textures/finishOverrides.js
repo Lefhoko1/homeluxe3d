@@ -19,8 +19,10 @@
 import * as THREE from "three";
 
 import {
+  createDiamondMeshTexture,
   createGamazineTexture,
   createPaintTexture,
+  createScreenWallTexture,
   createTilePhotoTexture,
   createTileTexture,
   toTexture,
@@ -46,6 +48,68 @@ const RENDERERS = {
       map: toTexture(canvas, { anisotropy }),
       roughness: textured ? 0.95 : 0.82,
       metalness: 0,
+    });
+  },
+
+  /**
+   * The boundary infill: diamond mesh, or a screen wall.
+   *
+   * ONE CATEGORY, TWO VERY DIFFERENT SURFACES, told apart the same way paint
+   * tells gamazine from emulsion -- by the material name. They share a
+   * category because they are the same PURCHASE (something to fill the bay
+   * between two fence posts) and they fill the same slot; they share almost
+   * nothing else, because one is four-fifths holes.
+   *
+   * ALPHA TEST RATHER THAN TRANSPARENCY. A chain-link panel is thousands of
+   * small openings; drawn as a transparent material it would have to be
+   * depth-sorted against everything behind it every frame, and the fence
+   * would flicker in front of the pool. `alphaTest` cuts the holes out
+   * before depth is written, so the mesh sorts like any solid object, costs
+   * nothing, and casts a shadow with holes in it -- which is most of what
+   * makes a wire fence look like one.
+   *
+   * DOUBLE SIDED, because a fence has two sides and the visitor walks past
+   * both. A single-sided plane vanishes from the garden.
+   */
+  fencing: (spec, anisotropy) => {
+    const solid = /screen|wall|precast|block/i.test(spec.material ?? "");
+
+    if (solid) {
+      return new THREE.MeshStandardMaterial({
+        name: spec.material,
+        map: toTexture(
+          createScreenWallTexture({ base: spec.swatch ?? "#b6b2a9", seed: hash(spec.material) }),
+          { anisotropy }
+        ),
+        roughness: 0.93,
+        metalness: 0,
+      });
+    }
+
+    // The aperture is the product: 25mm to 150mm, one inch to six.
+    const apertureMm = Math.min(150, Math.max(25, spec.tileMm ?? 50));
+    const canvas = createDiamondMeshTexture({
+      apertureMm,
+      wire: spec.swatch ?? "#b9bfc4",
+      seed: hash(spec.material),
+    });
+    const map = toTexture(canvas, { anisotropy });
+    // The canvas covers a whole number of DIAMONDS rather than a whole metre
+    // -- 150mm does not divide 1000 -- so the repeat comes from how much of
+    // a metre it actually drew. This is what puts the mesh at its true size.
+    const perMetre = 1 / (canvas.metresPerTile || 0.42);
+
+    map.repeat.set(perMetre, perMetre);
+
+    return new THREE.MeshStandardMaterial({
+      name: spec.material,
+      map,
+      transparent: false,
+      alphaTest: 0.45,
+      side: THREE.DoubleSide,
+      // Galvanised steel: bright, but nothing like a mirror after a season.
+      metalness: 0.72,
+      roughness: 0.44,
     });
   },
 

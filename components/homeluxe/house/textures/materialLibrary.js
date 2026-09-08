@@ -33,6 +33,7 @@ import {
   createPavingTexture,
   createBlockPavingTexture,
   createBlockPavingBumpTexture,
+  createDiamondMeshTexture,
   createPlasterTexture,
   createTilePhotoTexture,
   createTileTexture,
@@ -267,6 +268,35 @@ export function createHouseMaterials({ anisotropy = 4 } = {}) {
       metalness: 0.0,
     })
   );
+
+  // THE BOUNDARY INFILL, before anybody has sold anything for it.
+  //
+  // Blender names this surface on the panel between every pair of fence
+  // posts and leaves it grey; whichever fencing product the database places
+  // on it replaces this at run time -- diamond mesh from one shop, a precast
+  // screen wall from another. See the `fencing` renderer in finishOverrides.
+  //
+  // The default is a 50mm mesh rather than a blank panel, because an
+  // undressed surface should still read as the thing it is. A boundary you
+  // cannot see through is a wall, and this is a fence.
+  {
+    const canvas = createDiamondMeshTexture({ apertureMm: 50 });
+    const map = color(canvas);
+    const perMetre = 1 / (canvas.metresPerTile || 0.42);
+
+    map.repeat.set(perMetre, perMetre);
+    materials.set(
+      "fence.boundary",
+      new THREE.MeshStandardMaterial({
+        name: "fence.boundary",
+        map,
+        alphaTest: 0.45,
+        side: THREE.DoubleSide,
+        metalness: 0.72,
+        roughness: 0.44,
+      })
+    );
+  }
 
   // The ground beyond the property line. Flat colour, because there is no
   // detail worth resolving seven hundred metres out and the fog has washed it

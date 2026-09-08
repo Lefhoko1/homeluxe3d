@@ -28,13 +28,11 @@ class FenceComponent(Component):
 
         objects: list[bpy.types.Object] = []
         for run in site.fences:
-            fence = self._run(ctx, run)
-            if fence is not None:
-                objects.append(fence)
+            objects.extend(self._run(ctx, run))
         return objects
 
     def _run(self, ctx: BuildContext, run: FenceRun
-             ) -> bpy.types.Object | None:
+             ) -> list[bpy.types.Object]:
         site = ctx.site
         (x0, y0), (x1, y1) = run.start, run.end
 
@@ -42,17 +40,23 @@ class FenceComponent(Component):
         vertical = abs(x1 - x0) < 1e-6
         if not (horizontal or vertical):
             ctx.warn(f"fence {run.name!r} is not axis-aligned; skipped")
-            return None
+            return []
 
         length = abs(x1 - x0) if horizontal else abs(y1 - y0)
         if length < run.post_spacing:
             ctx.warn(f"fence {run.name!r} is shorter than one bay; skipped")
-            return None
+            return []
 
         half_post = run.post_size / 2.0
         half_rail = run.rail_thickness / 2.0
+        half_infill = run.infill_thickness / 2.0
         rail_depth = 140.0
         parts: list[bpy.types.Object] = []
+        # A SEPARATE OBJECT, not another part of the frame. Blender assigns
+        # one material per object here, and the whole point of the infill is
+        # that it wears a different one -- the frame is structure, the infill
+        # is whatever a shop is selling this month.
+        infill: list[bpy.types.Object] = []
 
         # Always include both ends, so a run never finishes mid-air.
         bays = max(1, round(length / run.post_spacing))
@@ -102,6 +106,41 @@ class FenceComponent(Component):
                     )
                 )
 
-        fence = meshutil.join(parts, run.name)
-        ctx.materials.assign(fence, run.finish)
-        return fence
+        # -- Infill --------------------------------------------------------
+        # One panel per bay, between the posts rather than through them, and
+        # following the same ground levels the posts stand on -- a single
+        # panel for the whole run would float over every dip in the contour.
+        if run.infill_finish:
+            for i in range(bays):
+                a, b = start + i * step, start + (i + 1) * step
+                base = (levels[i] + levels[i + 1]) / 2.0
+                z0 = base + run.infill_ground_gap
+                z1 = base + run.height
+
+                if horizontal:
+                    bounds = (a + half_post, y0 - half_infill,
+                              b - half_post, y0 + half_infill)
+                else:
+                    bounds = (x0 - half_infill, a + half_post,
+                              x0 + half_infill, b - half_post)
+
+                infill.append(
+                    meshutil.box(
+                        f"{run.name}.infill{i}",
+                        bounds[0], bounds[1], z0,
+                        bounds[2], bounds[3], z1,
+                    )
+                )
+
+        built: list[bpy.types.Object] = []
+
+        frame = meshutil.join(parts, run.name)
+        ctx.materials.assign(frame, run.finish)
+        built.append(frame)
+
+        if infill:
+            panel = meshutil.join(infill, f"{run.name}.infill")
+            ctx.materials.assign(panel, run.infill_finish)
+            built.append(panel)
+
+        return built

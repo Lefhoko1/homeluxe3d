@@ -94,6 +94,11 @@ FINISHES: dict[str, Finish] = {
     "hedge":           Finish("hedge",           (0.129, 0.278, 0.106), roughness=0.95),
     "trunk":           Finish("trunk",           (0.243, 0.169, 0.106), roughness=0.90),
     "fence_timber":    Finish("fence_timber",    (0.400, 0.286, 0.180), roughness=0.85),
+    # The bay infill. Galvanised grey because that is what it is when nobody
+    # has sold anything for it yet -- the browser dresses this surface with
+    # whichever fencing product the database says is placed on it, mesh or
+    # screen wall. See components/site/fence.py and finishOverrides.js.
+    "fence.boundary":  Finish("fence.boundary",  (0.612, 0.624, 0.639), roughness=0.55, metallic=0.65),
 
     # -- Retail products ---------------------------------------------------
     "leather_taupe":   Finish("leather_taupe",   (0.529, 0.478, 0.420), roughness=0.55),

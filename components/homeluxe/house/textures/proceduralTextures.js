@@ -918,3 +918,174 @@ export function createBlockPavingBumpTexture() {
 
   return canvas;
 }
+
+/* ===========================================================================
+   FENCING
+   ===========================================================================
+
+   The boundary infill is a SURFACE, dressed by whatever fencing product the
+   database says is placed on it. Two kinds exist and they are drawn very
+   differently: chain-link is mostly holes, a screen wall is mostly not.
+
+   DIAMOND MESH HAS TO HAVE A REAL ALPHA CHANNEL. It is not a grey texture of
+   a fence -- roughly four fifths of a chain-link panel is the garden behind
+   it, and painting that on would make a solid wall wearing a picture of a
+   fence. The apertures are transparent and the renderer cuts them out.
+
+   THE APERTURE IS THE PRODUCT. Diamond mesh is sold by the size of its
+   opening -- 25mm to 150mm, one inch to six -- and that number is the whole
+   difference between a security fence and a stock fence. It comes from the
+   variant's `texture_tile_mm`, so a shop selling a 50mm mesh and a shop
+   selling a 100mm mesh get visibly different fences from the same geometry.
+   ========================================================================== */
+
+/**
+ * How many diamonds the canvas covers, one edge.
+ *
+ * WHOLE DIAMONDS PER CANVAS, so the pattern tiles exactly however odd the
+ * aperture is. The alternative -- a canvas of one square metre -- forces the
+ * aperture to divide 1000mm evenly, and 150mm does not. The caller sets
+ * `repeat` from the real aperture, so the mesh comes out at its true size
+ * whatever number is chosen here.
+ */
+const MESH_CELLS = 8;
+
+/** 12.5 gauge, the wire an actual chain-link fence is wound from. */
+const MESH_WIRE_MM = 2.5;
+
+/**
+ * Chain-link fabric: two families of diagonal wires, and holes between them.
+ *
+ * @param {object} options
+ * @param {number} options.apertureMm  clear opening, 25..150
+ * @param {number} options.wireMm      wire diameter
+ * @param {string} options.wire        galvanised grey
+ */
+export function createDiamondMeshTexture(options = {}) {
+  const {
+    apertureMm = 50,
+    wireMm = MESH_WIRE_MM,
+    wire = "#b9bfc4",
+    seed = 411,
+  } = options;
+
+  // Bigger than the other textures on purpose: at a 150mm aperture eight
+  // diamonds is 1.2m of fence, and a 2.5mm wire across that is under two
+  // pixels at 512. Thin wire aliases into a grey haze.
+  const size = 1024;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  const random = makeRandom(seed);
+
+  // Transparent. Everything not drawn is the garden behind the fence.
+  ctx.clearRect(0, 0, size, size);
+
+  // The wires run at 45 degrees, so the perpendicular pitch of one family is
+  // the diamond's own pitch, and their spacing measured along an edge of the
+  // canvas is that times root two.
+  const pitchMm = apertureMm + wireMm;
+  const pxPerMm = size / (MESH_CELLS * pitchMm);
+  const stepPx = (size / MESH_CELLS) * Math.SQRT2;
+  const widthPx = Math.max(1.4, wireMm * pxPerMm);
+
+  ctx.lineCap = "round";
+
+  // Drawn twice: a dark pass a little wider, then a lighter core. That is
+  // what makes a flat line read as a round wire -- the eye takes the dark
+  // edge for the shaded side of a cylinder.
+  const family = (sign) => {
+    // Far enough beyond both edges that a line clipped at one corner still
+    // enters at the other, which is what makes the tile seamless.
+    for (let i = -MESH_CELLS * 2; i <= MESH_CELLS * 3; i += 1) {
+      const c = i * stepPx;
+
+      for (const [colour, w] of [["rgba(70,76,82,0.85)", widthPx * 1.7],
+                                 [wire, widthPx]]) {
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        if (sign > 0) {
+          ctx.moveTo(c - size, -size);
+          ctx.lineTo(c + size * 2, size * 2);
+        } else {
+          ctx.moveTo(c - size, size * 2);
+          ctx.lineTo(c + size * 2, -size);
+        }
+        ctx.stroke();
+      }
+    }
+  };
+
+  family(1);
+  family(-1);
+
+  // Galvanising is not uniform. A few brighter and duller patches along the
+  // wire, painted only where wire already is -- `source-atop` keeps the
+  // holes empty, which is the entire point of the alpha channel.
+  ctx.globalCompositeOperation = "source-atop";
+  for (let i = 0; i < 900; i += 1) {
+    const shade = Math.floor(random() * 60 - 30);
+    ctx.fillStyle = `rgba(${185 + shade},${191 + shade},${196 + shade},0.5)`;
+    ctx.fillRect(random() * size, random() * size, 2 + random() * 5, 2);
+  }
+  ctx.globalCompositeOperation = "source-over";
+
+  // How much of a metre this canvas covers, so the caller can set `repeat`.
+  canvas.metresPerTile = (MESH_CELLS * pitchMm) / 1000;
+
+  return canvas;
+}
+
+/**
+ * A precast screen wall: the other thing a boundary bay can be filled with.
+ *
+ * Opaque, and that is the whole difference. Block courses with a raked joint,
+ * cast grey, with the faint vertical banding a wet-cast block has.
+ */
+export function createScreenWallTexture(options = {}) {
+  const {
+    base = "#b6b2a9",
+    joint = "#8e8a82",
+    blockW = 0.4,      // metres
+    blockH = 0.2,
+    seed = 523,
+  } = options;
+  const size = PX_PER_M;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+  const { r: br, g: bg, b: bb } = hexToRgb(base);
+  const random = makeRandom(seed);
+
+  ctx.fillStyle = joint;
+  ctx.fillRect(0, 0, size, size);
+
+  const cols = Math.max(1, Math.round(1 / blockW));
+  const rows = Math.max(1, Math.round(1 / blockH));
+  const w = size / cols;
+  const h = size / rows;
+  const jointPx = Math.max(2, Math.round(0.010 * size));   // 10mm
+
+  for (let row = 0; row < rows; row += 1) {
+    // Stretcher bond, like any block wall.
+    const shift = row % 2 ? w / 2 : 0;
+
+    for (let col = -1; col <= cols; col += 1) {
+      const x = col * w + shift + jointPx / 2;
+      const y = row * h + jointPx / 2;
+      const shade = Math.floor((makeRandom(seed + row * 71 + ((col % cols) + cols) % cols * 13)() - 0.5) * 22);
+
+      ctx.fillStyle = `rgb(${clamp(br + shade)},${clamp(bg + shade)},${clamp(bb + shade)})`;
+      ctx.fillRect(x, y, w - jointPx, h - jointPx);
+
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.fillRect(x, y, w - jointPx, 1);
+      ctx.fillStyle = "rgba(0,0,0,0.14)";
+      ctx.fillRect(x, y + h - jointPx - 1, w - jointPx, 1);
+    }
+  }
+
+  addGrain(ctx, size, { count: 22000, alpha: 0.06, spread: 18, seed: seed + 5 });
+  void random;
+
+  return canvas;
+}
