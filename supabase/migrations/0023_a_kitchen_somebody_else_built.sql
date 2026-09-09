@@ -130,7 +130,29 @@ on conflict (scene_id, code) do update set
   max_width_mm = excluded.max_width_mm;
 
 -- =============================================================================
--- 4. STANDING IT THERE
+-- 4. STANDING IT THERE -- AND IT DOES NOT FIT
+--
+-- The placement below is created and then immediately retired, and the slot
+-- with it. That is not indecision; it is the record of a measurement.
+--
+-- The kitchen is 4290 x 3130. Its south side is not a wall but a 2400mm
+-- doorway from the hall, at x 6.59..8.99; its north side carries the fitted
+-- run the generator builds; and its two side walls are 3130mm, shorter than
+-- this unit. A 3367mm object has nowhere to stand in that room that does not
+-- cross either the doorway or the route along the north side -- which is what
+-- happened: three waypoints ended up 79, 145 and 179mm from it against the
+-- 260mm the walker needs, and the tour could no longer leave the kitchen.
+--
+-- IT WAS INVISIBLE TO THE SOLVER, and that is the part worth keeping. The
+-- route is solved in Blender against the catalogue; a product inserted by
+-- migration is not in the catalogue, so `tour.json` still read 110 waypoints
+-- at 300mm clearance -- true, and solved against a house that no longer
+-- existed. `components/homeluxe/tour/clearance.test.mjs` now compares the
+-- live placements against the solved waypoints and fails on exactly this.
+--
+-- To stand it up: give it the kitchen's north wall and stop the generator
+-- building its own fitted run there, then rebuild so the route is solved
+-- around it. That is a plan change, not a row.
 -- =============================================================================
 
 insert into placements (scene_id, slot_id, variant_id, shop_id, status, note)
@@ -147,3 +169,14 @@ select sc.id, sl.id, v.id, p.shop_id, 'live',
      select 1 from placements x
       where x.slot_id = sl.id and x.status = 'live'
    );
+
+-- Retired immediately, for the reason above. The product, its variant and its
+-- model stay in the catalogue -- Tubod sells it whether or not this house has
+-- a wall for it -- and re-activating both rows is all it takes once the
+-- kitchen's north wall is free.
+update placements set status = 'removed'
+ where slot_id = (select id from placement_slots
+                   where code = 'SLOT_KITCHEN_RUN_001');
+
+update placement_slots set is_active = false
+ where code = 'SLOT_KITCHEN_RUN_001';
