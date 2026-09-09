@@ -13,7 +13,9 @@ import {
   loadSlots,
   HOUSE_VIEWS,
 } from './house';
-import { loadProducts, loadOneProduct, disposeProducts, advertFor } from './products';
+import {
+  loadProducts, loadOneProduct, disposeProducts, advertFor, attachScreens,
+} from './products';
 import { applyFinishes } from './house/textures/finishOverrides';
 import {
   applyDatabaseMaterials,
@@ -71,6 +73,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const [slotCount, setSlotCount] = useState(0);
   // Cached because it only changes when an admin moves something.
   const furnitureRectsRef = useRef([]);
+  /** Video textures and their standby timers, so they stop with the scene. */
+  const screensRef = useRef(null);
   /**
    * The camera flight currently in progress, if any.
    *
@@ -246,6 +250,14 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
         house.add(group);
         productsRef.current = group;
+
+        // Give any television in the room something to play. See screens.js
+        // for why that cannot be a YouTube video and what it is instead.
+        screensRef.current?.dispose();
+        screensRef.current = attachScreens(group, products);
+        if (screensRef.current.screens) {
+          console.info(`[screens] ${screensRef.current.screens} screen(s) live`);
+        }
         // The admin editor is created in its own effect, which cannot run
         // until there is something to edit.
         setSceneReady(true);
@@ -857,6 +869,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       slotsRef.current?.dispose();
       slotsRef.current = null;
       furnitureRectsRef.current = [];
+      screensRef.current?.dispose();
+      screensRef.current = null;
       setRouteReady(false);
       collisionRoomsRef.current = [];
       disposeCharacter(characterRef.current);

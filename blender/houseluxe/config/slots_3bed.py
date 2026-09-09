@@ -279,11 +279,59 @@ def _bedroom(name: str, code: str, bed_w: float, priority: int) -> list[Slot]:
     ]
 
 
+def _media_wall(name: str, code: str, priority: int) -> list[Slot]:
+    """A media unit on the foot wall, with a television standing on it.
+
+    WHY NOT THE LIVING ROOM, which is where a television obviously goes: it
+    has nowhere to put one. The living and dining rooms are a single open-plan
+    zone -- the living room's north side is a 4.5m threshold onto the hall and
+    its east side opens into the dining room, so its only solid walls are the
+    south, which the three-seater is against, and the west. Measured against
+    the collision model, NEITHER of them has an unbroken run of 1,870mm, which
+    is what the Juliet needs.
+
+    Standing it across the north threshold instead was tried and is what the
+    plan should never do: it left two one-metre gaps, the flanking seats
+    narrowed those, and the route solver could not cross the room at any
+    clearance a 260mm walker actually fits. The tour lost eight rooms.
+
+    A bedroom foot wall is a real 3m wall, a television facing the bed is a
+    normal thing to sell, and the room it goes in was empty.
+    """
+    room = ROOM[name]
+    head = _head_wall(name)
+    fy = (lambda v: v) if head == "n" else (lambda v: 1.0 - v)
+    # The unit stands against the foot wall looking back at the bed, which is
+    # the SAME facing the bed itself is given: `_bedroom` points a bed towards
+    # its head wall, and the foot wall is on the opposite side of the room, so
+    # a unit there turned the same way has its back to the wall and its front
+    # to the bed. Turning it the other way parks the screen against plaster.
+    facing = 0.0 if head == "n" else 180.0
+
+    return [
+        at(room, 0.5, fy(0.10), slot_id=f"SLOT_{code}_MEDIA_001",
+           slot_type="media_unit", category="storage",
+           # Sized to the Juliet off the manufacturer's drawing -- 1870 x 500
+           # x 800 -- with a little slack. A slot narrower than the furniture
+           # sold for it is a position that can never be filled.
+           width=1900.0, depth=520.0, height=820.0, rotation=facing,
+           priority=priority, label="Media unit"),
+        at(room, 0.5, fy(0.135), slot_id=f"SLOT_{code}_TV_001",
+           slot_type="wall_television", category="television",
+           # ON THE UNIT, not on the wall: z is the top plank at 800mm. The
+           # Sansui is sold with two splayed feet, and a set of feet on a wall
+           # bracket is a product photograph nobody can reproduce.
+           width=1300.0, depth=280.0, height=760.0, z=800.0, rotation=facing,
+           priority=priority + 20, label="Television"),
+    ]
+
+
 BEDROOMS: list[Slot] = (
     _bedroom("master", "MASTER", 1520.0, 95)
     + _bedroom("bed2", "BED2", 1370.0, 70)
     + _bedroom("bed3", "BED3", 1370.0, 70)
     + _bedroom("bed4", "BED4", 1370.0, 65)
+    + _media_wall("bed2", "BED2", 68)
 )
 
 

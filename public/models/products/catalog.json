@@ -118,6 +118,80 @@
           "model": "/models/products/bradlows/sandton-recliner.glb"
         },
         {
+          "id": "bradlows.sansui-50-fhd-google-tv",
+          "shop": "bradlows",
+          "category": "television",
+          "name": "Sansui 50-inch FHD Google TV",
+          "description": "50-inch full-HD smart television running Google TV, on two splayed feet. Shown standing on the Juliet media unit.",
+          "colour": "Black",
+          "sku": "000000000010320024",
+          "price": 4499.95,
+          "effectivePrice": 4499.95,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining",
+            "bedroom"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "promotion": {
+            "label": "September media sale",
+            "startsOn": "2026-09-01",
+            "endsOn": "2026-09-16",
+            "promoPrice": null,
+            "terms": "While stocks last. Ends Wednesday, 16 September 2026.",
+            "isLive": true
+          },
+          "madeOf": [
+            "Aluminium bezel",
+            "Polymer feet"
+          ],
+          "dimensions": {
+            "width": 1125.0,
+            "depth": 70.0,
+            "height": 719.0
+          },
+          "model": "/models/products/bradlows/sansui-50-fhd-google-tv.glb"
+        },
+        {
+          "id": "bradlows.juliet-tv-stand",
+          "shop": "bradlows",
+          "category": "storage",
+          "name": "Juliet TV Stand",
+          "description": "Black gloss media unit with two cupboards, open centre shelving and a floating top plank. 1870mm wide.",
+          "colour": "Black gloss",
+          "sku": "000000000010103946",
+          "price": 4999.95,
+          "effectivePrice": 4999.95,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining",
+            "bedroom"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "promotion": {
+            "label": "September media sale",
+            "startsOn": "2026-09-01",
+            "endsOn": "2026-09-16",
+            "promoPrice": null,
+            "terms": "While stocks last. Ends Wednesday, 16 September 2026.",
+            "isLive": true
+          },
+          "madeOf": [
+            "Melamine board",
+            "Chrome handles"
+          ],
+          "dimensions": {
+            "width": 1870.0,
+            "depth": 500.0,
+            "height": 800.0
+          },
+          "model": "/models/products/bradlows/juliet-tv-stand.glb"
+        },
+        {
           "id": "bradlows.oakwood-coffee-table",
           "shop": "bradlows",
           "category": "table",
@@ -693,6 +767,30 @@
           -2.5
         ],
         "rotationY": 90.0
+      },
+      {
+        "product": "bradlows.juliet-tv-stand",
+        "room": "bed2",
+        "note": "Foot wall of bedroom 2, facing the bed; 1870mm wide.",
+        "isFinish": false,
+        "position": [
+          9.44,
+          0.0,
+          -8.497
+        ],
+        "rotationY": 0.0
+      },
+      {
+        "product": "bradlows.sansui-50-fhd-google-tv",
+        "room": "bed2",
+        "note": "Stands on the Juliet's top plank, facing the bed.",
+        "isFinish": false,
+        "position": [
+          9.44,
+          0.8,
+          -8.601
+        ],
+        "rotationY": 0.0
       },
       {
         "product": "bradlows.oakwood-coffee-table",

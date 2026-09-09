@@ -1326,6 +1326,48 @@
       ]
     },
     {
+      "id": "SLOT_BED2_MEDIA_001",
+      "room": "bed2",
+      "roomLabel": "Bedroom 2",
+      "roomType": "bedroom",
+      "type": "media_unit",
+      "category": "storage",
+      "label": "Media unit",
+      "priority": 68,
+      "position": [
+        9.44,
+        0.0,
+        -8.497
+      ],
+      "rotationY": 0.0,
+      "size": [
+        1.9,
+        0.82,
+        0.52
+      ]
+    },
+    {
+      "id": "SLOT_BED2_TV_001",
+      "room": "bed2",
+      "roomLabel": "Bedroom 2",
+      "roomType": "bedroom",
+      "type": "wall_television",
+      "category": "television",
+      "label": "Television",
+      "priority": 88,
+      "position": [
+        9.44,
+        0.8,
+        -8.601
+      ],
+      "rotationY": 0.0,
+      "size": [
+        1.3,
+        0.76,
+        0.28
+      ]
+    },
+    {
       "id": "SLOT_BATHROOM_BATH_001",
       "room": "bathroom",
       "roomLabel": "Bathroom",

@@ -22,6 +22,7 @@ from .lounge import (
     build_rug,
     build_sofa,
 )
+from .media import MEDIA, build_television, build_tv_stand
 
 SHOP = Shop(
     id="bradlows",
@@ -37,6 +38,25 @@ RECLINER = SofaSpec(seats=1, footrest=True, accent_cushions=0)
 #: Lounge pieces suit living and dining rooms, and nothing else -- a sofa is
 #: not offered for the bathroom.
 LOUNGE_ROOMS = (RoomType.LIVING, RoomType.DINING)
+
+#: A television and the unit it stands on suit a lounge OR a bedroom, which
+#: is not true of the sofas above -- nobody puts a three-seater in bed 2. The
+#: distinction matters: `room_types` is what the catalogue validator checks a
+#: placement against, and it refused this pair outright when they carried the
+#: lounge's scope and were placed against a bedroom wall.
+MEDIA_ROOMS = (RoomType.LIVING, RoomType.DINING, RoomType.BEDROOM)
+
+#: The September media promotion. Both pieces, both ending the same day.
+#:
+#: PRICES ARE IN RAND on the shop's own tickets and the catalogue is in Pula.
+#: They are carried across at face value rather than converted, because a
+#: made-up exchange rate is a made-up price -- see the note in migration 0023.
+MEDIA_SALE = Promotion(
+    label="September media sale",
+    starts_on="2026-09-01",
+    ends_on="2026-09-16",
+    terms="While stocks last. Ends Wednesday, 16 September 2026.",
+)
 
 #: A dated special on the suite. When it ends the products stop being
 #: advertised on their own; nobody has to remember to take them down.
@@ -97,6 +117,44 @@ PRODUCTS = [
         room_types=LOUNGE_ROOMS,
         promotion=WINTER_SALE,
         build=build_sofa(RECLINER),
+    ),
+    Product(
+        id="sansui-50-fhd-google-tv",
+        shop=SHOP,
+        category=ProductCategory.TELEVISION,
+        name="Sansui 50-inch FHD Google TV",
+        description=(
+            "50-inch full-HD smart television running Google TV, on two "
+            "splayed feet. Shown standing on the Juliet media unit."
+        ),
+        colour="Black",
+        materials=("Aluminium bezel", "Polymer feet"),
+        price=4499.95,
+        sku="000000000010320024",
+        dimensions=Dimensions(MEDIA.tv_width, MEDIA.tv_depth, MEDIA.tv_height),
+        room_types=MEDIA_ROOMS,
+        promotion=MEDIA_SALE,
+        build=build_television,
+    ),
+    Product(
+        id="juliet-tv-stand",
+        shop=SHOP,
+        category=ProductCategory.STORAGE,
+        name="Juliet TV Stand",
+        description=(
+            "Black gloss media unit with two cupboards, open centre "
+            "shelving and a floating top plank. 1870mm wide."
+        ),
+        colour="Black gloss",
+        materials=("Melamine board", "Chrome handles"),
+        price=4999.95,
+        sku="000000000010103946",
+        dimensions=Dimensions(
+            MEDIA.stand_width, MEDIA.stand_depth, MEDIA.stand_height
+        ),
+        room_types=MEDIA_ROOMS,
+        promotion=MEDIA_SALE,
+        build=build_tv_stand,
     ),
     Product(
         id="oakwood-coffee-table",

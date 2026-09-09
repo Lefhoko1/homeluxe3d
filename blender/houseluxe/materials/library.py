@@ -121,6 +121,14 @@ FINISHES: dict[str, Finish] = {
     # photograph shows a finish that scatters rather than mirrors, and a
     # metallic hinge in a doorway catches every light in the house and reads
     # as a mistake.
+    # -- Media wall ------------------------------------------------------
+    "lacquer_black":   Finish("lacquer_black",   (0.045, 0.047, 0.052), roughness=0.22),
+    "handle_chrome":   Finish("handle_chrome",   (0.780, 0.790, 0.810), roughness=0.18, metallic=1.0),
+    "tv_bezel":        Finish("tv_bezel",        (0.035, 0.036, 0.040), roughness=0.45),
+    # The picture. Dark and near-mirror here because that is what a television
+    # standing OFF looks like; the browser hangs a video texture on this
+    # surface when the placement names one. See the `television` renderer.
+    "tv_screen":       Finish("tv_screen",       (0.020, 0.020, 0.025), roughness=0.08),
     "hinge_black":     Finish("hinge_black",     (0.055, 0.058, 0.063),
                               roughness=0.52, metallic=0.55),
 

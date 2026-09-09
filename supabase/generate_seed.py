@@ -401,9 +401,15 @@ def main() -> int:
         dims = product.get("dimensions") or {}
         # Positions in the manifest are three.js metres; convert back to the
         # scene's own millimetres, which is what the database stores.
-        x_m, _y_m, z_m = pl["position"]
+        # THE MIDDLE ONE IS THE HEIGHT and it used to be discarded -- the name
+        # was `_y_m` and a literal 0 went into the column. Nothing noticed for
+        # as long as everything in the house stood on the floor; the first
+        # product to stand on another, a television on a media unit, was
+        # 800mm up in the manifest and on the carpet in the database.
+        x_m, y_m, z_m = pl["position"]
         x_mm = round(x_m * 1000.0, 1)
         y_mm = round(-z_m * 1000.0, 1)
+        z_mm = round(y_m * 1000.0, 1)
         code = f"{pl['room']}-{product.get('category', 'item')}-{i + 1}"
         label = f"{pl['room'].title()} {product.get('category', 'item')} position"
         maxw = (dims.get("width") or 0) * 1.15 or None
@@ -412,7 +418,7 @@ def main() -> int:
         rows.append(
             f"  ({q(pl['room'])}, {q(code)}, {q(label)}, "
             f"{q(product.get('category'))}, 'object',\n"
-            f"   {x_mm}, {y_mm}, 0, {pl.get('rotationY', 0)}, "
+            f"   {x_mm}, {y_mm}, {z_mm}, {pl.get('rotationY', 0)}, "
             f"{q(round(maxw, 1) if maxw else None)}, "
             f"{q(round(maxd, 1) if maxd else None)}, {q(premium)})"
         )
@@ -764,22 +770,70 @@ def main() -> int:
     w("  from scenes sc, product_variants pv, products pr, shops sh, (values")
     rows = []
     for pl in placements:
-        x_m, _y_m, z_m = pl["position"]
+        # The height, again -- same discarded `_y_m`, same consequence. See
+        # the note on the slot positions above.
+        x_m, y_m, z_m = pl["position"]
         shop_slug, product_slug = pl["product"].split(".", 1)
         rows.append(
             f"  ({q(shop_slug)}, {q(product_slug)}, "
-            f"{round(x_m * 1000.0, 1)}, {round(-z_m * 1000.0, 1)}, 0, "
-            f"{pl.get('rotationY', 0)})"
+            f"{round(x_m * 1000.0, 1)}, {round(-z_m * 1000.0, 1)}, "
+            f"{round(y_m * 1000.0, 1)}, "
+            f"{pl.get('rotationY', 0)}, {q(pl['room'])})"
         )
     w(",\n".join(rows))
-    w(") as v(shop, product, x, y, z, rot)")
+    w(") as v(shop, product, x, y, z, rot, room)")
     w(" where p.scene_id = sc.id and p.status = 'live'")
     w(f"   and sc.slug = {q(SCENE_SLUG)}")
     w("   and pv.id = p.variant_id and pr.id = pv.product_id")
     w("   and sh.id = pr.shop_id")
     w("   and sh.slug = v.shop and pr.slug = v.product")
+    # THE GUARD HAS TO NAME EVERY COLUMN THE UPDATE WRITES. It listed x, y and
+    # rotation but not z, so a placement whose only wrong value was its height
+    # matched nothing and was never corrected -- which went on hiding the bug
+    # above even after the height was being computed correctly.
     w("   and (p.x_mm is distinct from v.x or p.y_mm is distinct from v.y")
+    w("        or p.z_mm is distinct from v.z")
     w("        or p.rotation_deg is distinct from v.rot);")
+    w("")
+
+    # -- And its slot moves with it ----------------------------------------
+    #
+    # A PRODUCT THAT CHANGES ROOM HAS TO TAKE ITS SLOT WITH IT. The update
+    # above mirrors the catalogue's coordinates; the reconciliation before it
+    # binds a SLOTLESS placement to a slot. Neither covers a placement that
+    # HAS a slot and whose product the catalogue has since moved to another
+    # room: the coordinates were rewritten and the slot stayed where it was.
+    #
+    # `v_live_placements.room_code` comes from the slot, so the television
+    # ended up standing in bedroom 2 and listed under Living -- in the wrong
+    # room's product list, counted in the wrong room's total.
+    w("-- Re-point a placement whose product has moved to another room.")
+    w("update placements p")
+    w("   set slot_id = t.id")
+    w("  from scenes sc, product_variants pv, products pr, shops sh,")
+    w("       placement_slots t, rooms rm, (values")
+    moves = [
+        f"  ({q(pl['product'].split('.', 1)[0])}, "
+        f"{q(pl['product'].split('.', 1)[1])}, {q(pl['room'])})"
+        for pl in placements if not pl.get("isFinish")
+    ]
+    w(",\n".join(moves))
+    w(") as v(shop, product, room)")
+    w(" where p.scene_id = sc.id and p.status = 'live'")
+    w(f"   and sc.slug = {q(SCENE_SLUG)}")
+    w("   and pv.id = p.variant_id and pr.id = pv.product_id")
+    w("   and sh.id = pr.shop_id")
+    w("   and sh.slug = v.shop and pr.slug = v.product")
+    w("   and rm.scene_id = sc.id and rm.code = v.room")
+    w("   and t.scene_id = sc.id and t.room_id = rm.id and t.is_active")
+    w("   and t.category_code = pr.category_code")
+    w("   -- only when the slot it has is in the wrong room")
+    w("   and not exists (select 1 from placement_slots cur")
+    w("                    where cur.id = p.slot_id and cur.room_id = rm.id)")
+    w("   -- and never onto a position something else is standing in")
+    w("   and not exists (select 1 from placements o")
+    w("                    where o.slot_id = t.id and o.status = 'live'")
+    w("                      and o.id <> p.id);")
     w("")
 
     w("commit;")

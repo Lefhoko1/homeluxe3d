@@ -59,7 +59,9 @@ CELL = 100.0
 #: strand a room. It gets reported instead.
 CLEARANCE = 280.0
 
-CLEARANCE_LADDER = (380.0, 340.0, 300.0, 280.0, 250.0, 220.0, 200.0, 170.0)
+#: The clearances tried, widest first. See CLEARANCE_LADDER below, which is
+#: this list with the unwalkable rungs taken off.
+_LADDER_CANDIDATES = (380.0, 340.0, 300.0, 280.0, 250.0, 220.0, 200.0, 170.0)
 
 #: How wide the walker is, in millimetres -- the radius of the circle the
 #: browser pushes out of the walls.
@@ -75,6 +77,31 @@ CLEARANCE_LADDER = (380.0, 340.0, 300.0, 280.0, 250.0, 220.0, 200.0, 170.0)
 #: doorway is the one place the route is deliberately allowed to squeeze
 #: through the padding, and it must not squeeze closer than the shoulders fit.
 WALKER_RADIUS = 260.0
+
+#: The rungs actually tried: only those a walker can physically use.
+#:
+#: THE LADDER USED TO GO BELOW THE WALKER. Four of its eight rungs -- 250,
+#: 220, 200 and 170 -- are narrower than the 260mm circle the browser pushes
+#: out of the walls, so a route solved on one of them threads gaps the
+#: character cannot enter. It is exactly the failure the note above this
+#: constant warns about, written into the ladder itself: the route steers the
+#: character somewhere the collision model then shoves it out of, and the tour
+#: quietly stops arriving.
+#:
+#: It went unnoticed while the house happened to solve at 300. Widening one
+#: slot by 300mm dropped it to the 250 rung, and three of the tour tests
+#: started reporting jams in a part of the house nothing had been changed in
+#: -- which is the tell for a route that was never walkable rather than a
+#: room that was newly blocked.
+#:
+#: Derived from WALKER_RADIUS rather than written out, so the two cannot drift.
+#: If nothing links at the narrowest walkable rung the solver keeps that
+#: attempt and NAMES the stranded rooms, which is a loud failure and the right
+#: one -- better a tour that says it cannot reach the ensuite than one that
+#: sets off towards it and grinds against a doorway forever.
+CLEARANCE_LADDER = tuple(
+    rung for rung in _LADDER_CANDIDATES if rung >= WALKER_RADIUS
+)
 
 #: Openings you can walk through. A window has a sill and is not one of them.
 WALKABLE_OPENINGS = {

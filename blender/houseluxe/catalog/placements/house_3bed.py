@@ -53,6 +53,22 @@ LIVING_ROOM = [
         x=9400.0, y=2500.0, rotation=90.0,
         note="Footrest extends west into the open floor.",
     ),
+    # The media wall, on bedroom 2's foot wall facing the bed. NOT the living
+    # room: see `_media_wall` in config/slots_3bed.py for why the open-plan
+    # lounge has no wall long enough to take it, and what happened when it was
+    # stood across the threshold instead.
+    Placement(
+        product_id="bradlows.juliet-tv-stand",
+        house=HOUSE, room="bed2",
+        x=9440.0, y=8497.0, rotation=0.0,
+        note="Foot wall of bedroom 2, facing the bed; 1870mm wide.",
+    ),
+    Placement(
+        product_id="bradlows.sansui-50-fhd-google-tv",
+        house=HOUSE, room="bed2",
+        x=9440.0, y=8601.0, rotation=0.0, z=800.0,
+        note="Stands on the Juliet's top plank, facing the bed.",
+    ),
     Placement(
         product_id="bradlows.oakwood-coffee-table",
         house=HOUSE, room="living",
