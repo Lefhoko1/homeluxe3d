@@ -33,6 +33,13 @@ export const HOUSE_PARTS = [
   { id: "wall_finishes",  file: "wall_finishes.glb",  label: "Wall finishes",  visible: true,  castShadow: false, receiveShadow: true },
   { id: "windows",        file: "windows.glb",        label: "Windows",        visible: true,  castShadow: false, receiveShadow: false },
   { id: "doors",          file: "doors.glb",          label: "Doors",          visible: true,  castShadow: true,  receiveShadow: true },
+  // THE FITTED KITCHEN, WHICH WAS BUILT AND NEVER LOADED.
+  // `components/kitchen.py` sets the runs out from the backed spans, exports
+  // them to kitchen.glb, and the route solver walks around them while
+  // collision.json treats them as solid. The one thing nobody did was put the
+  // file on this list, so the character has been squeezing past cabinets that
+  // were never drawn and the room read as an empty box with slots in it.
+  { id: "kitchen",        file: "kitchen.glb",        label: "Fitted kitchen", visible: true,  castShadow: true,  receiveShadow: true },
   // THE CEILING MUST CAST. With this false the sun went straight through it
   // into every room, which is why the interiors looked as though the house
   // was full of holes: the roof above blocked the light, the ceiling below

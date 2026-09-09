@@ -3,6 +3,25 @@
 *Written at commit `83992c7`, scene v14. This is a continuation note for a
 fresh session: read it, then read `SYSTEM_AUDIT.md` for the system as a whole.*
 
+> **Update, scene v15.** Two things changed since this was written.
+>
+> **1. The fitted kitchen was never on screen.** `kitchen.glb` -- 19 meshes of
+> plinth, carcass, doors and worktop, at the right coordinates -- was built by
+> `components/kitchen.py`, exported, painted into the route solver and treated
+> as solid by `collision.json`, and **was missing from `HOUSE_PARTS` in
+> `components/homeluxe/house/houseConfig.js`**. Nothing in the repository
+> referenced the filename. The character had been squeezing past cabinets
+> nobody could see, which is why the kitchen read as an empty room with slots
+> in it. One line; it renders now. Read §2 below knowing the room was always
+> furnished -- the backed-span arithmetic was right, only invisible.
+>
+> **2. The Grandiose run is standing in the DINING ROOM**, by migration
+> `0024`, so it can be looked at. That is a viewing, not the answer: the
+> kitchen measurements in §2 are unchanged and `SLOT_KITCHEN_RUN_001` stays
+> retired. The dining east wall is the only side of that room long enough
+> (4000mm), and about 1120mm of the unit's full-height section stands in front
+> of its window. Option 2 below is still the work.
+
 The task waiting is **option 2: make the Grandiose kitchen scheme BE the
 kitchen** — replace the fitted joinery the generator builds with the uploaded
 product, so it can actually be seen in the house.
