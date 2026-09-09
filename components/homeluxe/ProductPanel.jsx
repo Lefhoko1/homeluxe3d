@@ -106,6 +106,12 @@ const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
         )}
       </div>
 
+      {/* NO PRICE, NO TAG. A product can legitimately have no price -- an
+          uploaded model whose listing never published one -- and the block
+          rendered anyway, so the panel showed an empty amber card with the
+          word PRICE in it and nothing under it. That reads as a price that
+          failed to load rather than one that was never quoted. */}
+      {price != null && (
       <div className="product-price-block">
         <div className="product-price-label">
           {wasPrice ? 'Now' : 'Price'}
@@ -124,6 +130,7 @@ const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
           </div>
         )}
       </div>
+      )}
 
       {promo && (
         <div className="product-promo">
