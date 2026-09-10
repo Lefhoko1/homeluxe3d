@@ -33,31 +33,31 @@ LIVING_ROOM = [
     ),
     # Three-seater against the south wall, under the living room window.
     Placement(
-        product_id="bradlows.sandton-sofa-3",
+        product_id="bradlows.drake-3-seater",
         house=HOUSE, room="living",
         x=8400.0, y=830.0, rotation=0.0,
         note=(
             "Backs onto the south wall, 125mm clear of it, under its "
-            "window. MOVED 400mm EAST TO OPEN THE FRONT DOOR: at x 7900 "
-            "its west end was 451mm from the media console, and a 260mm "
-            "walker needs 520mm to pass, let alone the 300mm of clearance "
-            "the route is solved at. The solver could not get from the "
-            "front door into the room, so it took the visitor the long way "
-            "round the outside of the house and in through the dining "
-            "slider -- which is what a person watching the tour reported. "
-            "636mm was not enough either -- that is 318mm of clearance "
-            "and the solver works on a grid, so a channel inflated by its "
-            "300mm margin left too little for a cell to land in. At x 8300 "
-            "the channel is 851mm and the clearance 425mm, which clears "
-            "the widest rung on the ladder. It sits 215mm east of centre "
-            "under its window; a door you can walk through is worth more."
+            "window, and 400mm east of centre under it. THE EAST SHIFT IS "
+            "WHAT OPENS THE FRONT DOOR, and it is the whole reason this is "
+            "not centred: the only way from the doorway into the rest of "
+            "the house runs between this sofa and the media console, and "
+            "the route is solved on a grid with a 300mm margin painted "
+            "round everything, so that channel has to be generously more "
+            "than 600mm before a path can be found in it. Centred, the "
+            "predecessor left 451mm and the tour walked out of the front "
+            "door, round the outside of the house and in through the "
+            "dining slider instead -- which is what a person watching it "
+            "reported. Here the channel is 1037mm. The Drake is 171mm "
+            "narrower than the Sandton it replaced, so it is wider than "
+            "it needs to be; the position is kept because a door you can "
+            "walk through is worth more than a symmetrical elevation."
         ),
     ),
-    # Two-seater on the west, facing east across the rug. MOVED NORTH from
-    # y 2500 to make room for the media console below it: the west wall is
-    # the living room's only solid run and the two now share it end to end.
+    # The two-seater, on the dining side of the open plan. It is not on the
+    # west wall because the media console is -- see the block below.
     Placement(
-        product_id="bradlows.sandton-sofa-2",
+        product_id="bradlows.drake-2-seater-console",
         house=HOUSE, room="dining",
         x=11150.0, y=830.0, rotation=0.0,
         note=(
@@ -66,7 +66,9 @@ LIVING_ROOM = [
             "STOOD 90mm OFF THE BACK OF THE RECLINER -- two seats in two "
             "rooms either side of the open boundary, reading as one sofa "
             "parked behind another. It lost the west wall to the media "
-            "console; this is where it went."
+            "console; this is where it went. The Drake carries a storage "
+            "console between its seats, so its cup holders face the room "
+            "rather than a wall."
         ),
     ),
     # ---- The media wall, on the living room's one solid stretch ----------
@@ -88,7 +90,7 @@ LIVING_ROOM = [
     # a door.
     #
     # So the usable wall is 869..3905, which is 3036mm. The console is 1845mm
-    # and the two-seater 1780mm: 3625mm. THE WALL HOLDS ONE OF THEM.
+    # and the two-seater 1840mm: 3685mm. THE WALL HOLDS ONE OF THEM.
     #
     # Moving the whole living/dining wing 700mm south was tried, and reverted.
     # It did lengthen the wall and carry the door's swing with it, and it
@@ -136,10 +138,15 @@ LIVING_ROOM = [
     # Recliner on the east, facing west. Its footrest extends toward the
     # room centre, which is why the coffee table sits west of centre.
     Placement(
-        product_id="bradlows.sandton-recliner",
+        product_id="bradlows.drake-recliner",
         house=HOUSE, room="living",
         x=9400.0, y=2500.0, rotation=90.0,
-        note="Footrest extends west into the open floor.",
+        note=(
+            "Faces west across the rug at the television. Its footrest is "
+            "modelled tucked under the seat rather than extended, so it "
+            "takes 908mm of depth where the Sandton it replaced claimed "
+            "1470mm -- 562mm of living room handed back."
+        ),
     ),
     # The media wall, on bedroom 2's foot wall facing the bed. NOT the living
     # room: see `_media_wall` in config/slots_3bed.py for why the open-plan

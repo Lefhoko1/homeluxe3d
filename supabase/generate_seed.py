@@ -186,7 +186,12 @@ def main() -> int:
     w("insert into products (shop_id, slug, sku, name, description, category_code,")
     w("                      status, price_cents, currency, width_mm, depth_mm, height_mm,")
     w("                      thumbnail_url)")
-    w("select sh.id, v.slug, v.sku, v.name, v.descr, v.cat, 'published',")
+    # STATUS COMES FROM THE CATALOGUE, not from a literal. Every product
+    # was written 'published' regardless, so `Product.enabled` -- the
+    # switch the catalogue has always had, and documents as one of the two
+    # gates on whether a thing is advertised -- reached the database as
+    # nothing at all. Retiring a product in the catalogue left it on sale.
+    w("select sh.id, v.slug, v.sku, v.name, v.descr, v.cat, v.status::product_status,")
     w("       v.price, v.cur, v.w, v.d, v.h, v.thumb")
     w("from shops sh join (values")
     rows = []
@@ -200,14 +205,15 @@ def main() -> int:
                 f"   {q(p.get('description'))}, {q(p['category'])}, {cents(p.get('price'))},"
                 f" {q(p.get('currency', 'BWP'))},\n"
                 f"   {q(dims.get('width'))}, {q(dims.get('depth'))}, {q(dims.get('height'))},"
-                f" {q(p.get('thumbnail'))})"
+                f" {q(p.get('thumbnail'))},"
+                f" {q('published' if p.get('enabled', True) else 'archived')})"
             )
     w(",\n".join(rows))
-    w(") as v(shop, slug, sku, name, descr, cat, price, cur, w, d, h, thumb)")
+    w(") as v(shop, slug, sku, name, descr, cat, price, cur, w, d, h, thumb, status)")
     w("  on sh.slug = v.shop")
     w("on conflict (shop_id, slug) do update set")
     w("  name = excluded.name, description = excluded.description,")
-    w("  price_cents = excluded.price_cents, status = 'published',")
+    w("  price_cents = excluded.price_cents, status = excluded.status,")
     w("  thumbnail_url = excluded.thumbnail_url;")
     w("")
 
@@ -459,6 +465,27 @@ def main() -> int:
     # only ever contain one of anything would be a strange showroom. The
     # guard below counts against this rather than refusing outright.
     wanted = Counter(pl["product"] for pl in placements)
+
+    # -- Clear out anything that has been switched off --------------------
+    #
+    # ARCHIVING A PRODUCT HAS TO EMPTY ITS SLOT, and this runs before the
+    # fill below so the slot is free when its replacement arrives.
+    #
+    # `v_live_placements` already hides an archived product, so leaving the
+    # row alone would look right to a visitor and be wrong everywhere else:
+    # the authored slot would still read as occupied, the replacement would
+    # be pushed onto a derived slot, `suggest_slots` would go on refusing a
+    # position that nothing visible stands in, and the admin screen would
+    # show a retired suite still furnishing the lounge. Hiding a thing is not
+    # the same as it not being there.
+    w("-- Retire the placements of any product that is no longer published.")
+    w("update placements p set status = 'removed'")
+    w("  from scenes sc, product_variants pv, products pr")
+    w(" where p.scene_id = sc.id and p.status = 'live'")
+    w(f"   and sc.slug = {q(SCENE_SLUG)}")
+    w("   and pv.id = p.variant_id and pr.id = pv.product_id")
+    w("   and pr.status <> 'published';")
+    w("")
 
     w("-- Live placements: fill each slot with the product it was authored with.")
     w("insert into placements (scene_id, slot_id, variant_id, shop_id, status, note)")

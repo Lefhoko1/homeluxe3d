@@ -10,6 +10,91 @@
       "website": "",
       "products": [
         {
+          "id": "bradlows.drake-3-seater",
+          "shop": "bradlows",
+          "category": "sofa",
+          "name": "Drake 3-Seater Lounge Sofa",
+          "description": "Beige leather three-seater with individually sectioned seats, separate headrests and stitched seam detail. 2229mm wide.",
+          "colour": "Beige",
+          "sku": "714280",
+          "price": null,
+          "effectivePrice": null,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Beige leather",
+            "Hardwood frame"
+          ],
+          "dimensions": {
+            "width": 2229.0,
+            "depth": 816.0,
+            "height": 1026.0
+          },
+          "model": "/models/products/bradlows/drake-3-seater.glb"
+        },
+        {
+          "id": "bradlows.drake-2-seater-console",
+          "shop": "bradlows",
+          "category": "sofa",
+          "name": "Drake 2-Seater with Storage Console",
+          "description": "Matching two-seater with a centre storage console, lift lid and two stainless cup holders. 1840mm wide.",
+          "colour": "Beige",
+          "sku": "714280",
+          "price": null,
+          "effectivePrice": null,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Beige leather",
+            "Brushed stainless",
+            "Hardwood frame"
+          ],
+          "dimensions": {
+            "width": 1840.0,
+            "depth": 830.0,
+            "height": 1025.0
+          },
+          "model": "/models/products/bradlows/drake-2-seater-console.glb"
+        },
+        {
+          "id": "bradlows.drake-recliner",
+          "shop": "bradlows",
+          "category": "chair",
+          "name": "Drake Recliner Armchair",
+          "description": "Single-seat recliner from the Drake suite, with a separate reclining back and a tucked footrest.",
+          "colour": "Beige",
+          "sku": "714280",
+          "price": null,
+          "effectivePrice": null,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Beige leather",
+            "Hardwood frame"
+          ],
+          "dimensions": {
+            "width": 983.0,
+            "depth": 908.0,
+            "height": 1055.0
+          },
+          "model": "/models/products/bradlows/drake-recliner.glb"
+        },
+        {
           "id": "bradlows.sandton-sofa-3",
           "shop": "bradlows",
           "category": "sofa",
@@ -24,8 +109,8 @@
             "living",
             "dining"
           ],
-          "isActive": true,
-          "enabled": true,
+          "isActive": false,
+          "enabled": false,
           "promotion": {
             "label": "Winter Lounge Sale -- 20% off the Sandton suite",
             "startsOn": "2026-06-01",
@@ -60,8 +145,8 @@
             "living",
             "dining"
           ],
-          "isActive": true,
-          "enabled": true,
+          "isActive": false,
+          "enabled": false,
           "promotion": {
             "label": "Winter Lounge Sale -- 20% off the Sandton suite",
             "startsOn": "2026-06-01",
@@ -96,8 +181,8 @@
             "living",
             "dining"
           ],
-          "isActive": true,
-          "enabled": true,
+          "isActive": false,
+          "enabled": false,
           "promotion": {
             "label": "Winter Lounge Sale -- 20% off the Sandton suite",
             "startsOn": "2026-06-01",
@@ -763,7 +848,7 @@
         "rotationY": 0.0
       },
       {
-        "product": "bradlows.sandton-sofa-3",
+        "product": "bradlows.drake-3-seater",
         "room": "living",
         "note": "Backs onto the south wall, 125mm clear of it, under its window. MOVED 400mm EAST TO OPEN THE FRONT DOOR: at x 7900 its west end was 451mm from the media console, and a 260mm walker needs 520mm to pass, let alone the 300mm of clearance the route is solved at. The solver could not get from the front door into the room, so it took the visitor the long way round the outside of the house and in through the dining slider -- which is what a person watching the tour reported. 636mm was not enough either -- that is 318mm of clearance and the solver works on a grid, so a channel inflated by its 300mm margin left too little for a cell to land in. At x 8300 the channel is 851mm and the clearance 425mm, which clears the widest rung on the ladder. It sits 215mm east of centre under its window; a door you can walk through is worth more.",
         "isFinish": false,
@@ -775,7 +860,7 @@
         "rotationY": 0.0
       },
       {
-        "product": "bradlows.sandton-sofa-2",
+        "product": "bradlows.drake-2-seater-console",
         "room": "dining",
         "note": "Under the dining window, backing onto the south wall, the same way the three-seater sits under its own. AT x 10700 IT STOOD 90mm OFF THE BACK OF THE RECLINER -- two seats in two rooms either side of the open boundary, reading as one sofa parked behind another. It lost the west wall to the media console; this is where it went.",
         "isFinish": false,
@@ -811,7 +896,7 @@
         "rotationY": -90.0
       },
       {
-        "product": "bradlows.sandton-recliner",
+        "product": "bradlows.drake-recliner",
         "room": "living",
         "note": "Footrest extends west into the open floor.",
         "isFinish": false,

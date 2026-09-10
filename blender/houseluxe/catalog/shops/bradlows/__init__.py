@@ -22,6 +22,13 @@ from .lounge import (
     build_rug,
     build_sofa,
 )
+from .drake import (
+    RECLINER as DRAKE_RECLINER,
+    SUITE_SKU as DRAKE_SKU,
+    THREE_SEATER as DRAKE_THREE_SEATER,
+    TWO_SEATER as DRAKE_TWO_SEATER,
+    build_drake_recliner, build_drake_three_seater, build_drake_two_seater,
+)
 from .media import (
     CONSOLE_D, CONSOLE_H, CONSOLE_W, MEDIA,
     build_television, build_tv_console, build_tv_stand,
@@ -71,6 +78,63 @@ WINTER_SALE = Promotion(
 )
 
 PRODUCTS = [
+    # ---- The Drake three-piece lounge suite -----------------------------
+    #
+    # Imported, not modelled: see drake.py for what the preparation step did
+    # and why. NO PRICES -- the package gives dimensions, materials and
+    # photographs and no money, and a price is the one field on an advert
+    # that must never be guessed. The Products screen fills them in.
+    Product(
+        id="drake-3-seater",
+        shop=SHOP,
+        category=ProductCategory.SOFA,
+        name="Drake 3-Seater Lounge Sofa",
+        description=(
+            "Beige leather three-seater with individually sectioned seats, "
+            "separate headrests and stitched seam detail. 2229mm wide."
+        ),
+        colour="Beige",
+        materials=("Beige leather", "Hardwood frame"),
+        price=None,
+        sku=DRAKE_SKU,
+        dimensions=Dimensions(*DRAKE_THREE_SEATER),
+        room_types=LOUNGE_ROOMS,
+        build=build_drake_three_seater,
+    ),
+    Product(
+        id="drake-2-seater-console",
+        shop=SHOP,
+        category=ProductCategory.SOFA,
+        name="Drake 2-Seater with Storage Console",
+        description=(
+            "Matching two-seater with a centre storage console, lift lid and "
+            "two stainless cup holders. 1840mm wide."
+        ),
+        colour="Beige",
+        materials=("Beige leather", "Brushed stainless", "Hardwood frame"),
+        price=None,
+        sku=DRAKE_SKU,
+        dimensions=Dimensions(*DRAKE_TWO_SEATER),
+        room_types=LOUNGE_ROOMS,
+        build=build_drake_two_seater,
+    ),
+    Product(
+        id="drake-recliner",
+        shop=SHOP,
+        category=ProductCategory.CHAIR,
+        name="Drake Recliner Armchair",
+        description=(
+            "Single-seat recliner from the Drake suite, with a separate "
+            "reclining back and a tucked footrest."
+        ),
+        colour="Beige",
+        materials=("Beige leather", "Hardwood frame"),
+        price=None,
+        sku=DRAKE_SKU,
+        dimensions=Dimensions(*DRAKE_RECLINER),
+        room_types=LOUNGE_ROOMS,
+        build=build_drake_recliner,
+    ),
     Product(
         id="sandton-sofa-3",
         shop=SHOP,
@@ -87,6 +151,12 @@ PRODUCTS = [
         dimensions=Dimensions(SOFA_3.width, DEPTH, 1020.0),
         room_types=LOUNGE_ROOMS,
         promotion=WINTER_SALE,
+        # RETIRED IN FAVOUR OF THE DRAKE SUITE. Left in the catalogue
+        # rather than deleted: the shop sold these, there are enquiries
+        # against them, and a product that vanishes takes its history
+        # with it. `enabled=False` archives it -- the seed writes
+        # 'archived' and the read policy stops showing it.
+        enabled=False,
         build=build_sofa(SOFA_3),
     ),
     Product(
@@ -102,6 +172,7 @@ PRODUCTS = [
         dimensions=Dimensions(SOFA_2.width, DEPTH, 1020.0),
         room_types=LOUNGE_ROOMS,
         promotion=WINTER_SALE,
+        enabled=False,          # retired: see sandton-sofa-3
         build=build_sofa(SOFA_2),
     ),
     Product(
@@ -119,6 +190,7 @@ PRODUCTS = [
         dimensions=Dimensions(RECLINER.width, RECLINER.depth, 1020.0),
         room_types=LOUNGE_ROOMS,
         promotion=WINTER_SALE,
+        enabled=False,          # retired: see sandton-sofa-3
         build=build_sofa(RECLINER),
     ),
     Product(
