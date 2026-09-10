@@ -35,8 +35,23 @@ LIVING_ROOM = [
     Placement(
         product_id="bradlows.sandton-sofa-3",
         house=HOUSE, room="living",
-        x=7900.0, y=830.0, rotation=0.0,
-        note="Backs onto the south wall, 125mm clear of it.",
+        x=8400.0, y=830.0, rotation=0.0,
+        note=(
+            "Backs onto the south wall, 125mm clear of it, under its "
+            "window. MOVED 400mm EAST TO OPEN THE FRONT DOOR: at x 7900 "
+            "its west end was 451mm from the media console, and a 260mm "
+            "walker needs 520mm to pass, let alone the 300mm of clearance "
+            "the route is solved at. The solver could not get from the "
+            "front door into the room, so it took the visitor the long way "
+            "round the outside of the house and in through the dining "
+            "slider -- which is what a person watching the tour reported. "
+            "636mm was not enough either -- that is 318mm of clearance "
+            "and the solver works on a grid, so a channel inflated by its "
+            "300mm margin left too little for a cell to land in. At x 8300 "
+            "the channel is 851mm and the clearance 425mm, which clears "
+            "the widest rung on the ladder. It sits 215mm east of centre "
+            "under its window; a door you can walk through is worth more."
+        ),
     ),
     # Two-seater on the west, facing east across the rug. MOVED NORTH from
     # y 2500 to make room for the media console below it: the west wall is
@@ -44,8 +59,15 @@ LIVING_ROOM = [
     Placement(
         product_id="bradlows.sandton-sofa-2",
         house=HOUSE, room="dining",
-        x=10700.0, y=2200.0, rotation=90.0,
-        note="Turned west into the lounge, on the dining side of the open plan. It lost the west wall to the media console.",
+        x=11150.0, y=830.0, rotation=0.0,
+        note=(
+            "Under the dining window, backing onto the south wall, the "
+            "same way the three-seater sits under its own. AT x 10700 IT "
+            "STOOD 90mm OFF THE BACK OF THE RECLINER -- two seats in two "
+            "rooms either side of the open boundary, reading as one sofa "
+            "parked behind another. It lost the west wall to the media "
+            "console; this is where it went."
+        ),
     ),
     # ---- The media wall, on the living room's one solid stretch ----------
     #
@@ -89,8 +111,17 @@ LIVING_ROOM = [
     Placement(
         product_id="bradlows.modern-black-tv-console",
         house=HOUSE, room="living",
-        x=5990.0, y=1800.0, rotation=-90.0,
-        note="South end of the west wall, clear of the step pier at x 5710.",
+        x=5990.0, y=2650.0, rotation=-90.0,
+        note=(
+            "West wall, and its centre is pinned between two doors. It "
+            "must sit far enough NORTH that its padded footprint clears "
+            "the open front-door leaf -- the solver paints the leaf where "
+            "it comes to rest, 880mm into the room, and console plus leaf "
+            "sealed the only way in -- and far enough SOUTH to leave the "
+            "master bedroom door its swing, 397mm at y 2650 against the "
+            "260mm a walker needs. The window is 2452..2810; this is the "
+            "middle of it."
+        ),
     ),
     # The television on top of it, 780mm up, tucked back against the console's
     # upper backboard the way it stands in the reference photographs. Its
@@ -99,7 +130,7 @@ LIVING_ROOM = [
     Placement(
         product_id="bradlows.sansui-50-fhd-google-tv",
         house=HOUSE, room="living",
-        x=5860.0, y=1800.0, z=780.0, rotation=-90.0,
+        x=5860.0, y=2650.0, z=780.0, rotation=-90.0,
         note="Stands on the Modern Black console, facing east into the room.",
     ),
     # Recliner on the east, facing west. Its footrest extends toward the
@@ -129,8 +160,13 @@ LIVING_ROOM = [
     Placement(
         product_id="bradlows.oakwood-coffee-table",
         house=HOUSE, room="living",
-        x=7700.0, y=2350.0, rotation=0.0,
-        note="Off-centre west, clearing the recliner footrest by ~100mm.",
+        x=8200.0, y=2600.0, rotation=0.0,
+        note=(
+            "On the rug between the sofa and the recliner. MOVED EAST OFF "
+            "THE WAY IN: at x 7700 its padded footprint met the console's "
+            "and closed the only corridor from the front door to the rest "
+            "of the house."
+        ),
     ),
 ]
 

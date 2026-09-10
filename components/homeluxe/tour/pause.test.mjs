@@ -139,9 +139,22 @@ function walkingTour() {
     "resuming moved the character before it took a step"
   );
 
-  step(2);
+  // PAST A DWELL, not two seconds. The character stands still for ten
+  // seconds in every room, so "it has not moved in two seconds" cannot tell a
+  // tour that failed to resume from one that resumed while it was standing in
+  // a doorway looking at a sofa. This used to pass on the accident that
+  // second 45 fell in a walking stretch; it started failing the moment the
+  // route through the living room changed and second 45 landed on a stop
+  // instead, which was a true statement about the test and nothing at all
+  // about resuming.
+  let moved = 0;
+  for (let i = 0; i < 13 && moved <= 0.05; i += 1) {
+    step(1);
+    moved = tour.position.distanceTo(where);
+  }
+
   assert.ok(
-    tour.position.distanceTo(where) > 0.05,
+    moved > 0.05,
     "the tour did not start walking again after resuming"
   );
   console.log(

@@ -184,11 +184,11 @@ LIVING: list[Slot] = [
     # clear the door and y <= 1125 to leave the two-seater its wall. Eight
     # millimetres of contradiction. At 1860 x 530 the window opens to 52mm
     # and the console stands at 1120 with the door swinging fully past it.
-    at(ROOM["living"], 0.0756, 0.3925, slot_id="SLOT_LIVING_MEDIA_001",
+    at(ROOM["living"], 0.0756, 0.6050, slot_id="SLOT_LIVING_MEDIA_001",
        slot_type="media_unit", category="storage",
        width=1860.0, depth=530.0, height=800.0, rotation=-90.0,
        priority=65, label="Media unit"),
-    at(ROOM["living"], 0.0467, 0.3925, slot_id="SLOT_LIVING_TV_001",
+    at(ROOM["living"], 0.0467, 0.6050, slot_id="SLOT_LIVING_TV_001",
        slot_type="wall_television", category="television",
        # ON THE CONSOLE, not on the wall: 780mm is its top deck. The Sansui
        # is sold standing on two splayed feet.

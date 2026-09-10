@@ -222,11 +222,32 @@ function toSegment(px, pz, [x0, z0, x1, z1]) {
   return Math.hypot(px - (x0 + t * dx), pz - (z0 + t * dz));
 }
 
+/**
+ * Obstructions the owner has looked at and accepted.
+ *
+ * NOT A WAY TO SILENCE THIS CHECK. Each entry names one product and one door
+ * and has to be argued for, because the default answer is that furniture does
+ * not stand in doorways. What it buys is that the other nine openings go on
+ * being checked instead of the whole assertion being deleted the first time
+ * somebody wants an exception.
+ *
+ * The Grandiose run is 3,367mm and the dining slider is 2,325mm of terrace
+ * door, so the unit covers all of it. In a house somebody lives in that is a
+ * defect. In a showroom whose tour comes in at the front door and never goes
+ * near that opening -- no waypoint is within 1.5m of it -- it is a display,
+ * and the owner asked for the unit to stay. If the route ever starts using
+ * the slider again, `walk.test.mjs` will jam on it and say so.
+ */
+const ACCEPTED = [
+  { product: "Grandiose Kitchen Scheme", door: "dining.slider" },
+];
+
 const doors = JSON.parse(
   readFileSync(join(ROOT, "public", "models", "house", "doors.json"), "utf8")
 ).doors;
 
 const obstructed = [];
+const allowed = [];
 
 for (const row of solid) {
   const box = footprint(row);
@@ -251,12 +272,21 @@ for (const row of solid) {
       );
     }
 
-    if (nearest < WALK_RADIUS) {
-      obstructed.push({
-        what: row.product_name, room: row.room_code,
-        door: door.label, gap: nearest,
-      });
+    if (nearest >= WALK_RADIUS) continue;
+
+    const accepted = ACCEPTED.some(
+      (a) => a.product === row.product_name && a.door === door.label
+    );
+
+    if (accepted) {
+      allowed.push(`${row.product_name} in ${door.label}`);
+      continue;
     }
+
+    obstructed.push({
+      what: row.product_name, room: row.room_code,
+      door: door.label, gap: nearest,
+    });
   }
 }
 
@@ -278,4 +308,17 @@ assert.equal(
   ". A door the furniture will not let you through is a room you cannot leave."
 );
 
-console.log(`every doorway is clear (${doors.length} checked)`);
+console.log(
+  `every doorway is clear (${doors.length} checked` +
+  (allowed.length ? `, ${allowed.length} accepted: ${allowed.join("; ")}` : "") +
+  ")"
+);
+
+// An exemption for something that is no longer there is stale, and a stale
+// exemption is how a check quietly stops checking.
+for (const a of ACCEPTED) {
+  assert.ok(
+    allowed.some((line) => line === `${a.product} in ${a.door}`),
+    `ACCEPTED lists ${a.product} in ${a.door}, which no longer obstructs anything -- remove the entry rather than leaving it to cover something else`
+  );
+}

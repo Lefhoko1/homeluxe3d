@@ -317,6 +317,13 @@ def _leaf_at_rest(leaf, clearance: float, room=None) -> tuple[float, float, floa
     return (x0, y0, x1, y1)
 
 
+#: Tallest thing the walk steps over rather than around, in millimetres.
+#:
+#: The same 120mm `collision.js` uses. A rug is walked across; a coffee
+#: table is walked around. Keep the two in step.
+STEP_OVER = 120.0
+
+
 def build_grid(plan, furniture=()) -> Grid:
     """Occupancy for the whole plan: walls blocked, doorways open.
 
@@ -437,7 +444,26 @@ def build_grid(plan, furniture=()) -> Grid:
     # was stopped by furniture the route considered cleared -- the same
     # mistake as padding walls less than the ray reaches, and it stuck the
     # tour in the kitchen.
+    # ANYTHING YOU STEP OVER IS NOT AN OBSTACLE, and the rug is the proof.
+    #
+    # Every placed product was painted here regardless of how tall it was, so
+    # the living room's 3.0 x 2.2m jute rug -- sixteen millimetres of it --
+    # was painted as a wall and then padded by the route's clearance, which
+    # made it 3.6 x 2.8m of solid. That is the living room. The whole
+    # interior was blocked, the room's own centre with it, and the tour could
+    # only ever skirt the north edge; asked to go from the living room to the
+    # dining room it walked back out of the front door and round the outside
+    # of the house, because indoors there was no way through.
+    #
+    # This is the rule `footprintsOf` in the browser's collision.js already
+    # applies at run time -- drop whatever stands lower than a step -- and the
+    # two must agree or the route is solved against a house the walker does
+    # not live in. Items with no height recorded are treated as solid, which
+    # is the safe way round.
     for item in furniture:
+        height = item.get("height")
+        if height is not None and height <= STEP_OVER:
+            continue
         grid.paint(*_furniture_rect(item, CLEARANCE), 1)
     for cell in grid.doors:
         if 0 <= cell[0] < grid.nx and 0 <= cell[1] < grid.ny:
@@ -681,7 +707,8 @@ def _solve(plan, order, clearance, furniture=()):
 DWELL = 10.0
 
 
-def build_manifest(plan, order=None, dwell: float = DWELL, furniture=()) -> dict:
+def build_manifest(plan, order=None, dwell: float = DWELL, furniture=(),
+                   approach=()) -> dict:
     """Solve the whole tour.
 
     `order` is the list of room names to visit, in order. It is a DESIGNED
@@ -711,9 +738,9 @@ def build_manifest(plan, order=None, dwell: float = DWELL, furniture=()) -> dict
     # towards the living room and walks into the front of the house. Routing
     # from a point in front of the door means the first thing the tour does is
     # what a visitor does: walk up and go in.
-    approach = _approach_cell(grid, plan)
-    if approach:
-        stops.insert(0, {"room": None, "label": "Front door", "cell": approach})
+    approach_cell = _approach_cell(grid, plan)
+    if approach_cell:
+        stops.insert(0, {"room": None, "label": "Front door", "cell": approach_cell})
 
     waypoints = []
     unreachable = []
@@ -737,6 +764,26 @@ def build_manifest(plan, order=None, dwell: float = DWELL, furniture=()) -> dict
         waypoints.append({**_point(grid, legs[-1]),
                           "room": stop["room"], "label": stop["label"],
                           "dwell": dwell})
+
+    # UP THE DRIVE, FROM THE GATE.
+    #
+    # `_approach_cell` puts the visitor a metre and a half in front of the
+    # door, which is a reasonable place to start a walk through a house and a
+    # strange place to arrive at one: the character simply appeared on the
+    # doorstep. These points are the driveway's own centreline, walked north
+    # from just inside the gate -- the gap the boundary fence leaves between
+    # `fence.south_west` and `fence.south_east`, which is the drive.
+    #
+    # STRAIGHT, AND ON THE PAVING. They are given rather than solved because
+    # the drive is a clear 3.6m run with nothing on it, and because the solver
+    # would not help: its grid stops at the plan's bounding box, several
+    # metres short of the gate, and it has no notion of a surface being worth
+    # preferring. A route that cuts the corner off a driveway is the thing
+    # this is here to avoid.
+    for point in reversed(list(approach)):
+        x_mm, y_mm = point
+        waypoints.insert(0, {"position": [x_mm / 1000.0, -y_mm / 1000.0],
+                             "dwell": 0})
 
     return {
         "version": 1,
@@ -876,8 +923,10 @@ def verify(plan, manifest: dict, furniture=()) -> list[str]:
     return problems
 
 
-def write_manifest(plan, path: str, order=None, furniture=()) -> dict:
-    manifest = build_manifest(plan, order=order, furniture=furniture)
+def write_manifest(plan, path: str, order=None, furniture=(),
+                   approach=()) -> dict:
+    manifest = build_manifest(plan, order=order, furniture=furniture,
+                              approach=approach)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, indent=2)

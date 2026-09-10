@@ -266,13 +266,36 @@ def main(
                 "x": pl.x, "y": pl.y, "rotation": pl.rotation,
                 "width": getattr(product.dimensions, "width", 0.0) if product else 0.0,
                 "depth": getattr(product.dimensions, "depth", 0.0) if product else 0.0,
+                # So the solver can tell a rug from a sideboard. See
+                # STEP_OVER in export/tour_json.py.
+                "height": getattr(product.dimensions, "height", None) if product else None,
             }
             for pl in CATALOG.for_house(plan.name)
             if not pl.is_finish
             for product in [CATALOG.product(pl.product_id)]
         ]
+        # THE WALK UP THE DRIVE. Read off the site rather than typed: the
+        # driveway paving IS the way in, and the gate is the gap the boundary
+        # fence leaves for it. Walking its centreline keeps the character on
+        # the concrete instead of cutting diagonally over the lawn.
+        approach = []
+        drive = next(
+            (r for r in getattr(site_spec, "paving", []) if r.name == "paving.driveway"),
+            None,
+        ) if site_spec else None
+        if drive:
+            mid = (drive.x0 + drive.x1) / 2.0
+            # Just inside the gate, then a couple of paces along, so the
+            # straightening pass keeps it a straight line rather than a hop.
+            approach = [
+                (mid, drive.y0 + 600.0),
+                (mid, (drive.y0 + drive.y1) / 2.0),
+                (mid, drive.y1 - 400.0),
+            ]
+
         route = write_tour_manifest(
-            plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture
+            plan, TOUR_PATH, order=TOUR_ORDER, furniture=furniture,
+            approach=approach,
         )
         # The browser collides with the walls itself, so this no longer has to
         # hold for the tour to be SAFE -- but a route that scrapes along a
