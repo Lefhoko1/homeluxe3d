@@ -137,6 +137,23 @@ PRODUCTS = [
         dimensions=Dimensions(MEDIA.tv_width, MEDIA.tv_depth, MEDIA.tv_height),
         room_types=MEDIA_ROOMS,
         promotion=MEDIA_SALE,
+        # WHAT IS ON THE SCREEN. `texture` is the surface source for any
+        # product; for a television the surface is the picture, and
+        # products/screens.js hangs a THREE.VideoTexture on it when the URL
+        # names a video file.
+        #
+        # NOT A YOUTUBE LINK, and that is not a shortcut taken. A cross-origin
+        # iframe's pixels cannot be read by the page around it -- that is the
+        # origin model working, not a gap -- so no frame of a YouTube player
+        # can reach a texture. The only way anything gets one is by pulling
+        # the underlying stream, which is both against YouTube's terms and
+        # somebody else's film.
+        #
+        # This clip is CC0 -- public domain, free to copy and to serve -- and
+        # it is served from this app rather than linked, so the picture does
+        # not depend on somebody else's host still answering, and there is no
+        # cross-origin request to be refused. See public/media/README.md.
+        texture="/media/screen-loop.mp4",
         build=build_television,
     ),
     Product(

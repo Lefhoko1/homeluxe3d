@@ -110,6 +110,11 @@ export function attachScreens(group, products) {
   const created = [];
   let timer = null;
   const standbys = [];
+  // COUNTED SEPARATELY FROM `created`, which holds cleanup closures and
+  // not screens: a screen playing a video pushes two of them and one on
+  // standby pushes one, so reporting its length said the house had four
+  // televisions the moment the two it has were given something to play.
+  let screens = 0;
 
   group.traverse((child) => {
     if (!child.isMesh) return;
@@ -164,6 +169,7 @@ export function attachScreens(group, products) {
     });
 
     child.material = lit;
+    screens += 1;
     created.push(() => {
       map.dispose();
       lit.dispose();
@@ -178,7 +184,7 @@ export function attachScreens(group, products) {
   }
 
   return {
-    screens: created.length,
+    screens,
     dispose() {
       if (timer) clearInterval(timer);
       created.forEach((fn) => fn());

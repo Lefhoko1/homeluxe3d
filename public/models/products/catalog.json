@@ -152,7 +152,8 @@
             "depth": 70.0,
             "height": 719.0
           },
-          "model": "/models/products/bradlows/sansui-50-fhd-google-tv.glb"
+          "model": "/models/products/bradlows/sansui-50-fhd-google-tv.glb",
+          "texture": "/media/screen-loop.mp4"
         },
         {
           "id": "bradlows.juliet-tv-stand",
