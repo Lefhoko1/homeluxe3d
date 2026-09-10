@@ -174,3 +174,108 @@ console.log(
   `route solved at ${route.clearance_mm}mm, walker is ${WALK_RADIUS * 1000}mm`
 );
 console.log("clearance: ok");
+
+/**
+ * AND NOTHING STANDS IN A DOORWAY.
+ *
+ * The waypoint check above is not enough, and the way it is not enough was
+ * reported by somebody watching the tour: the character walked out through
+ * the dining room's sliding door and straight into a kitchen unit.
+ *
+ * Every check said yes. The waypoints were clear, because the route is solved
+ * around the walls and none of them runs through the doorway itself.
+ * `doors.test.mjs` was happy, because it tests the DOOR -- that the slider
+ * opens in time and that its aperture is wider than the walker -- and a door
+ * knows nothing about what somebody has parked in front of it. So a 3,367mm
+ * run stood across a 2,325mm opening, covering all of it, and the only thing
+ * that noticed was a person.
+ *
+ * The door manifest gives each opening as a segment on the wall. A placement
+ * blocks it if its footprint comes within a walker's radius of that segment,
+ * which is the same rule and the same number the rest of the walk uses.
+ */
+function doorSegment(door) {
+  // A hinged leaf: the gap runs from the hinge, along the wall, one leaf wide.
+  if (door.motion === "swing") {
+    const [hx, hz] = door.hinge;
+    const [ax, az] = door.along;
+
+    return [hx, hz, hx + ax * door.width_m, hz + az * door.width_m];
+  }
+
+  // A sash: the gap is the sash plus the fixed panel it slides over, centred
+  // on the opening. Half of it is the sash, half is what it slides across.
+  const [cx, cz] = door.centre;
+  const [ax, az] = door.along;
+  const half = (door.width_m + door.travel_m) / 2;
+
+  return [cx - ax * half, cz - az * half, cx + ax * half, cz + az * half];
+}
+
+/** Distance from a point to a segment, in metres. */
+function toSegment(px, pz, [x0, z0, x1, z1]) {
+  const dx = x1 - x0;
+  const dz = z1 - z0;
+  const len = dx * dx + dz * dz;
+  const t = len === 0 ? 0 : Math.max(0, Math.min(1, ((px - x0) * dx + (pz - z0) * dz) / len));
+
+  return Math.hypot(px - (x0 + t * dx), pz - (z0 + t * dz));
+}
+
+const doors = JSON.parse(
+  readFileSync(join(ROOT, "public", "models", "house", "doors.json"), "utf8")
+).doors;
+
+const obstructed = [];
+
+for (const row of solid) {
+  const box = footprint(row);
+
+  for (const door of doors) {
+    const segment = doorSegment(door);
+
+    // Sample the footprint's outline against the opening. The corners alone
+    // miss a long run lying across a short doorway -- every corner is far
+    // from it and the middle of the edge is sitting in it.
+    let nearest = Infinity;
+    const STEPS = 40;
+    for (let i = 0; i <= STEPS; i += 1) {
+      const t = i / STEPS;
+      const xs = box.x0 + (box.x1 - box.x0) * t;
+      const zs = box.z0 + (box.z1 - box.z0) * t;
+
+      nearest = Math.min(
+        nearest,
+        toSegment(xs, box.z0, segment), toSegment(xs, box.z1, segment),
+        toSegment(box.x0, zs, segment), toSegment(box.x1, zs, segment)
+      );
+    }
+
+    if (nearest < WALK_RADIUS) {
+      obstructed.push({
+        what: row.product_name, room: row.room_code,
+        door: door.label, gap: nearest,
+      });
+    }
+  }
+}
+
+if (obstructed.length) {
+  console.log("\nIN A DOORWAY:");
+  for (const b of obstructed) {
+    console.log(
+      `  ${b.what} (${b.room}) stands in ${b.door} -- ` +
+      `${(b.gap * 1000).toFixed(0)}mm of ${WALK_RADIUS * 1000}mm needed`
+    );
+  }
+}
+
+assert.equal(
+  obstructed.length,
+  0,
+  `${obstructed.length} placement(s) stand in a doorway: ` +
+  obstructed.map((b) => `${b.what} blocks ${b.door}`).join("; ") +
+  ". A door the furniture will not let you through is a room you cannot leave."
+);
+
+console.log(`every doorway is clear (${doors.length} checked)`);
