@@ -72,16 +72,22 @@ def authored_placements() -> dict:
     with io.open(CATALOG, encoding="utf-8") as handle:
         catalog = json.load(handle)
 
+    # A LIST PER PRODUCT, not one position. The same television stands in the
+    # living room and in bedroom 2, and keying by product kept only whichever
+    # came last -- so the pair was compared against the wrong half of itself
+    # and reported as drift while both were exactly where they belonged.
     out = {}
     for placement in catalog.get("houses", {}).get("3bed", []):
         if placement.get("isFinish") or not placement.get("position"):
             continue
         x_m, _y, z_m = placement["position"]
-        out[placement["product"]] = (
+        out.setdefault(placement["product"], []).append((
             round(x_m * 1000.0, 1),
             round(-z_m * 1000.0, 1),
             float(placement.get("rotationY", 0.0) or 0.0),
-        )
+        ))
+    for positions in out.values():
+        positions.sort()
     return out
 
 
@@ -103,28 +109,42 @@ def compare(conn) -> int:
              from v_live_placements
             where model_url is not null"""
     )
-    have = {r[0]: (float(r[1]), float(r[2]), float(r[3] or 0)) for r in cur.fetchall()}
+    have = {}
+    for row in cur.fetchall():
+        have.setdefault(row[0], []).append(
+            (float(row[1]), float(row[2]), float(row[3] or 0))
+        )
+    for positions in have.values():
+        positions.sort()
+
+    def shows(pos):
+        return f"{pos[0]:.0f},{pos[1]:.0f} @{pos[2]:.0f}"
 
     rows = []
-    for product, wanted in sorted(want.items()):
-        got = have.get(product)
-        if got is None:
-            rows.append((product, f"{wanted[0]:.0f},{wanted[1]:.0f}", "not placed", False))
+    for product, wanted_all in sorted(want.items()):
+        got_all = have.get(product, [])
+        # Compared position by position, in the same sorted order on both
+        # sides, so two of one product are two comparisons rather than a
+        # coin toss over which row wins.
+        for i, wanted in enumerate(wanted_all):
+            if i >= len(got_all):
+                rows.append((product, shows(wanted), "not placed", False))
+                problems += 1
+                continue
+            got = got_all[i]
+            moved = (
+                abs(got[0] - wanted[0]) > TOLERANCE_MM
+                or abs(got[1] - wanted[1]) > TOLERANCE_MM
+                or abs(((got[2] - wanted[2] + 180) % 360) - 180) > 0.5
+            )
+            if moved:
+                problems += 1
+            rows.append((product, shows(wanted), shows(got), not moved))
+
+        # And anything standing that the catalogue does not author at all.
+        for got in got_all[len(wanted_all):]:
+            rows.append((product, "not authored", shows(got), False))
             problems += 1
-            continue
-        moved = (
-            abs(got[0] - wanted[0]) > TOLERANCE_MM
-            or abs(got[1] - wanted[1]) > TOLERANCE_MM
-            or abs(((got[2] - wanted[2] + 180) % 360) - 180) > 0.5
-        )
-        if moved:
-            problems += 1
-        rows.append((
-            product,
-            f"{wanted[0]:.0f},{wanted[1]:.0f} @{wanted[2]:.0f}",
-            f"{got[0]:.0f},{got[1]:.0f} @{got[2]:.0f}",
-            not moved,
-        ))
 
     print(f"\n  {'product':<40}{'catalogue':>20}{'database':>20}   ")
     print("  " + "-" * 84)

@@ -654,27 +654,6 @@
       ]
     },
     {
-      "id": "SLOT_LIVING_TV_001",
-      "room": "living",
-      "roomLabel": "Living",
-      "roomType": "living",
-      "type": "wall_television",
-      "category": "television",
-      "label": "Television",
-      "priority": 90,
-      "position": [
-        7.9,
-        0.9,
-        -4.11
-      ],
-      "rotationY": 180.0,
-      "size": [
-        1.4,
-        0.8,
-        0.12
-      ]
-    },
-    {
       "id": "SLOT_LIVING_MEDIA_001",
       "room": "living",
       "roomLabel": "Living",
@@ -684,15 +663,36 @@
       "label": "Media unit",
       "priority": 65,
       "position": [
-        7.9,
+        5.9902,
         0.0,
-        -3.99
+        -1.8
       ],
-      "rotationY": 180.0,
+      "rotationY": -90.0,
       "size": [
-        1.6,
-        0.55,
-        0.45
+        1.86,
+        0.8,
+        0.53
+      ]
+    },
+    {
+      "id": "SLOT_LIVING_TV_001",
+      "room": "living",
+      "roomLabel": "Living",
+      "roomType": "living",
+      "type": "wall_television",
+      "category": "television",
+      "label": "Television",
+      "priority": 90,
+      "position": [
+        5.8601,
+        0.78,
+        -1.8
+      ],
+      "rotationY": -90.0,
+      "size": [
+        1.3,
+        0.76,
+        0.28
       ]
     },
     {

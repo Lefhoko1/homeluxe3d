@@ -17,6 +17,7 @@ makes reading it from plain Python possible.
 
 from __future__ import annotations
 
+from collections import Counter
 import json
 import os
 import sys
@@ -426,10 +427,39 @@ def main() -> int:
     w(") as v(room_code, code, label, cat, kind, x, y, z, rot, maxw, maxd, premium)")
     w("left join rooms r on r.scene_id = sc.id and r.code = v.room_code")
     w(f"where sc.slug = {q(SCENE_SLUG)}")
-    w("on conflict (scene_id, code) do update set label = excluded.label;")
+    # REACTIVATE, AND RE-MEASURE. Touching only the label left two bugs
+    # asleep in here.
+    #
+    # A derived slot is retired once its placement has been adopted by an
+    # authored one, and it stayed retired: on the next run the upsert found
+    # the row, updated its label and left `is_active` false, so the
+    # placement insert -- which requires an active slot -- skipped it. That
+    # is why adding a second television to the catalogue produced no second
+    # television. The house simply ignored it, and said nothing.
+    #
+    # The coordinates matter for the same reason in reverse. Adoption
+    # copies the DERIVED slot's position into the placement before
+    # repointing it, so a stale derived slot is a stale position: move a
+    # product in the catalogue and it would be re-seeded where it used to
+    # stand. Mirroring them here keeps the derived slot what it claims to
+    # be -- the catalogue's own layout, in the database.
+    w("on conflict (scene_id, code) do update set")
+    w("  label = excluded.label,")
+    w("  x_mm = excluded.x_mm,")
+    w("  y_mm = excluded.y_mm,")
+    w("  z_mm = excluded.z_mm,")
+    w("  rotation_deg = excluded.rotation_deg,")
+    w("  is_active = true;")
     w("")
 
     # -- Placements --------------------------------------------------------
+    # HOW MANY OF EACH THE HOUSE IS MEANT TO HOLD. A product is a thing a
+    # shop sells, not a single object: the same television stands in the
+    # bedroom and on the living room console, and a show house that could
+    # only ever contain one of anything would be a strange showroom. The
+    # guard below counts against this rather than refusing outright.
+    wanted = Counter(pl["product"] for pl in placements)
+
     w("-- Live placements: fill each slot with the product it was authored with.")
     w("insert into placements (scene_id, slot_id, variant_id, shop_id, status, note)")
     w("select sc.id, sl.id, pv.id, p.shop_id, 'live', v.note")
@@ -458,11 +488,30 @@ def main() -> int:
     # its placement onto the authored slot -- and put the product back, so the
     # house grew a second sofa, a second bed and a second rug on every apply.
     w("  and sl.is_active")
+    # ONE OF A PRODUCT PER ROOM, which is a rule a single statement can
+    # actually enforce. Counting against the catalogue's total could not:
+    # `insert ... select` evaluates its subqueries against the snapshot
+    # taken before the statement, so with the Sansui declared twice and one
+    # already standing, BOTH rows read "1 < 2" and both fired. The house
+    # ended up with three televisions.
+    #
+    # Asking instead whether this product is already live IN THIS ROOM is
+    # decided per row against rows that already existed, so it holds within
+    # the statement as well as across re-runs. It still stops the original
+    # bug -- a second sofa, bed and rug appearing on every apply, because a
+    # retired derived slot looked empty -- and it lets one product stand in
+    # two different rooms, which is the whole point of a catalogue.
+    #
+    # The limit is that a room cannot hold two of the same product. Nothing
+    # in this house does; a pair of matching armchairs would need this rule
+    # to key on the slot rather than the room.
     w("  and not exists (")
     w("    select 1 from placements x")
     w("      join product_variants xv on xv.id = x.variant_id")
+    w("      join placement_slots xs on xs.id = x.slot_id")
     w("     where xv.product_id = p.id and x.status = 'live'")
     w("       and x.scene_id = sc.id")
+    w("       and xs.room_id is not distinct from sl.room_id")
     w("  )")
     w("  and not exists (")
     w("    select 1 from placements x where x.slot_id = sl.id and x.status = 'live'")
@@ -778,10 +827,11 @@ def main() -> int:
             f"  ({q(shop_slug)}, {q(product_slug)}, "
             f"{round(x_m * 1000.0, 1)}, {round(-z_m * 1000.0, 1)}, "
             f"{round(y_m * 1000.0, 1)}, "
-            f"{pl.get('rotationY', 0)}, {q(pl['room'])})"
+            f"{pl.get('rotationY', 0)}, {q(pl['room'])}, "
+            f"{str(wanted[pl['product']] > 1).lower()})"
         )
     w(",\n".join(rows))
-    w(") as v(shop, product, x, y, z, rot, room)")
+    w(") as v(shop, product, x, y, z, rot, room, by_room)")
     w(" where p.scene_id = sc.id and p.status = 'live'")
     w(f"   and sc.slug = {q(SCENE_SLUG)}")
     w("   and pv.id = p.variant_id and pr.id = pv.product_id")
@@ -791,6 +841,21 @@ def main() -> int:
     # rotation but not z, so a placement whose only wrong value was its height
     # matched nothing and was never corrected -- which went on hiding the bug
     # above even after the height was being computed correctly.
+    # AND WHICH ROOM, when the catalogue places one product more than
+    # once. Matching on the product alone was fine while every product
+    # stood in exactly one place. With the Sansui in both the living room
+    # and bedroom 2, BOTH placements matched BOTH rows and the last one
+    # won -- the bedroom television was quietly handed the living room's
+    # coordinates and left standing in a wall two rooms away.
+    #
+    # Applied only where it is needed. A product placed once must keep
+    # matching on the product alone, because that is precisely the case
+    # where it may have MOVED room: at this point its slot is still in the
+    # old room, and a room test would refuse it its new position.
+    w("   and (not v.by_room or exists (")
+    w("     select 1 from placement_slots psl")
+    w("       join rooms prm on prm.id = psl.room_id")
+    w("      where psl.id = p.slot_id and prm.code = v.room))")
     w("   and (p.x_mm is distinct from v.x or p.y_mm is distinct from v.y")
     w("        or p.z_mm is distinct from v.z")
     w("        or p.rotation_deg is distinct from v.rot);")
@@ -812,10 +877,20 @@ def main() -> int:
     w("   set slot_id = t.id")
     w("  from scenes sc, product_variants pv, products pr, shops sh,")
     w("       placement_slots t, rooms rm, (values")
+    # ONLY PRODUCTS THAT STAND IN EXACTLY ONE ROOM. This rule exists to fix
+    # a placement left behind when a product moved room -- it finds the row
+    # whose slot is in the wrong room and drags it to the right one. A
+    # product placed TWICE has no single right room, so the rule has nothing
+    # to say about it, and saying it anyway is destructive: with the Sansui
+    # declared in both the living room and bedroom 2, this matched the
+    # bedroom's placement against the living room's row and moved it. The
+    # house went from two televisions to one and the Juliet stand was left
+    # bare, with nothing in the output saying so.
     moves = [
         f"  ({q(pl['product'].split('.', 1)[0])}, "
         f"{q(pl['product'].split('.', 1)[1])}, {q(pl['room'])})"
-        for pl in placements if not pl.get("isFinish")
+        for pl in placements
+        if not pl.get("isFinish") and wanted[pl["product"]] == 1
     ]
     w(",\n".join(moves))
     w(") as v(shop, product, room)")
@@ -834,6 +909,50 @@ def main() -> int:
     w("   and not exists (select 1 from placements o")
     w("                    where o.slot_id = t.id and o.status = 'live'")
     w("                      and o.id <> p.id);")
+    w("")
+
+    # The (shop, product) pairs this catalogue places, and the exact
+    # (shop, product, room) triples it places them in.
+    authored_products = sorted({
+        "  ({}, {})".format(q(pl["product"].split(".", 1)[0]),
+                            q(pl["product"].split(".", 1)[1]))
+        for pl in placements
+    })
+    authored_here = sorted({
+        "  ({}, {}, {})".format(q(pl["product"].split(".", 1)[0]),
+                                q(pl["product"].split(".", 1)[1]),
+                                q(pl["room"]))
+        for pl in placements
+    })
+
+    w("-- RETIRE A PLACEMENT THE CATALOGUE NO LONGER AUTHORS.")
+    w("--")
+    w("-- Moving a product from one room to another left the old placement")
+    w("-- standing. The insert fills the new room's slot -- correctly, they")
+    w("-- are different rooms -- and the re-point only drags the old row over")
+    w("-- when the new room has a free authored slot of the same category.")
+    w("-- When it has none, nothing removes it, and the house advertises two")
+    w("-- of a sofa it owns one of. The two-seater was live in the living room")
+    w("-- and the dining room at the same time, at the same coordinates.")
+    w("--")
+    w("-- ONLY PRODUCTS THIS CATALOGUE PLACES ARE TOUCHED. Anything it knows")
+    w("-- nothing about was put there by an operator in the admin screen and is")
+    w("-- theirs to move. House-wide inventory -- the door hinges -- sits on")
+    w("-- slots with no room at all, and the join to `rooms` skips it.")
+    w("update placements p set status = 'removed'")
+    w("  from scenes sc, product_variants pv, products pr, shops sh,")
+    w("       placement_slots psl, rooms prm")
+    w(" where p.scene_id = sc.id and p.status = 'live'")
+    w(f"   and sc.slug = {q(SCENE_SLUG)}")
+    w("   and pv.id = p.variant_id and pr.id = pv.product_id")
+    w("   and sh.id = pr.shop_id")
+    w("   and psl.id = p.slot_id and prm.id = psl.room_id")
+    w("   and (sh.slug, pr.slug) in (")
+    w(",\n".join(authored_products))
+    w("   )")
+    w("   and (sh.slug, pr.slug, prm.code) not in (")
+    w(",\n".join(authored_here))
+    w("   );")
     w("")
 
     w("commit;")

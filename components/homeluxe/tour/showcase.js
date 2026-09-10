@@ -43,12 +43,25 @@ const SURFACE_DWELL = 2.6;
 /**
  * Longest a single stop may last, in seconds.
  *
- * The living room holds five pieces plus three surfaces, which unbounded is
- * half a minute standing in one place. Past this the remaining items are
- * dropped rather than the dwell being shortened: three things looked at
- * properly beats eight glimpsed.
+ * Past this the remaining items are dropped rather than the dwell being
+ * shortened: three things looked at properly beats eight glimpsed.
+ *
+ * RAISED FROM 26 WHEN THE LIVING ROOM GAINED A MEDIA CONSOLE AND A
+ * TELEVISION. The old figure was measured against five pieces plus three
+ * surfaces. Six pieces is 21.6s of `PRODUCT_DWELL` on its own, which left
+ * 4.4s -- enough for the floor and nothing else, so the room's paint stopped
+ * being shown at all. Tubod is paying for that paint exactly as Bradlows is
+ * paying for the sofas, and the trim is meant to drop what nobody has sold,
+ * not to choose between two adverts.
+ *
+ * 30s covers six pieces and all three surfaces (29.4s) with the order
+ * unchanged -- inventory, then surfaces, then vacancies. A room with more to
+ * sell takes longer to sell it. If a room ever outgrows this too, reserve the
+ * surfaces' time before the objects spend it rather than raising it again:
+ * past about half a minute a stop stops reading as a look and starts reading
+ * as a stall.
  */
-const MAX_STOP_SECONDS = 26;
+export const MAX_STOP_SECONDS = 30;
 
 /**
  * Shortest a stop may last, in seconds.
@@ -60,7 +73,7 @@ const MAX_STOP_SECONDS = 26;
  * pause it replaced. The shortfall becomes an unhurried look at the room
  * itself, taken FIRST: arrive, take the room in, then be shown what is in it.
  */
-const MIN_STOP_SECONDS = 8;
+export const MIN_STOP_SECONDS = 8;
 
 /**
  * Seconds spent on an empty position, and how many a room may show.

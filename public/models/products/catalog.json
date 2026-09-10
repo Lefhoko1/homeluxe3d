@@ -192,6 +192,35 @@
           "model": "/models/products/bradlows/juliet-tv-stand.glb"
         },
         {
+          "id": "bradlows.modern-black-tv-console",
+          "shop": "bradlows",
+          "category": "storage",
+          "name": "Modern Black TV Console",
+          "description": "Black satin laminate media console, 1845mm wide: two cupboards on a recessed plinth, an open centre cubby, and a raised top deck on four supports with cable openings behind it.",
+          "colour": "Black satin",
+          "sku": "",
+          "price": null,
+          "effectivePrice": null,
+          "currency": "BWP",
+          "roomTypes": [
+            "living",
+            "dining",
+            "bedroom"
+          ],
+          "isActive": true,
+          "enabled": true,
+          "madeOf": [
+            "Black laminate",
+            "Brushed aluminium"
+          ],
+          "dimensions": {
+            "width": 1845.0,
+            "depth": 517.0,
+            "height": 780.0
+          },
+          "model": "/models/products/bradlows/modern-black-tv-console.glb"
+        },
+        {
           "id": "bradlows.oakwood-coffee-table",
           "shop": "bradlows",
           "category": "table",
@@ -746,13 +775,37 @@
       },
       {
         "product": "bradlows.sandton-sofa-2",
-        "room": "living",
-        "note": "Faces east toward the recliner.",
+        "room": "dining",
+        "note": "Turned west into the lounge, on the dining side of the open plan. It lost the west wall to the media console.",
         "isFinish": false,
         "position": [
-          6.3,
+          10.7,
           0.0,
-          -2.5
+          -2.2
+        ],
+        "rotationY": 90.0
+      },
+      {
+        "product": "bradlows.modern-black-tv-console",
+        "room": "living",
+        "note": "South end of the west wall, clear of the step pier at x 5710.",
+        "isFinish": false,
+        "position": [
+          5.99,
+          0.0,
+          -1.8
+        ],
+        "rotationY": -90.0
+      },
+      {
+        "product": "bradlows.sansui-50-fhd-google-tv",
+        "room": "living",
+        "note": "Stands on the Modern Black console, facing east into the room.",
+        "isFinish": false,
+        "position": [
+          5.86,
+          0.78,
+          -1.8
         ],
         "rotationY": -90.0
       },

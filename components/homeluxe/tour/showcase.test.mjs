@@ -31,7 +31,9 @@ import { dirname, join } from "node:path";
 
 import * as THREE from "three";
 
-import { createShowcase } from "./showcase.js";
+import {
+  createShowcase, MAX_STOP_SECONDS, MIN_STOP_SECONDS,
+} from "./showcase.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(HERE, "..", "..", "..", "public", "models");
@@ -254,8 +256,18 @@ stops.forEach((stop) => {
   const wrong = [];
   shown.forEach((targets, room) => {
     const seconds = targets.reduce((sum, target) => sum + target.dwell, 0);
-    if (seconds < 8) wrong.push(`${room} stops for only ${seconds.toFixed(1)}s`);
-    if (seconds > 26) wrong.push(`${room} stands for ${seconds.toFixed(1)}s`);
+    // READ FROM THE MODULE, not restated here. These were the literals 8 and
+    // 26, which is the same two numbers written down twice -- so when the
+    // living room gained a console and a television and the budget went to 30
+    // to keep the room's paint on screen, this failed on a stop that was
+    // exactly the length it was configured to be. A test that repeats a
+    // constant tests the copy.
+    if (seconds < MIN_STOP_SECONDS) {
+      wrong.push(`${room} stops for only ${seconds.toFixed(1)}s`);
+    }
+    if (seconds > MAX_STOP_SECONDS) {
+      wrong.push(`${room} stands for ${seconds.toFixed(1)}s`);
+    }
     if (!targets.length) wrong.push(`${room} has nothing to look at`);
   });
 

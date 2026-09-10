@@ -38,12 +38,69 @@ LIVING_ROOM = [
         x=7900.0, y=830.0, rotation=0.0,
         note="Backs onto the south wall, 125mm clear of it.",
     ),
-    # Two-seater on the west, facing east across the rug.
+    # Two-seater on the west, facing east across the rug. MOVED NORTH from
+    # y 2500 to make room for the media console below it: the west wall is
+    # the living room's only solid run and the two now share it end to end.
     Placement(
         product_id="bradlows.sandton-sofa-2",
+        house=HOUSE, room="dining",
+        x=10700.0, y=2200.0, rotation=90.0,
+        note="Turned west into the lounge, on the dining side of the open plan. It lost the west wall to the media console.",
+    ),
+    # ---- The media wall, on the living room's one solid stretch ----------
+    #
+    # THE WEST WALL IS THE ONLY WALL THIS ROOM HAS. Measured rather than
+    # remembered, because the last three placements in this house were not:
+    #
+    #   west   x 5650/5710, solid y -470..3905    4375mm
+    #   south  y 230, but 2400mm of it is a window, and the three-seater
+    #          is already under it
+    #   north  open to the hall -- and the solved walk runs along it at
+    #          y 3810, which is what a console stood there would block
+    #   east   open to the dining room
+    #
+    # AND THE FRONT DOOR TAKES THE FIRST 819mm OF IT. `entry.front_door`
+    # hinges at x 6740 and swings inward on an 880mm leaf, so anything
+    # standing closer than that to the hinge stops it. Stood at the wall's
+    # south end the console jammed the front door at 19 degrees, which is not
+    # a door.
+    #
+    # So the usable wall is 869..3905, which is 3036mm. The console is 1845mm
+    # and the two-seater 1780mm: 3625mm. THE WALL HOLDS ONE OF THEM.
+    #
+    # Moving the whole living/dining wing 700mm south was tried, and reverted.
+    # It did lengthen the wall and carry the door's swing with it, and it
+    # broke the house: the wing ate 700mm of the terrace it stands on, and the
+    # re-solved route left by the front door, ran down the OUTSIDE of the east
+    # wall and came back in through it -- there is no opening there. The tour
+    # lost the dining room and the kitchen. A 589mm furniture problem is not
+    # worth moving a building for.
+    #
+    # The two-seater therefore stands on the dining side of the open plan,
+    # turned west to face the television. Living and dining are one room with
+    # one floor, so it has not left the lounge so much as moved along it. If
+    # it is wanted back on the west wall, the console is the thing that has to
+    # go somewhere else -- they cannot both be there.
+    #
+    # THE WALL IS NOT FLUSH. `ext.step` and `ext.south.wing` stand proud to
+    # x 5710 for the first 1230mm, so the console sits 60mm further into the
+    # room than the sofa above it does. Standing it at 5930 would bury its
+    # back corner in that pier.
+    Placement(
+        product_id="bradlows.modern-black-tv-console",
         house=HOUSE, room="living",
-        x=6300.0, y=2500.0, rotation=-90.0,
-        note="Faces east toward the recliner.",
+        x=5990.0, y=1800.0, rotation=-90.0,
+        note="South end of the west wall, clear of the step pier at x 5710.",
+    ),
+    # The television on top of it, 780mm up, tucked back against the console's
+    # upper backboard the way it stands in the reference photographs. Its
+    # base is above the walk band, so it is inside the console's footprint as
+    # far as the route is concerned -- see clearance.test.mjs.
+    Placement(
+        product_id="bradlows.sansui-50-fhd-google-tv",
+        house=HOUSE, room="living",
+        x=5860.0, y=1800.0, z=780.0, rotation=-90.0,
+        note="Stands on the Modern Black console, facing east into the room.",
     ),
     # Recliner on the east, facing west. Its footrest extends toward the
     # room centre, which is why the coffee table sits west of centre.

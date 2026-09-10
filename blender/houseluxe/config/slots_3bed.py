@@ -161,15 +161,39 @@ LIVING: list[Slot] = [
        slot_type="floor_covering", category="rug",
        width=3000.0, depth=2200.0, height=20.0,
        priority=55, label="Rug"),
-    # The television goes on the wall the sofa faces, at seated eye level.
-    at(ROOM["living"], 0.5, 0.97, slot_id="SLOT_LIVING_TV_001",
-       slot_type="wall_television", category="television",
-       width=1400.0, depth=120.0, height=800.0, z=900.0, rotation=180.0,
-       priority=90, label="Television"),
-    at(ROOM["living"], 0.5, 0.94, slot_id="SLOT_LIVING_MEDIA_001",
+    # THESE TWO USED TO SIT ON THE NORTH SIDE, at 0.94 and 0.97 of the room's
+    # depth, because whoever drew them took the living room for a box with
+    # four walls. It has two. The north side is a 4.5m threshold onto the
+    # hall, and the solved walk runs straight along it -- so the database's
+    # reconciliation, which moves each placement onto its authored slot and
+    # is the position the BROWSER finally uses, was quietly dragging the
+    # console and the television out of the room I had measured and standing
+    # them across the route. Every check in Blender passed while it did,
+    # because in Blender they were where the catalogue put them.
+    #
+    # They now name the west wall, which is where the furniture actually is:
+    # 5990/5860 by 991 in house millimetres, turned to face east into the
+    # room, with the television at 780mm because that is the height of the
+    # console's top deck. Sized for what is sold for them rather than for the
+    # generic unit -- a slot narrower than its furniture can never be filled.
+    # SIZED TO HUG THE PRODUCT, and that is the difference between fitting
+    # and not. Slots elsewhere carry slack so a slightly different unit can
+    # still be sold into them, and at 1900 x 560 this one did too -- but the
+    # slack pushed its south-west corner into the front door's arc, and the
+    # arithmetic left no legal centre at all: it had to sit at y >= 1133 to
+    # clear the door and y <= 1125 to leave the two-seater its wall. Eight
+    # millimetres of contradiction. At 1860 x 530 the window opens to 52mm
+    # and the console stands at 1120 with the door swinging fully past it.
+    at(ROOM["living"], 0.0756, 0.3925, slot_id="SLOT_LIVING_MEDIA_001",
        slot_type="media_unit", category="storage",
-       width=1600.0, depth=450.0, height=550.0, rotation=180.0,
+       width=1860.0, depth=530.0, height=800.0, rotation=-90.0,
        priority=65, label="Media unit"),
+    at(ROOM["living"], 0.0467, 0.3925, slot_id="SLOT_LIVING_TV_001",
+       slot_type="wall_television", category="television",
+       # ON THE CONSOLE, not on the wall: 780mm is its top deck. The Sansui
+       # is sold standing on two splayed feet.
+       width=1300.0, depth=280.0, height=760.0, z=780.0, rotation=-90.0,
+       priority=90, label="Television"),
     at(ROOM["living"], 0.06, 0.93, slot_id="SLOT_LIVING_PLANT_001",
        slot_type="floor_plant", category="decor",
        width=600.0, depth=600.0, height=1600.0,

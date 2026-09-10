@@ -22,7 +22,10 @@ from .lounge import (
     build_rug,
     build_sofa,
 )
-from .media import MEDIA, build_television, build_tv_stand
+from .media import (
+    CONSOLE_D, CONSOLE_H, CONSOLE_W, MEDIA,
+    build_television, build_tv_console, build_tv_stand,
+)
 
 SHOP = Shop(
     id="bradlows",
@@ -155,6 +158,28 @@ PRODUCTS = [
         room_types=MEDIA_ROOMS,
         promotion=MEDIA_SALE,
         build=build_tv_stand,
+    ),
+    Product(
+        id="modern-black-tv-console",
+        shop=SHOP,
+        category=ProductCategory.STORAGE,
+        name="Modern Black TV Console",
+        description=(
+            "Black satin laminate media console, 1845mm wide: two cupboards "
+            "on a recessed plinth, an open centre cubby, and a raised top "
+            "deck on four supports with cable openings behind it."
+        ),
+        colour="Black satin",
+        materials=("Black laminate", "Brushed aluminium"),
+        # NO PRICE. The package that supplied this model gives dimensions,
+        # materials and photographs, and no money. A price is the one field
+        # on an advert that must never be guessed, so the panel shows the
+        # console without one and "Shop this room" leaves it out of the
+        # total. Fill it in from the Products screen and both follow.
+        price=None,
+        dimensions=Dimensions(CONSOLE_W, CONSOLE_D, CONSOLE_H),
+        room_types=MEDIA_ROOMS,
+        build=build_tv_console,
     ),
     Product(
         id="oakwood-coffee-table",
