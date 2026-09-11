@@ -1,0 +1,22 @@
+Three.js loading notes
+======================
+These GLBs already contain the beige PBR material.
+
+Recommended:
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+Do NOT override the sofa materials with a white MeshStandardMaterial after GLTFLoader loads them.
+
+Animation node names:
+- drake-2-seater-console-v3.glb: console_lid
+- drake-recliner-v3.glb: recliner_back, footrest
+
+Orientation:
+- metres
+- Y up
+- underside Y=0
+- X/Z centered
+- seat faces -Z
+- backrest +Z

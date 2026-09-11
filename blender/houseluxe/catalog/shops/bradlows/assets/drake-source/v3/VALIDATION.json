@@ -1,0 +1,35 @@
+{
+  "drake-3-seater-v3.glb": {
+    "triangles": 4680,
+    "file_kb": 49.1,
+    "bounds_m": [
+      2.229,
+      1.026,
+      0.816
+    ],
+    "minY": 0.0,
+    "maxY": 1.026
+  },
+  "drake-2-seater-console-v3.glb": {
+    "triangles": 4188,
+    "file_kb": 47.2,
+    "bounds_m": [
+      1.84,
+      1.025,
+      0.83
+    ],
+    "minY": 0.0,
+    "maxY": 1.025
+  },
+  "drake-recliner-v3.glb": {
+    "triangles": 2840,
+    "file_kb": 36.0,
+    "bounds_m": [
+      0.983,
+      1.055,
+      0.908
+    ],
+    "minY": 0.0,
+    "maxY": 1.055
+  }
+}
