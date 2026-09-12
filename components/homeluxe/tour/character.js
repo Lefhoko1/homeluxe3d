@@ -9,6 +9,7 @@
 
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
+import { createGltfLoader } from "../../../lib/gltf/decoders";
 
 export const TOUR_CHARACTER_URL = "/models/tour/character.glb";
 
@@ -43,7 +44,9 @@ const MODEL_HEIGHT = 1.70;
 
 /** Load the character, or return null if it is missing. */
 export async function loadCharacter({ materials = null, dracoLoader = null } = {}) {
-  const loader = new GLTFLoader();
+  // Both decoders, always. See lib/gltf/decoders.js -- `dracoLoader` is
+  // still accepted so callers that share one keep sharing it.
+  const loader = createGltfLoader();
   if (dracoLoader) loader.setDRACOLoader(dracoLoader);
 
   const scene = await new Promise((resolve, reject) => {

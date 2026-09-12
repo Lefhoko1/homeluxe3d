@@ -12,7 +12,8 @@
  */
 
 import * as THREE from "three";
-import { DRACOLoader, GLTFLoader } from "three-stdlib";
+import { createGltfLoader, disposeDracoLoader, getDracoLoader }
+  from "../../../lib/gltf/decoders";
 
 import {
   HOUSE_BASE_PATH,
@@ -33,33 +34,9 @@ import { addRoomLights } from "../lighting/roomLights";
  * KEEP IN SYNC WITH `three`. The decoder is copied out of the installed
  * package; after a major three upgrade, re-copy those files.
  */
-const DRACO_DECODER_PATH = "/draco/";
-
-/**
- * One decoder instance for the whole module.
- *
- * DRACOLoader spins up Web Workers. Creating one per load would start a
- * worker pool per GLB — 17 pools for one scene — so it is shared and only
- * torn down by `disposeDracoLoader()`.
- */
-let sharedDraco = null;
-
-export function getDracoLoader() {
-  if (!sharedDraco) {
-    sharedDraco = new DRACOLoader();
-    sharedDraco.setDecoderPath(DRACO_DECODER_PATH);
-    // No setDecoderConfig: the default detects WebAssembly and picks the
-    // 188KB .wasm decoder, falling back to the 500KB .js build only where
-    // wasm is unavailable. Forcing "js" would always pay the larger one.
-  }
-  return sharedDraco;
-}
-
-/** Release the shared Draco workers. Safe to call when no load is running. */
-export function disposeDracoLoader() {
-  sharedDraco?.dispose();
-  sharedDraco = null;
-}
+// `getDracoLoader` and `disposeDracoLoader` are re-exported below so the
+// callers that already import them from here keep working.
+export { getDracoLoader, disposeDracoLoader };
 
 /** Load one GLB and return its scene, or throw. */
 function loadPart(loader, url) {
@@ -197,8 +174,7 @@ export async function loadHouse(options = {}) {
     recentre = true,
   } = options;
 
-  const loader = new GLTFLoader();
-  loader.setDRACOLoader(getDracoLoader());
+  const loader = createGltfLoader();
 
   const house = new THREE.Group();
   house.name = "house";

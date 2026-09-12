@@ -19,6 +19,7 @@
 
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
+import { createGltfLoader } from "../../../lib/gltf/decoders";
 
 import { fetchSceneCatalog } from "../../../lib/catalog/repository";
 
@@ -198,7 +199,9 @@ export async function loadProducts(options = {}) {
     });
   }
 
-  const loader = new GLTFLoader();
+  // Both decoders, always. See lib/gltf/decoders.js -- `dracoLoader` is
+  // still accepted so callers that share one keep sharing it.
+  const loader = createGltfLoader();
   if (dracoLoader) loader.setDRACOLoader(dracoLoader);
 
   // One fetch per distinct product, however many times it is placed.
@@ -292,7 +295,9 @@ export async function loadOneProduct({
   dracoLoader = null,
   materials = null,
 }) {
-  const loader = new GLTFLoader();
+  // Both decoders, always. See lib/gltf/decoders.js -- `dracoLoader` is
+  // still accepted so callers that share one keep sharing it.
+  const loader = createGltfLoader();
   if (dracoLoader) loader.setDRACOLoader(dracoLoader);
 
   const scene = await loadGltf(loader, modelUrl);

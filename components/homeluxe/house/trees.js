@@ -23,6 +23,7 @@
 
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
+import { createGltfLoader } from "../../../lib/gltf/decoders";
 
 export const TREE_MANIFEST_URL = "/models/site/trees.json";
 
@@ -121,7 +122,9 @@ export async function addTrees(house, { materials, dracoLoader } = {}) {
 }
 
 function loadModel(url, dracoLoader) {
-  const loader = new GLTFLoader();
+  // Both decoders, always. See lib/gltf/decoders.js -- `dracoLoader` is
+  // still accepted so callers that share one keep sharing it.
+  const loader = createGltfLoader();
   if (dracoLoader) loader.setDRACOLoader(dracoLoader);
   return new Promise((resolve, reject) => {
     loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
