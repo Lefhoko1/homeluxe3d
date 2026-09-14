@@ -27,6 +27,7 @@ const AdminBar = ({
   onSnap,
   onLockY,
   onDropToFloor,
+  onAiPlace,
   onSave,
   onRevert,
   onDelete,
@@ -112,6 +113,21 @@ const AdminBar = ({
           <button type="button" className="admin-btn" onClick={onDropToFloor}>
             ⤓ Floor
           </button>
+          {onAiPlace && (
+            <button
+              type="button"
+              className="admin-btn"
+              onClick={onAiPlace}
+              disabled={!advert?.variantId}
+              title={
+                advert?.variantId
+                  ? 'Place, move, turn or resize this by describing it'
+                  : 'This item comes from the static catalogue, not the database'
+              }
+            >
+              ✨ Place with AI
+            </button>
+          )}
           <button
             type="button"
             className="admin-btn"

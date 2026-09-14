@@ -13,6 +13,7 @@
 
 export { default as AdminGate } from './AdminGate';
 export { default as AdminBar } from './AdminBar';
+export { default as AiPlacementPanel } from './AiPlacementPanel';
 export { default as AdminList } from './AdminList';
 export { default as AdminShell } from './AdminShell';
 export { default as RequestQueue } from './RequestQueue';

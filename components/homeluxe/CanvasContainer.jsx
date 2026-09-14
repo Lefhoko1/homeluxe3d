@@ -40,7 +40,14 @@ import {
   TOUR_START,
 } from './tour';
 import { createTween, easeInOutCubic } from './tour/easing';
-import { AdminBar, AdminGate, AdminList, PlacementEditor, UploadDialog } from './admin';
+import {
+  AdminBar,
+  AdminGate,
+  AdminList,
+  AiPlacementPanel,
+  PlacementEditor,
+  UploadDialog,
+} from './admin';
 import { PlacementService } from '../../lib/admin/PlacementService';
 
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
@@ -139,6 +146,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const [adminMessage, setAdminMessage] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showList, setShowList] = useState(false);
+  // The AI placement conversation, docked over the scene for the selection.
+  const [showAi, setShowAi] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -1186,7 +1195,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
    * looking and handed to the gizmo; it becomes a placement only when the
    * admin presses Save. So a mis-click costs a download and nothing else.
    */
-  const handlePlace = useCallback(async ({ product, variant }) => {
+  const handlePlace = useCallback(async ({ product, variant }, { withAi = false } = {}) => {
     const group = productsRef.current;
     const controls = controlsRef.current;
     if (!group || !variant?.model_url) return;
@@ -1234,7 +1243,12 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       editorRef.current?.attach(instance);
       editorRef.current?.setMode('translate');
       remeasureFurniture();
-      say(`${product.name} dropped in. Move it, then press Save.`);
+      if (withAi) {
+        setShowAi(true);
+        say(`${product.name} dropped in. Describe where it should go, then press Save.`);
+      } else {
+        say(`${product.name} dropped in. Move it, then press Save.`);
+      }
     } catch (error) {
       say(`Could not load that model: ${error.message}`, 'bad');
     } finally {
@@ -1469,6 +1483,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           onSnap={(on) => editorRef.current?.setSnap(on)}
           onLockY={(on) => editorRef.current?.setLockY(on)}
           onDropToFloor={() => editorRef.current?.dropToFloor()}
+          onAiPlace={() => setShowAi(true)}
           onSave={handleSave}
           onRevert={handleRevert}
           onDelete={handleDelete}
@@ -1477,6 +1492,23 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           onPublish={handlePublish}
           publishing={publishing}
         />
+
+        {/* AI placement, for whatever is selected. Its proposals are applied
+            to the object unsaved, so the toolbar's Save and Revert above work
+            on them exactly as they do after a drag. Keyed on the product, not
+            the placement id, so saving does not wipe the conversation. */}
+        {showAi && adminState.hasSelection && (
+          <AiPlacementPanel
+            key={`${adminState.advert?.productId}:${adminState.advert?.variantId}`}
+            advert={adminState.advert}
+            getTransform={() => editorRef.current?.toTransform() ?? null}
+            onApply={(transform) => {
+              editorRef.current?.setTransform(transform);
+              remeasureFurniture();
+            }}
+            onClose={() => setShowAi(false)}
+          />
+        )}
       </AdminGate>
 
       {showUpload && (
@@ -1484,9 +1516,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           shops={shops}
           onClose={() => setShowUpload(false)}
           onCreated={(created) => {
-            say(`Created ${created.qualifiedId}. Open Manage to place it.`);
+            say(`Created ${created.qualifiedId}.`);
             onCatalogChanged?.();
           }}
+          onPlace={(chosen, options) => handlePlace(chosen, options)}
         />
       )}
 

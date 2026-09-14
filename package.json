@@ -9,6 +9,7 @@
     "lint": "eslint --fix"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
     "@eslint/compat": "^2.0.0",
     "@heroui/accordion": "2.2.26",
     "@heroui/alert": "2.2.29",

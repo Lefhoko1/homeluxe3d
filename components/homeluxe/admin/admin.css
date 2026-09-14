@@ -549,3 +549,198 @@
   font-weight: 600;
   border-bottom-color: #1f6feb;
 }
+
+/* -- AI placement ----------------------------------------------------------
+   A conversation docked over the 3D view, bottom left, in the toolbar's dark
+   glass so it reads as part of the same editor. */
+.admin-ai-panel {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 35;
+  width: min(420px, calc(100% - 32px));
+  max-height: min(560px, calc(100% - 140px));
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 24, 38, 0.95);
+  backdrop-filter: blur(10px);
+  color: #e6edf6;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+}
+
+.admin-ai-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-ai-title {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-ai-product {
+  flex: 1;
+  opacity: 0.75;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-ai-close {
+  background: none;
+  border: none;
+  color: #e6edf6;
+  font-size: 15px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.admin-ai-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-ai-empty {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.admin-ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.admin-ai-chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6edf6;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.admin-ai-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.admin-ai-turn {
+  border-radius: 9px;
+  padding: 8px 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.admin-ai-turn.user {
+  align-self: flex-end;
+  background: #1f6feb;
+  max-width: 85%;
+}
+
+.admin-ai-turn.assistant {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-ai-turn.thinking {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.admin-ai-proposal {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-ai-where {
+  opacity: 0.75;
+}
+
+.admin-ai-note {
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 12px;
+}
+
+.admin-ai-proposal .admin-ai-note {
+  margin: 0;
+}
+
+.admin-ai-note.warn {
+  background: rgba(255, 180, 60, 0.16);
+  color: #ffd08a;
+}
+
+.admin-ai-note.bad {
+  background: rgba(255, 110, 110, 0.16);
+  color: #ffb3b3;
+}
+
+.admin-ai-note.good {
+  background: rgba(80, 200, 120, 0.16);
+  color: #9be7b4;
+}
+
+.admin-ai-input {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-ai-input textarea {
+  flex: 1;
+  resize: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6edf6;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12px;
+}
+
+/* -- after an upload: how to place it ------------------------------------- */
+.admin-place-choice {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-place-choice-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-place-choice-actions .admin-btn {
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+.admin-modal .admin-btn:not(.primary):not(.danger) {
+  color: #1a2332;
+  background: #f1f5f9;
+  border-color: #d7dee8;
+}

@@ -29,7 +29,7 @@
 import * as THREE from 'three';
 import { TransformControls } from 'three-stdlib';
 
-import { transformOf } from '../../../lib/scene/transforms';
+import { applyTransform, transformOf } from '../../../lib/scene/transforms';
 
 /** Snap increments: 50mm, 15 degrees, 5%. Hold Shift for free movement. */
 const SNAP_TRANSLATE = 0.05;
@@ -116,6 +116,19 @@ export class PlacementEditor {
     this.object.rotation.y = THREE.MathUtils.degToRad(rotation_deg);
     this.object.scale.setScalar(scale);
     this.uniformScale = scale;
+    this.#emit();
+  }
+
+  /**
+   * Move the object to a given transform, as if the admin had dragged it.
+   *
+   * Used by AI placement. `original` is left alone, so the move reads as an
+   * unsaved change: Save keeps it and Revert undoes it, exactly as for a drag.
+   */
+  setTransform(transform) {
+    if (!this.object || !transform) return;
+    applyTransform(this.object, transform);
+    this.uniformScale = this.object.scale.x;
     this.#emit();
   }
 

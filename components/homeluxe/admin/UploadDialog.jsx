@@ -32,7 +32,10 @@ const ROOM_TYPES = [
   { id: 'outdoor', label: 'Outdoor' },
 ];
 
-const UploadDialog = ({ shops = [], onClose, onCreated }) => {
+const UploadDialog = ({ shops = [], onClose, onCreated, onPlace }) => {
+  // Set once the product exists, to ask how to place it. Only when there is a
+  // house to place into -- `onPlace` is absent on the standalone admin page.
+  const [placeChoice, setPlaceChoice] = useState(null);
   const [shopId, setShopId] = useState(shops[0]?.id ?? '');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
@@ -138,6 +141,17 @@ const UploadDialog = ({ shops = [], onClose, onCreated }) => {
       }
 
       onCreated?.(created);
+
+      // Ask how to place it, rather than closing and leaving the admin to go
+      // and find the new product in Manage.
+      if (onPlace) {
+        const variants = await new ProductService().variants(created.productId);
+        const variant = variants.find((v) => v.model_url);
+        if (variant) {
+          setPlaceChoice({ created, variant });
+          return;
+        }
+      }
       onClose?.();
     } catch (error) {
       setProblems(
@@ -148,6 +162,67 @@ const UploadDialog = ({ shops = [], onClose, onCreated }) => {
       setStep(null);
     }
   };
+
+  // -- the product exists: how should it go into the house? ---------------
+  if (placeChoice) {
+    const { created, variant } = placeChoice;
+    // What the 3D view needs to label the model, taken from the form just
+    // submitted -- the same shape the Manage list hands over.
+    const product = {
+      qualified_id: created.qualifiedId,
+      name,
+      shop_slug: shop?.slug,
+      shop_name: shop?.name,
+      category_code: categoryCode,
+      description,
+      price_cents: price ? Math.round(Number(price) * 100) : null,
+      currency: shop?.currency ?? 'BWP',
+      thumbnail_url: null,
+      width_mm: Number(dimensions.width) || null,
+      depth_mm: Number(dimensions.depth) || null,
+      height_mm: Number(dimensions.height) || null,
+      room_types: roomTypes,
+    };
+    const place = (withAi) => {
+      onPlace({ product, variant }, { withAi });
+      onClose?.();
+    };
+
+    return (
+      <div className="admin-modal-backdrop" onClick={onClose}>
+        <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal-head">
+            <h2>{name} is ready to place</h2>
+            <button type="button" className="admin-close" onClick={onClose}>
+              ✕
+            </button>
+          </div>
+          <div className="admin-place-choice">
+            <div className="admin-note">
+              Created {created.qualifiedId}. How would you like to put it in the house?
+            </div>
+            <div className="admin-place-choice-actions">
+              <button type="button" className="admin-btn" onClick={() => place(false)}>
+                ✋ Place manually
+              </button>
+              <button type="button" className="admin-btn primary" onClick={() => place(true)}>
+                ✨ Place with AI
+              </button>
+              <button type="button" className="admin-btn" onClick={onClose}>
+                Later
+              </button>
+            </div>
+            <div className="admin-note">
+              <strong>Manually</strong> drops it where you are looking, to move, rotate and scale
+              with the handles. <strong>With AI</strong> drops it in and opens a prompt: describe
+              where it should go and the AI reads the room, checks the position against the walls,
+              furniture, doors and walkway, and moves it there for you to review and Save.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-modal-backdrop" onClick={busy ? undefined : onClose}>
