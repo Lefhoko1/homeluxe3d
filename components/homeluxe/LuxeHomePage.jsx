@@ -9,6 +9,8 @@ import TourControls from './TourControls';
 import RoomTotal from './RoomTotal';
 import LoginModal from './LoginModal';
 import EnquiryDialog from './EnquiryDialog';
+import EdgeDrawer from './EdgeDrawer';
+import { useMediaQuery } from './useMediaQuery';
 import { useCatalog } from '../../lib/catalog/useCatalog';
 import { recordEvent } from '../../lib/catalog/repository';
 import { VisitorService } from '../../lib/visitor/VisitorService';
@@ -48,6 +50,13 @@ const LuxeHomePage = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shopFilter, setShopFilter] = useState(null);
+
+  // On a phone the docks fold into the edges of the screen -- see
+  // EdgeDrawer. One is out at a time: 'browse', 'details', or neither.
+  const compact = useMediaQuery('(max-width: 820px)');
+  const [drawer, setDrawer] = useState(null);
+  const setBrowse = useCallback((open) => setDrawer(open ? 'browse' : null), []);
+  const setDetails = useCallback((open) => setDrawer(open ? 'details' : null), []);
 
   // What the tour is doing, reported by the scene, and what the visitor
   // picked while it was walking.
@@ -322,7 +331,7 @@ const LuxeHomePage = () => {
   };
 
   // Fired when something is clicked in the 3D scene.
-  const handleSceneSelect = (advert) => {
+  const handleSceneSelect = (advert, { fromTour = false } = {}) => {
     if (!advert) {
       setSelectedProduct(null);
       return;
@@ -344,6 +353,16 @@ const LuxeHomePage = () => {
 
     setSelectedProduct(advert);
 
+    const asks =
+      index >= 0 && tourState.guided && !tourState.paused && Boolean(list[index]?.position);
+
+    // ON A PHONE, TAPPING THE SOFA OPENS ITS DETAILS. There is no card
+    // beside the house to change, so a tap that only changed the selection
+    // would look like it did nothing. Not when the TOUR turned to it -- that
+    // would pop the drawer over the house at every stop -- and not while the
+    // bar is asking about the tour: the drawer would cover the question.
+    if (compact && !fromTour && !asks) setDrawer('details');
+
     if (index < 0) return;
 
     // CLICKING THE SOFA ITSELF IS THE SAME DECISION AS CLICKING ITS NAME.
@@ -351,7 +370,7 @@ const LuxeHomePage = () => {
     // did not, so pointing at a thing in the room quietly changed the
     // selection and moved nothing, and the visitor was left pressing the
     // furniture harder. One question, wherever the click came from.
-    if (tourState.guided && !tourState.paused && list[index]?.position) {
+    if (asks) {
       setAskingFor({ index, name: list[index].name });
 
       return;
@@ -389,6 +408,46 @@ const LuxeHomePage = () => {
     await signIn(email, password);
     setShowLogin(false);
   };
+
+  // What the left dock and the detail card hold. Built once and placed in
+  // one of two ways: as cards over the house on a desktop, or folded into the
+  // screen's edges on a phone.
+  const shownProduct = selectedProduct ?? currentProducts[currentIndex] ?? null;
+
+  const browse = (
+    <>
+      <ShopsBanner
+        shops={shops}
+        activeShop={shopFilter}
+        onShopSelect={handleShopSelect}
+        userId={session?.userId ?? null}
+      />
+
+      <TourPanel
+        currentRoom={currentRoom}
+        currentIndex={currentIndex}
+        products={currentProducts}
+        rooms={rooms}
+        shops={shops}
+        loading={loading}
+        // Picking from the list on a phone puts the drawer away, so the
+        // visitor sees the camera go to what they picked.
+        onProductSelect={(index) => {
+          handleProductSelect(index);
+          if (compact) setDrawer(null);
+        }}
+      />
+    </>
+  );
+
+  const details = (
+    <ProductPanel
+      product={shownProduct}
+      shops={shops}
+      loading={loading}
+      onEnquire={handleEnquire}
+    />
+  );
 
   return (
     <div className="app-container">
@@ -445,31 +504,34 @@ const LuxeHomePage = () => {
             here because it is a FILTER on the list underneath it -- which is
             what it always was, sitting at the top of the page pretending to
             be a banner. */}
-        <div className="dock-left">
-          <ShopsBanner
-            shops={shops}
-            activeShop={shopFilter}
-            onShopSelect={handleShopSelect}
-            userId={session?.userId ?? null}
-          />
+        {compact ? (
+          <EdgeDrawer
+            side="left"
+            label="Browse"
+            open={drawer === 'browse'}
+            away={drawer === 'details'}
+            onOpenChange={setBrowse}
+          >
+            {browse}
+          </EdgeDrawer>
+        ) : (
+          <div className="dock-left">{browse}</div>
+        )}
 
-          <TourPanel
-            currentRoom={currentRoom}
-            currentIndex={currentIndex}
-            products={currentProducts}
-            rooms={rooms}
-            shops={shops}
-            loading={loading}
-            onProductSelect={handleProductSelect}
-          />
-        </div>
-
-        <ProductPanel
-          product={selectedProduct ?? currentProducts[currentIndex] ?? null}
-          shops={shops}
-          loading={loading}
-          onEnquire={handleEnquire}
-        />
+        {compact ? (
+          <EdgeDrawer
+            side="right"
+            label="Details"
+            open={drawer === 'details'}
+            away={drawer === 'browse'}
+            onOpenChange={setDetails}
+            notice={shownProduct ? shownProduct.id ?? shownProduct.productId ?? null : null}
+          >
+            {details}
+          </EdgeDrawer>
+        ) : (
+          details
+        )}
 
         {/* What the room comes to. Real arithmetic over the same prices the
             cards show -- see RoomTotal. */}

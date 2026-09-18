@@ -1353,7 +1353,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         onShow: (target, index, total) => {
           setAdvert(target.advert ?? null);
           setShowing({ caption: target.caption, at: index + 1, of: total });
-          if (target.advert) onSelectRef.current?.(target.advert);
+          // Marked as the tour's, not the visitor's: the same call arrives
+          // when somebody taps the sofa, and on a phone a tap opens the
+          // details drawer -- which the tour must not do at every stop.
+          if (target.advert) onSelectRef.current?.(target.advert, { fromTour: true });
         },
       }
     );
