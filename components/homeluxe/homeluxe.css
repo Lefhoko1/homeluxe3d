@@ -150,6 +150,10 @@ body {
   /* The bar, and then everything else. */
   grid-template-rows: 62px 1fr;
   height: 100vh;
+  /* On a phone 100vh includes the strip behind the browser's toolbar, so the
+     bottom of the house -- and the tour controls -- sat underneath it. dvh is
+     the height actually visible; browsers without it keep the line above. */
+  height: 100dvh;
   gap: 0;
 }
 
@@ -229,6 +233,25 @@ body {
 #header .luxe-btn {
   padding: 9px 15px;
   font-size: 12.5px;
+}
+
+/* A phone has about 375px for the wordmark and two or three buttons, and the
+   row is a fixed 62px: anything that wraps grows out of it and over the house.
+   So nothing wraps, the place name and the signed-in name give way, and if the
+   buttons still do not fit they scroll sideways rather than stack. */
+@media (max-width: 560px) {
+  #header { padding: 0 14px; gap: 10px; }
+  #header .luxe-wordmark { flex-shrink: 0; }
+  #header .luxe-wordmark strong { font-size: 18px; white-space: nowrap; }
+  #header .luxe-wordmark span,
+  #header .header-user { display: none; }
+  #admin-controls {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  #header .luxe-btn { padding: 8px 11px; white-space: nowrap; flex-shrink: 0; }
 }
 
 /* Left Panel - Tour Navigation */
@@ -836,25 +859,12 @@ body {
 }
 
 /* Mobile Responsive */
+/* THE HOUSE WAS 45px TALL ON A PHONE. This block used to give .app-container
+   six rows, from when the page was bar, tabs, strip, panel, canvas, controls
+   stacked in a grid. It is two children now -- the bar and .stage -- so the
+   stage landed in the second row, 45px, and the four empty rows under it
+   showed as a blank page. The rows are the base rule's, at every width. */
 @media (max-width: 1024px) {
-  .app-container {
-    grid-template-columns: 1fr;
-    grid-template-rows: 70px 45px 46px auto 1fr 90px;
-  }
-
-  #tour-panel {
-    grid-column: 1;
-    grid-row: 4;
-    max-height: 200px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
-  #canvas-container {
-    grid-column: 1;
-    grid-row: 5;
-  }
-
   #product-panel {
     display: none;
   }
