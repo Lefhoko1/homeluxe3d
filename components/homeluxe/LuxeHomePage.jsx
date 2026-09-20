@@ -10,7 +10,6 @@ import RoomTotal from './RoomTotal';
 import LoginModal from './LoginModal';
 import EnquiryDialog from './EnquiryDialog';
 import EdgeDrawer from './EdgeDrawer';
-import { useMediaQuery } from './useMediaQuery';
 import { useCatalog } from '../../lib/catalog/useCatalog';
 import { recordEvent } from '../../lib/catalog/repository';
 import { VisitorService } from '../../lib/visitor/VisitorService';
@@ -51,9 +50,11 @@ const LuxeHomePage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shopFilter, setShopFilter] = useState(null);
 
-  // On a phone the docks fold into the edges of the screen -- see
-  // EdgeDrawer. One is out at a time: 'browse', 'details', or neither.
-  const compact = useMediaQuery('(max-width: 820px)');
+  // THE DOCKS FOLD INTO THE EDGES AT EVERY WIDTH -- see EdgeDrawer. They
+  // began as a phone layout and then earned the desktop too: four cards
+  // standing over the render left the house a letterbox in the middle of its
+  // own page. Nothing was taken away; it is all one tap behind a handle.
+  // One drawer is out at a time: 'browse', 'details', or neither.
   const [drawer, setDrawer] = useState(null);
   const setBrowse = useCallback((open) => setDrawer(open ? 'browse' : null), []);
   const setDetails = useCallback((open) => setDrawer(open ? 'details' : null), []);
@@ -353,15 +354,23 @@ const LuxeHomePage = () => {
 
     setSelectedProduct(advert);
 
+    // THE TOUR TURNING TO A PRODUCT IS NOT A CLICK. Both arrive here, and
+    // treating the tour's own stops as clicks put "The tour is walking.
+    // Pause it and go to...?" over the house every few seconds, asking the
+    // visitor whether to interrupt a walk they had not interrupted.
     const asks =
-      index >= 0 && tourState.guided && !tourState.paused && Boolean(list[index]?.position);
+      index >= 0 &&
+      !fromTour &&
+      tourState.guided &&
+      !tourState.paused &&
+      Boolean(list[index]?.position);
 
-    // ON A PHONE, TAPPING THE SOFA OPENS ITS DETAILS. There is no card
-    // beside the house to change, so a tap that only changed the selection
-    // would look like it did nothing. Not when the TOUR turned to it -- that
-    // would pop the drawer over the house at every stop -- and not while the
-    // bar is asking about the tour: the drawer would cover the question.
-    if (compact && !fromTour && !asks) setDrawer('details');
+    // CLICKING THE SOFA OPENS ITS DETAILS. The card is behind a handle now,
+    // so a click that only changed what the drawer would say looks like it
+    // did nothing. Not when the tour turned to it -- that would pull the
+    // drawer over the house at every stop -- and not while the bar is
+    // asking about the tour, because the drawer would cover the question.
+    if (!fromTour && !asks) setDrawer('details');
 
     if (index < 0) return;
 
@@ -434,7 +443,7 @@ const LuxeHomePage = () => {
         // visitor sees the camera go to what they picked.
         onProductSelect={(index) => {
           handleProductSelect(index);
-          if (compact) setDrawer(null);
+          setDrawer(null);
         }}
       />
     </>
@@ -499,39 +508,30 @@ const LuxeHomePage = () => {
           onRoomChange={handleRoomChange}
         />
 
-        {/* The left dock: who is advertising, then what is in this room.
-            Two cards rather than two rows of chrome, and the shops strip is
+        {/* Who is advertising, then what is in this room. The shops strip is
             here because it is a FILTER on the list underneath it -- which is
             what it always was, sitting at the top of the page pretending to
             be a banner. */}
-        {compact ? (
-          <EdgeDrawer
-            side="left"
-            label="Browse"
-            open={drawer === 'browse'}
-            away={drawer === 'details'}
-            onOpenChange={setBrowse}
-          >
-            {browse}
-          </EdgeDrawer>
-        ) : (
-          <div className="dock-left">{browse}</div>
-        )}
+        <EdgeDrawer
+          side="left"
+          label="Browse"
+          open={drawer === 'browse'}
+          away={drawer === 'details'}
+          onOpenChange={setBrowse}
+        >
+          {browse}
+        </EdgeDrawer>
 
-        {compact ? (
-          <EdgeDrawer
-            side="right"
-            label="Details"
-            open={drawer === 'details'}
-            away={drawer === 'browse'}
-            onOpenChange={setDetails}
-            notice={shownProduct ? shownProduct.id ?? shownProduct.productId ?? null : null}
-          >
-            {details}
-          </EdgeDrawer>
-        ) : (
-          details
-        )}
+        <EdgeDrawer
+          side="right"
+          label="Details"
+          open={drawer === 'details'}
+          away={drawer === 'browse'}
+          onOpenChange={setDetails}
+          notice={shownProduct ? shownProduct.id ?? shownProduct.productId ?? null : null}
+        >
+          {details}
+        </EdgeDrawer>
 
         {/* What the room comes to. Real arithmetic over the same prices the
             cards show -- see RoomTotal. */}
