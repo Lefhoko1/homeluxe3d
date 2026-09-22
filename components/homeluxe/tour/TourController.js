@@ -83,7 +83,7 @@ export const TURN_SPEED = 2.2;
  * room, which is what these two numbers are for.
  */
 export const GUIDED_WALK_SPEED = 1.05;
-export const GUIDED_TURN_SPEED = 1.1;
+export const GUIDED_TURN_SPEED = 0.8;
 
 /**
  * How far ahead to check for the things that are NOT in the collision
@@ -122,7 +122,10 @@ const SURVEY_ARC = 0.55;   // radians, about 32 degrees either side
  * cover the occasional half-turn inside the seconds allotted to one item, and
  * 1.6 rad/s crosses a full half-turn in about two.
  */
-const SHOWCASE_TURN_SPEED = 1.6;
+// Slowed on request: a turn to the next thing is something to watch, not a
+// cut. About 45 degrees a second at most, so the room passes slowly enough
+// to follow what is changing in the view.
+const SHOWCASE_TURN_SPEED = 0.55;
 
 /**
  * How long the camera's aim takes to settle on where it is being pointed, in
@@ -134,7 +137,7 @@ const SHOWCASE_TURN_SPEED = 1.6;
  * the sofa rather than snapping to it.
  */
 const AIM_SMOOTH_WALK = 0.3;
-const AIM_SMOOTH_LOOK = 0.75;
+const AIM_SMOOTH_LOOK = 1.5;
 
 /**
  * THE COMPANION CAMERA. Where it stands follows the character's heading on a
@@ -144,8 +147,8 @@ const AIM_SMOOTH_LOOK = 0.75;
  * standing character at all: it stays put and turns its view, the way your
  * own eyes stay where they are when you turn your head.
  */
-const CAM_FOLLOW_WALK = 0.38;
-const CAM_FOLLOW_STAND = 1.8;
+const CAM_FOLLOW_WALK = 0.6;
+const CAM_FOLLOW_STAND = 2.6;
 const CAM_HOLD_ANGLE = 1.1;
 /**
  * Standing and looking at something, the camera does follow the body round
@@ -153,9 +156,9 @@ const CAM_HOLD_ANGLE = 1.1;
  * with it to stand at its shoulder -- but slowly enough to read as someone
  * repositioning, not as the view being swung.
  */
-const CAM_FOLLOW_LOOK = 1.2;
+const CAM_FOLLOW_LOOK = 2.2;
 /** Seconds to step between walking behind and standing beside. */
-const CAM_POSE_SMOOTH = 0.9;
+const CAM_POSE_SMOOTH = 1.4;
 /** Seconds for the camera's position to settle behind the character. */
 const CAM_POSITION_SMOOTH = 0.22;
 /**
@@ -376,8 +379,8 @@ const CAMERA_MIN = 0.45;
  * out, and the max speeds below are ceilings for the middle of the move
  * rather than the speed of the whole of it.
  */
-const TURN_SMOOTH_GUIDED = 0.30;
-const TURN_SMOOTH_SHOWCASE = 0.34;
+const TURN_SMOOTH_GUIDED = 0.5;
+const TURN_SMOOTH_SHOWCASE = 0.9;
 const TURN_SMOOTH_MANUAL = 0.16;   // a key press should feel connected
 
 /**
@@ -1075,7 +1078,10 @@ export function createTourController(options = {}) {
     }
 
     faceTowards(current.point, step);
-    showLeft -= step;
+    // The looking starts once the turn has finished. With the turns slowed
+    // down, counting from the moment the turn began would spend the time on
+    // the turn and cut the look short.
+    if (!bodyTurning) showLeft -= step;
 
     if (showLeft <= 0) {
       showIndex += 1;

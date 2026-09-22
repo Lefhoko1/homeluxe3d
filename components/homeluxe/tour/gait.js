@@ -245,8 +245,8 @@ export function createGait(rig) {
       // one side does not need the whole body to swing round.
       const yaw = Math.max(-HEAD_YAW, Math.min(HEAD_YAW, lookYaw));
       const pitch = Math.max(-HEAD_DOWN, Math.min(HEAD_UP, lookPitch));
-      headYaw.value = smoothDamp(headYaw.value, yaw, headYaw.velocity, 0.28, dt);
-      headPitch.value = smoothDamp(headPitch.value, pitch, headPitch.velocity, 0.32, dt);
+      headYaw.value = smoothDamp(headYaw.value, yaw, headYaw.velocity, 0.6, dt, 1.0);
+      headPitch.value = smoothDamp(headPitch.value, pitch, headPitch.velocity, 0.7, dt, 0.8);
       // The model faces -Z, so turning its head to the right is a negative
       // rotation about Y, and tilting it up is a positive one about X.
       joints.head.rotation.y = -headYaw.value;
