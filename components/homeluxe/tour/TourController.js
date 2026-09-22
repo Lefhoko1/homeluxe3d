@@ -39,9 +39,21 @@
  * holding still while its advert is on screen. That list is read off the
  * scene, not written down here; see tour/showcase.js.
  *
- * THE HOUSE NEVER MOVES. Turning rotates the CHARACTER on the spot and swings
- * the CAMERA to stay behind it. Nothing in here touches the scene or the house
- * group, so the building stays where it was built.
+ * THE HOUSE NEVER MOVES -- AND NOW IT DOES NOT LOOK AS IF IT DOES EITHER.
+ * Nothing in here ever touched the scene, but the camera used to ride a 2.3m
+ * boom behind the character's back, so every turn on the spot swept the
+ * camera round a 2.3m circle and the whole room slid sideways across the
+ * screen. To a viewer that is the building moving. So the camera is a
+ * COMPANION now: it walks behind the character's shoulder while they walk,
+ * and when they stop and turn to look at something it stays where it is and
+ * turns its view -- which is what your own eyes do when you turn your head.
+ *
+ * AND THINGS ARE LOOKED AT FROM IN FRONT OF THEM. At a stop the character
+ * walks up to each advertised piece and stands before it, rather than
+ * standing in the middle of the room and having the camera swung at things
+ * across it. See `viewingSpot`. A visitor who picks something from the list
+ * gets the same thing: the character walks over (`visit`), the camera goes
+ * with them, and nothing flies.
  */
 
 import * as THREE from "three";
@@ -49,9 +61,11 @@ import * as THREE from "three";
 import {
   approach,
   damp,
-  frameRateSafe,
+  smoothDamp,
   smoothDampAngle,
+  smoothstep,
 } from "./easing.js";
+import { createGait, rigCharacter } from "./gait.js";
 
 /** Metres per second. A relaxed walking pace, not a sprint. */
 export const WALK_SPEED = 2.4;
@@ -111,15 +125,111 @@ const SURVEY_ARC = 0.55;   // radians, about 32 degrees either side
 const SHOWCASE_TURN_SPEED = 1.6;
 
 /**
- * How quickly the camera's aim catches up with where it is being pointed.
+ * How long the camera's aim takes to settle on where it is being pointed, in
+ * seconds -- springs, not per-frame lerps, so they start and stop gently.
  *
- * Two rates, because they are two different jobs. Walking, the aim point is
- * fixed ahead of a moving character and has to keep up or the view lags
- * behind the walk. Being shown something, the whole value is in the slowness:
- * the camera drifts onto the sofa rather than snapping to it.
+ * Two, because they are two different jobs. Walking, the aim is fixed ahead
+ * of a moving character and has to keep up or the view lags behind the walk.
+ * Being shown something, the value is in the slowness: the eyes drift onto
+ * the sofa rather than snapping to it.
  */
-const AIM_LERP_WALK = 0.25;
-const AIM_LERP_SHOW = 0.055;
+const AIM_SMOOTH_WALK = 0.3;
+const AIM_SMOOTH_LOOK = 0.75;
+
+/**
+ * THE COMPANION CAMERA. Where it stands follows the character's heading on a
+ * spring -- quickly while walking, so it stays behind them; slowly while
+ * standing, so a turn to look at something does not drag it round in an arc.
+ * Within CAM_HOLD_ANGLE of the character's back it does not follow a
+ * standing character at all: it stays put and turns its view, the way your
+ * own eyes stay where they are when you turn your head.
+ */
+const CAM_FOLLOW_WALK = 0.38;
+const CAM_FOLLOW_STAND = 1.8;
+const CAM_HOLD_ANGLE = 1.1;
+/**
+ * Standing and looking at something, the camera does follow the body round
+ * -- the body squares up to what it is shown, and the companion steps round
+ * with it to stand at its shoulder -- but slowly enough to read as someone
+ * repositioning, not as the view being swung.
+ */
+const CAM_FOLLOW_LOOK = 1.2;
+/** Seconds to step between walking behind and standing beside. */
+const CAM_POSE_SMOOTH = 0.9;
+/** Seconds for the camera's position to settle behind the character. */
+const CAM_POSITION_SMOOTH = 0.22;
+/**
+ * How far the view may tilt, up and down, in radians. A ceiling light is
+ * glanced up at; nobody lies on the floor to look at one.
+ */
+const PITCH_UP = 0.32;
+// Down further than up: a WC or a coffee table a metre away is looked DOWN
+// at, and at 0.5 the view stopped short of it and showed the wall behind.
+const PITCH_DOWN = 0.72;
+
+/**
+ * Closer than this to the head, the figure is not drawn -- and it comes back
+ * past the second number, so it does not flicker on the edge. A wall pushes
+ * the camera in behind the character in a small room, and the back of a head
+ * filling the screen shows the visitor nothing; games fade the figure out
+ * for the same reason.
+ */
+const HIDE_WITHIN = 0.62;
+const SHOW_BEYOND = 0.78;
+
+/**
+ * THROUGH THE EYES WHEN THE ROOM IS TOO SMALL. If the walls leave less than
+ * this between the head and where the camera wants to stand, the camera goes
+ * to the eyes instead of sitting against the wall behind the head -- a 2m
+ * ensuite has no room for anyone to stand behind you, and that is how you
+ * would see it. It comes back out past the second number.
+ */
+const EYES_WITHIN = 0.75;
+const EYES_BEYOND = 1.0;
+
+/** Eye height of the 1.55m figure, metres above its feet. */
+const EYE_HEIGHT = 1.42;
+
+/**
+ * WALKING UP TO THINGS. How close counts as "near enough to see it" -- from
+ * nearer than this the character looks from where it is -- and how far in
+ * front of a piece it stands to look at it, tried nearest-natural first.
+ * 1.2m in front of a sofa is where a person stands to take it in; the others
+ * are for a piece hemmed in by the room.
+ */
+const CLOSE_ENOUGH = 1.7;
+const SPOT_GAPS = [1.2, 1.55, 0.95, 1.9];
+/** Straight in front first, then a little either side, then the sides. */
+const SPOT_ANGLES = [0, 0.45, -0.45, 0.9, -0.9, Math.PI / 2, -Math.PI / 2];
+/** Flat things -- a rug -- are seen from wherever you stand. */
+const LOW_ITEM = 0.15;
+/** Seconds a walk to one spot may make no progress before it is given up. */
+const TASK_STALL = 3.0;
+
+/**
+ * THE BODY TURNS ONLY FOR WHAT THE HEAD CANNOT REACH. Something within half
+ * a radian of straight ahead is looked at by the head alone; further round,
+ * the body turns to face it, and once turning keeps going until it is square
+ * -- starting and stopping on the same threshold would twitch.
+ */
+const BODY_TURN_START = 0.5;
+const BODY_TURN_DONE = 0.08;
+
+/**
+ * ROUNDING CORNERS INSTEAD OF STOPPING AT THEM. Speed falls away as the
+ * heading error grows, and only past TURN_IN_PLACE does the walker stop and
+ * turn on the spot -- a person slows into a corner and walks round it; they
+ * do not halt, pivot and set off again at every change of direction. Near a
+ * waypoint where the route bends, it slows in anticipation, by more for a
+ * sharper bend.
+ */
+const TURN_IN_PLACE = 0.85;
+const CORNER_DISTANCE = 0.9;
+/** Distance over which the walk eases to a halt at a stop or a spot. */
+const SETTLE_DISTANCE = 0.9;
+
+/** Walking to something the visitor asked to see: a touch brisker. */
+const VISIT_PACE = 1.2;
 
 /**
  * Heights at which the forward ray is fired.
@@ -209,8 +319,25 @@ const STALL_PROGRESS = 0.05;
  */
 export const VIEWS = {
   third: {
-    back: 2.3,          // fits the smallest room in the plan
-    up: 1.72,           // above the head, well under the 2.4m ceiling
+    // OVER THE SHOULDER, not down a boom. 1.75m back and a third of a metre
+    // to the right: the figure sits in the lower left of the frame and the
+    // room fills the rest, and a turn on the spot moves the camera round a
+    // circle a quarter smaller than the old 2.3m one -- which it only
+    // follows once the character walks off. See CAM_HOLD_ANGLE.
+    back: 1.75,
+    side: 0.34,
+    up: 1.62,           // just above the head, well under the 2.4m ceiling
+    // STANDING AND LOOKING AT SOMETHING, the camera steps up BESIDE them.
+    // From 1.75m behind, the line to a sofa 1.2m in front of the character
+    // runs straight through their back -- you see a person looking at a
+    // sofa, not the sofa. A companion standing at their shoulder sees what
+    // they see, with the figure at the edge of the frame for scale.
+    // 1.35m back and 0.95m aside is about 1.65m from the figure: far enough
+    // that it sits at the edge of the frame rather than filling half of it,
+    // and wide enough that the line to the piece clears its shoulder.
+    lookBack: 1.35,
+    lookSide: 0.95,
+    lookUp: 1.6,
     lookAhead: 3.4,     // the room, not the character
     lookHeight: 1.35,
     // THE SAME LENS AS OUTSIDE THE TOUR, so stepping into it does not warp
@@ -224,6 +351,7 @@ export const VIEWS = {
   },
   first: {
     back: -0.05,        // a hair in front of the eyes, so no nose geometry
+    side: 0,
     up: 1.45,
     lookAhead: 4.0,
     lookHeight: 1.45,
@@ -252,21 +380,18 @@ const TURN_SMOOTH_GUIDED = 0.30;
 const TURN_SMOOTH_SHOWCASE = 0.34;
 const TURN_SMOOTH_MANUAL = 0.16;   // a key press should feel connected
 
-/** Metres per second per second. Asymmetric on purpose -- see `pace`. */
-const ACCELERATE = 3.2;
-const BRAKE = 9.0;
+/**
+ * How quickly `pace` (0..1 of walking speed) may change, per second.
+ * Asymmetric on purpose -- see `pace`. A person takes about half a second to
+ * reach a stroll and a little less to stop; the old 3.2 and 9.0 went from a
+ * standstill to walking in a third of a second and stopped in a tenth, which
+ * is a lurch and a halt rather than a step off and a slowing down.
+ */
+const ACCELERATE = 1.9;
+const BRAKE = 3.4;
 
 /** Seconds to change lens when the view is switched. */
 const FOV_SECONDS = 0.42;
-
-/**
- * How quickly the camera catches up. 1 = instant, lower = smoother.
- *
- * Deliberately high: the camera has to feel bolted behind the character. Too
- * low and turning reads as the world swinging around a stationary viewer,
- * which is the opposite of what a walk-through should feel like.
- */
-const CAMERA_LERP = 0.35;
 
 /**
  * @param {object} options
@@ -364,7 +489,7 @@ export function createTourController(options = {}) {
    *
    * The camera makes it worse rather than causing it. First person sits five
    * centimetres AHEAD of the eyes so there is no nose in frame, but the rig
-   * eases into position at CAMERA_LERP -- so while turning or setting off it
+   * eases into position on a spring -- so while turning or setting off it
    * trails its target and ends up behind the eye point. Widening the canvas
    * to full screen widened the horizontal field from about 34 degrees either
    * side to 46, which is why a lag that had always been there started
@@ -372,8 +497,12 @@ export function createTourController(options = {}) {
    * which is better than tuning the lag until it usually misses.
    */
   const showWalker = () => {
-    character.visible = active && wantCharacter && view.showCharacter;
+    character.visible = active && wantCharacter && view.showCharacter && !crowded;
   };
+  /** The camera has been pushed in against the head. See HIDE_WITHIN. */
+  let crowded = false;
+  /** No room behind the character; seeing through its eyes. See EYES_WITHIN. */
+  let throughEyes = false;
   let viewName = "third";
 
   // -- Guided route -------------------------------------------------------
@@ -419,6 +548,57 @@ export function createTourController(options = {}) {
   let closestSoFar = Infinity;
   let skipped = 0;
 
+  // -- At a stop ------------------------------------------------------------
+  // What the stop is doing: being shown the room ('show'), looking round an
+  // empty one ('survey'), or walking back to where it arrived ('return').
+  // Null between stops. Held separately from the distance to the waypoint,
+  // because walking up to a sofa takes the character AWAY from the waypoint
+  // it arrived at -- and the walk must not mistake that for not having got
+  // there yet.
+  let stopState = null;
+  /** Where the stop was reached, so the walk comes back to its route. */
+  const stopAt = new THREE.Vector3();
+  /** The spots walked through at this stop, to retrace them on the way back. */
+  let trail = [];
+
+  // -- Walking to a place ---------------------------------------------------
+  // A short list of points to walk through, and what to do on arrival. Used
+  // for walking up to a piece at a stop, back to the route afterwards, and to
+  // whatever the visitor asked to see. `owner` says whose it is: a stop's
+  // walk is frozen by a pause like the rest of the route; a visit is what
+  // the pause was FOR, so it carries on.
+  let task = null;
+  /** What to keep looking at once there, until the visitor moves on. */
+  let focus = null;
+  /** Where a visit set off from, to go back to when the tour resumes. */
+  let visitFrom = null;
+  /**
+   * The paths through the house, for getting somewhere not in a straight
+   * line -- another room. The solved route visits every room, so walking
+   * along it always gets there. See `planPath`.
+   */
+  let network = null;
+
+  // -- The companion camera ---------------------------------------------------
+  let camYaw = startHeading;
+  const camYawVelocity = { value: 0 };
+  const camVelocity = { x: { value: 0 }, y: { value: 0 }, z: { value: 0 } };
+  const aimVelocity = { x: { value: 0 }, y: { value: 0 }, z: { value: 0 } };
+  /** What the eyes are on this frame; null means straight ahead. */
+  let looking = null;
+  /** 0 walking behind, 1 standing beside -- blended, never cut. */
+  const pose = { value: 0, velocity: { value: 0 } };
+  /** Which shoulder the companion stands at: +1 right, -1 left. */
+  let poseSide = 1;
+  const lookPoint = new THREE.Vector3();
+  const surveyPoint = new THREE.Vector3();
+  let bodyTurning = false;
+
+  // -- The body -------------------------------------------------------------
+  // A walk driven by the walk. A bare Object3D (the tests) rigs to nothing
+  // and the gait does nothing. See gait.js.
+  const gait = createGait(rigCharacter(character));
+
   /** Shortest signed angle from a to b. */
   const angleTo = (from, to) => {
     let diff = (to - from) % (Math.PI * 2);
@@ -448,6 +628,8 @@ export function createTourController(options = {}) {
   const aimTarget = new THREE.Vector3();
   const head = new THREE.Vector3();
   const camDir = new THREE.Vector3();
+  const camForward = new THREE.Vector3();
+  const camRight = new THREE.Vector3();
 
   // Held input. Keyboard and on-screen buttons write into the same object so
   // they behave identically -- including both at once.
@@ -565,7 +747,7 @@ export function createTourController(options = {}) {
     // not in the plan, so it cannot be in the manifest, and it is only ever
     // in the way when the visitor is steering -- the guided route walks up
     // the drive and goes indoors.
-    if (route || !obstacles.length) return false;
+    if (route || task || !obstacles.length) return false;
 
     for (let i = 0; i < PROBE_HEIGHTS.length; i += 1) {
       probe.set(origin.x, lastGroundY + PROBE_HEIGHTS[i], origin.z);
@@ -576,30 +758,460 @@ export function createTourController(options = {}) {
   }
 
   /**
-   * Turn towards a point and point the camera at it.
+   * Look at a point: with the head if it is near ahead, with the body too if
+   * it is further round.
    *
-   * Used by the showcase: the character rotates on the spot to face whatever
-   * it is being shown, and the camera aims at the thing itself rather than at
-   * the character's eye level -- which is what makes looking UP at a ceiling
-   * light or DOWN at a floor tile possible at all.
+   * The eyes go to the thing itself rather than to eye level -- which is what
+   * lets a glance go down to a floor tile or up to a ceiling light. The head
+   * turns first (see gait.js); the body follows only when the head cannot
+   * reach, and then squares up to it. Turning to look at a product is the
+   * most watched motion in the application, so it has the longest smoothing.
    */
-  function aimAt(point, step) {
+  function faceTowards(point, step) {
+    looking = point;
     const dx = point.x - position.x;
     const dz = point.z - position.z;
+    if (dx * dx + dz * dz < 1e-4) return;
 
-    if (dx * dx + dz * dz > 1e-4) {
-      const wanted = Math.atan2(dx, -dz);
+    const wanted = Math.atan2(dx, -dz);
+    const off = Math.abs(angleTo(heading, wanted));
+    if (off > BODY_TURN_START) bodyTurning = true;
+    if (bodyTurning && off < BODY_TURN_DONE) bodyTurning = false;
 
-      // Turning to look at a product is the most watched motion in the whole
-      // application -- it is what happens at every stop on the tour -- so it
-      // gets the longest smoothing of the three.
+    if (bodyTurning) {
       heading = smoothDampAngle(
         heading, wanted, turnVelocity,
         TURN_SMOOTH_SHOWCASE, step, SHOWCASE_TURN_SPEED * 1.5
       );
+    } else {
+      // Let a turn that has just finished run down rather than stop dead.
+      turnVelocity.value = damp(turnVelocity.value, 0, 8, step);
+      heading += turnVelocity.value * step;
+    }
+  }
+
+  /**
+   * Can the walker get from `from` to (x, z) in a straight line?
+   *
+   * Asked of the same volume the walk is resolved against, every 150mm, so a
+   * "yes" means the circle the character occupies fits the whole way -- past
+   * the sofa, through the doorway, clear of the wall. A closed swing door is
+   * in the volume and answers "no", which is right: go round by the route.
+   */
+  function lineClear(from, x, z) {
+    if (!walkVolume) return true;
+    const length = Math.hypot(x - from.x, z - from.z);
+    const steps = Math.max(1, Math.ceil(length / 0.15));
+    for (let i = 1; i <= steps; i += 1) {
+      const t = i / steps;
+      if (walkVolume.resolve(from.x + (x - from.x) * t, from.z + (z - from.z) * t).hit) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Where to stand to look at a piece, or null to look from here.
+   *
+   * In front of it first -- along the direction its placement faces -- and at
+   * the distance a person stands back from a sofa to take it in; then a
+   * little to either side, then its sides, for a piece the room hems in. A
+   * spot is only used if the character can stand there and, when
+   * `requireLine`, walk there straight from where it is.
+   *
+   * @param {object} spec  from `approachOf` in showcase.js
+   */
+  function viewingSpot(spec, from, { requireLine = true } = {}) {
+    if (!spec || spec.height < LOW_ITEM) return null;
+    const { centre, front, halfAlong, halfAcross } = spec;
+
+    const edge =
+      Math.hypot(from.x - centre.x, from.z - centre.z) - Math.max(halfAlong, halfAcross);
+    if (edge < CLOSE_ENOUGH) return null;
+
+    for (const angle of SPOT_ANGLES) {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      const dx = front.x * c - front.z * s;
+      const dz = front.x * s + front.z * c;
+      const reach = Math.abs(c) * halfAlong + Math.abs(s) * halfAcross;
+
+      for (const gap of SPOT_GAPS) {
+        const x = centre.x + dx * (reach + gap);
+        const z = centre.z + dz * (reach + gap);
+        if (walkVolume?.resolve(x, z).hit) continue;
+        if (requireLine && !lineClear(from, x, z)) continue;
+        return new THREE.Vector3(x, from.y, z);
+      }
     }
 
-    aimTarget.copy(point);
+    return null;
+  }
+
+  /**
+   * Points to walk through to get from `from` to `to`.
+   *
+   * Straight there if nothing is in the way. Otherwise by the route: onto
+   * the nearest point of it that can be reached directly, along it the short
+   * way round the loop, and off it at the point nearest the destination. The
+   * route was solved through every doorway in the house, so this always
+   * finds a way that exists. Null if there is none.
+   */
+  function planPath(from, to) {
+    if (lineClear(from, to.x, to.z)) return [to.clone()];
+    if (!network?.length) return null;
+
+    const nearestReachable = (p) => {
+      const order = network
+        .map((point, index) => ({
+          index,
+          d: (point.position[0] - p.x) ** 2 + (point.position[1] - p.z) ** 2,
+        }))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 16);
+      const hit = order.find(({ index }) =>
+        lineClear(p, network[index].position[0], network[index].position[1])
+      );
+      return hit ? hit.index : -1;
+    };
+
+    const on = nearestReachable(from);
+    const off = nearestReachable(to);
+    if (on < 0 || off < 0) return null;
+
+    const n = network.length;
+    const ahead = (off - on + n) % n;
+    const behind = (on - off + n) % n;
+    const way = ahead <= behind ? 1 : -1;
+    const count = Math.min(ahead, behind);
+
+    const points = [];
+    for (let k = 0; k <= count; k += 1) {
+      const [x, z] = network[(on + way * k + n) % n].position;
+      points.push(new THREE.Vector3(x, from.y, z));
+    }
+    points.push(to.clone());
+    return points;
+  }
+
+  /** A walk through `points`. See `task`. */
+  function goTo(points, { owner = "route", pace: pacing = 1, lookAt = null, onDone = null } = {}) {
+    if (!points?.length) return null;
+    return { points, index: 0, owner, pace: pacing, lookAt, onDone, stall: 0, closest: Infinity };
+  }
+
+  /**
+   * Head for a point: turn towards it, and set the pace for how far off the
+   * heading is -- full speed when facing it, slower into a bend, stopped to
+   * turn on the spot only when it is well behind. Returns the pace asked for.
+   *
+   * @param {object} [how]
+   * @param {boolean} [how.settle]  this is where the walk stops, so ease in
+   * @param {number}  [how.bend]    radians the route turns at this point
+   */
+  function steerTo(tx, tz, step, { settle = false, bend = 0 } = {}) {
+    const dx = tx - position.x;
+    const dz = tz - position.z;
+    const distance = Math.hypot(dx, dz);
+    const wanted = Math.atan2(dx, -dz);
+    const diff = angleTo(heading, wanted);
+
+    if (Math.abs(diff) > 0.015) {
+      heading = smoothDampAngle(
+        heading, wanted, turnVelocity,
+        TURN_SMOOTH_GUIDED, step, GUIDED_TURN_SPEED * 1.5
+      );
+    } else {
+      // Settle exactly, and shed the velocity, so the next bend starts from
+      // rest rather than from whatever was left over.
+      heading = wanted;
+      turnVelocity.value = 0;
+    }
+
+    const off = Math.abs(diff);
+    let want = off >= TURN_IN_PLACE ? 0 : (1 - off / TURN_IN_PLACE) ** 1.6;
+
+    if (settle) {
+      want *= Math.max(0.18, smoothstep(Math.min(1, distance / SETTLE_DISTANCE)));
+    } else if (bend > 0.3) {
+      const near = 1 - Math.min(1, distance / CORNER_DISTANCE);
+      want *= 1 - near * Math.min(bend / (Math.PI / 2), 1) * 0.55;
+    }
+
+    return want;
+  }
+
+  /** How sharply the route turns at waypoint `index`, radians. */
+  function bendAt(index) {
+    if (!route || index <= 0 || index >= route.length - 1) return 0;
+    const [ax, az] = route[index - 1].position;
+    const [bx, bz] = route[index].position;
+    const [cx, cz] = route[index + 1].position;
+    const into = Math.atan2(bx - ax, -(bz - az));
+    const out = Math.atan2(cx - bx, -(cz - bz));
+    return Math.abs(angleTo(into, out));
+  }
+
+  /**
+   * Walk the current task one frame. Returns the pace asked for.
+   *
+   * Each point is arrived at within a few centimetres if it is the last --
+   * that is where the character will stand -- and within 300mm otherwise,
+   * so the walk flows through the middle ones rather than stopping on them.
+   * A point that cannot be got closer to for TASK_STALL seconds is given up,
+   * the same guard the route has, for the same reason.
+   */
+  function runTask(step) {
+    const t = task;
+    const point = t.points[t.index];
+    const last = t.index === t.points.length - 1;
+    const distance = Math.hypot(point.x - position.x, point.z - position.z);
+
+    if (distance < (last ? 0.12 : 0.3)) {
+      t.index += 1;
+      t.stall = 0;
+      t.closest = Infinity;
+      if (t.index >= t.points.length) {
+        task = null;
+        t.onDone?.();
+        return 0;
+      }
+      return steerTo(t.points[t.index].x, t.points[t.index].z, step) * t.pace;
+    }
+
+    if (distance < t.closest - 0.03) {
+      t.closest = distance;
+      t.stall = 0;
+    } else {
+      t.stall += step;
+      if (t.stall > TASK_STALL) {
+        t.index += 1;
+        t.stall = 0;
+        t.closest = Infinity;
+        if (t.index >= t.points.length) {
+          task = null;
+          t.onDone?.();
+        }
+        return 0;
+      }
+    }
+
+    // Walking towards something to look at, the eyes are already on it --
+    // as long as it is somewhere ahead.
+    if (t.lookAt) {
+      const toward = Math.atan2(t.lookAt.x - position.x, -(t.lookAt.z - position.z));
+      if (Math.abs(angleTo(heading, toward)) < 1.0) looking = t.lookAt;
+    }
+
+    return steerTo(point.x, point.z, step, { settle: last }) * t.pace;
+  }
+
+  /** The way back to where the stop was reached: retracing, but no further than needed. */
+  function returnPath() {
+    const path = [];
+    let from = position;
+    for (let k = trail.length - 1; k >= 0 && !lineClear(from, stopAt.x, stopAt.z); k -= 1) {
+      path.push(trail[k].clone());
+      from = trail[k];
+    }
+    path.push(stopAt.clone());
+    return path;
+  }
+
+  /**
+   * Start being shown the current target: tell the page, and walk up to it
+   * if it is a piece worth walking up to.
+   *
+   * Surfaces -- the floor, the walls, the ceiling -- are looked at from the
+   * spot the stop was reached, because that is where they were measured
+   * from; after a walk up to a sofa the character goes back there first.
+   */
+  function beginTarget() {
+    const current = showTargets[showIndex];
+    current.begun = true;
+    showLeft = current.dwell;
+    onShow?.(current, showIndex, showTargets.length);
+
+    if (current.kind === "product") {
+      const spot = viewingSpot(current.approach, position);
+      if (spot) {
+        trail.push(position.clone());
+        task = goTo([spot], { lookAt: current.point });
+      }
+    } else if (Math.hypot(position.x - stopAt.x, position.z - stopAt.z) > 0.4) {
+      task = goTo(returnPath());
+      trail = [];
+    }
+  }
+
+  /** The room has been shown. Back to the route, then on. */
+  function finishStop() {
+    clearShowcase();
+    if (Math.hypot(position.x - stopAt.x, position.z - stopAt.z) > 0.3) {
+      task = goTo(returnPath());
+      trail = [];
+      stopState = "return";
+    } else {
+      advance();
+    }
+  }
+
+  /**
+   * Being shown the room, one frame.
+   *
+   * Each target's dwell counts only once the character is standing in front
+   * of it -- the walk there is not time spent looking.
+   */
+  function runShowcase(step) {
+    const current = showTargets[showIndex];
+    if (!current) {
+      finishStop();
+      return 0;
+    }
+    if (!current.begun) {
+      beginTarget();
+      if (task) return 0;
+    }
+
+    faceTowards(current.point, step);
+    showLeft -= step;
+
+    if (showLeft <= 0) {
+      showIndex += 1;
+      if (showIndex >= showTargets.length) finishStop();
+      else beginTarget();
+    }
+    return 0;
+  }
+
+  /**
+   * The guided route, one frame. Returns the pace asked for.
+   *
+   * `stopState` comes first: at a stop, the walk is doing something other
+   * than heading for the waypoint, and may be nowhere near it.
+   */
+  function runRoute(step) {
+    if (stopState === "show") return runShowcase(step);
+
+    if (stopState === "survey") {
+      // NOTHING ADVERTISED HERE. A hallway, or a room whose products have
+      // all been withdrawn. The HEAD sweeps a slow full cycle -- right, back,
+      // left, back -- and the body stays put, so the room is taken in by
+      // looking round it rather than by the whole figure swivelling.
+      dwellLeft -= step;
+      const t = 1 - dwellLeft / Math.max(dwellTotal, 0.001);
+      const yaw = surveyFrom + Math.sin(t * Math.PI * 2) * SURVEY_ARC;
+      surveyPoint.set(
+        position.x + Math.sin(yaw) * 3,
+        position.y + EYE_HEIGHT,
+        position.z - Math.cos(yaw) * 3
+      );
+      looking = surveyPoint;
+      if (dwellLeft <= 0) advance();
+      return 0;
+    }
+
+    // The walk back from the last piece has finished (the task ran first).
+    if (stopState === "return") {
+      advance();
+      return 0;
+    }
+
+    let target = route[routeIndex];
+    let dx = target.position[0] - position.x;
+    let dz = target.position[1] - position.z;
+    let distance = Math.hypot(dx, dz);
+
+    // ARRIVED, OR GONE PAST.
+    //
+    // Distance alone is not enough. Walking is continuous and turning takes
+    // time, so the character can sail past a waypoint by more than the
+    // arrival radius -- and then it turns round, comes back, overshoots the
+    // other way, and circles it forever. So a waypoint also counts as reached
+    // once the character is past the far end of the leg leading to it. That
+    // matters more now that the walk rounds its corners: it often goes past
+    // a bend's waypoint without ever being within the radius of it.
+    let passed = false;
+    if (routeIndex > 0) {
+      const prev = route[routeIndex - 1].position;
+      const legX = target.position[0] - prev[0];
+      const legZ = target.position[1] - prev[1];
+      const legLength = Math.hypot(legX, legZ);
+      if (legLength > 1e-4) {
+        const travelled =
+          ((position.x - prev[0]) * legX + (position.z - prev[1]) * legZ) / legLength;
+        passed = travelled > legLength - ARRIVE_RADIUS * 0.5;
+      }
+    }
+
+    if (distance < ARRIVE_RADIUS || passed) {
+      if (target.dwell && !target.done) {
+        // Reached a stop: tell whoever is listening, so the room lists can
+        // follow the visitor through the house, then work out what there is
+        // to show here.
+        target.done = true;
+        onArrive?.(target, routeIndex);
+        stopAt.set(position.x, position.y, position.z);
+        trail = [];
+
+        const showing = target.room && showcase
+          ? showcase.forRoom(target.room, position)
+          : [];
+
+        if (showing.length) {
+          showTargets = showing;
+          showIndex = 0;
+          stopState = "show";
+          beginTarget();
+        } else {
+          dwellLeft = target.dwell;
+          dwellTotal = target.dwell;
+          surveyFrom = heading;
+          stopState = "survey";
+        }
+        return 0;
+      }
+
+      // A waypoint on the way, not a stop: carry straight on to the next one,
+      // in the same frame, so the walk does not hesitate at it.
+      advance();
+      target = route[routeIndex];
+      dx = target.position[0] - position.x;
+      dz = target.position[1] - position.z;
+      distance = Math.hypot(dx, dz);
+    }
+
+    // STALL GUARD. Something placed since the route was solved can block the
+    // way through rather than merely stand on a waypoint, and `settleRoute`
+    // cannot move a waypoint past a wardrobe across a doorway. Giving up on
+    // the waypoint and trying the next one walks around the obstruction often
+    // enough to be worth it, and when it does not, the tour at least keeps
+    // moving. See STALL_SECONDS.
+    if (distance < closestSoFar - STALL_PROGRESS) {
+      closestSoFar = distance;
+      stallFor = 0;
+    } else {
+      stallFor += step;
+      if (stallFor >= STALL_SECONDS) {
+        skipped += 1;
+        if (skipped <= 3 || skipped % 25 === 0) {
+          console.warn(
+            `[tour] cannot reach waypoint ${routeIndex}` +
+            `${target.label ? ` (${target.label})` : ''} -- something is ` +
+            `in the way that was not there when the route was solved. ` +
+            `Skipping it.`
+          );
+        }
+        advance();
+        return 0;
+      }
+    }
+
+    return steerTo(target.position[0], target.position[1], step, {
+      settle: Boolean(target.dwell && !target.done),
+      bend: bendAt(routeIndex),
+    });
   }
 
   /** Drop whatever the tour was showing. */
@@ -621,6 +1233,8 @@ export function createTourController(options = {}) {
     dwellLeft = 0;
     stallFor = 0;
     closestSoFar = Infinity;
+    stopState = null;
+    trail = [];
     clearShowcase();
 
     if (routeIndex >= route.length) {
@@ -687,9 +1301,12 @@ export function createTourController(options = {}) {
      *
      * The character stays standing where they got to and stays VISIBLE --
      * they are the bookmark, and a tour that resumes from an empty room
-     * leaves the visitor wondering where they were. The lens goes back to
-     * the one OrbitControls uses, so the view that flies off to a product is
-     * not the tour's slightly wider one.
+     * leaves the visitor wondering where they were.
+     *
+     * THE CAMERA STAYS THE TOUR'S. A pause used to hand it to OrbitControls so
+     * it could fly off to a product -- which is the house zooming away from
+     * the person standing in it. Now the character walks over instead (see
+     * `visit`), and the camera goes with them.
      */
     pauseRoute() {
       if (!active || routeHeld) return false;
@@ -697,18 +1314,63 @@ export function createTourController(options = {}) {
       keys.clear();
       input.forward = 0;
       input.turn = 0;
-      restoreFov();
-      if (controls) controls.enabled = true;
       return true;
     },
 
-    /** Carry on from exactly where it stopped. */
+    /**
+     * Carry on from exactly where it stopped -- walking back there first if a
+     * visit took the character somewhere else in the meantime.
+     */
     resumeRoute() {
       if (!active || !routeHeld) return false;
       routeHeld = false;
-      applyFov();
-      if (controls) controls.enabled = false;
+      focus = null;
+      if (visitFrom && Math.hypot(position.x - visitFrom.x, position.z - visitFrom.z) > 0.3) {
+        task = goTo(planPath(position, visitFrom) ?? [visitFrom.clone()]);
+      } else if (task?.owner === "visit") {
+        task = null;
+      }
+      visitFrom = null;
       return true;
+    },
+
+    /**
+     * Go and look at something: walk to stand in front of it, then keep
+     * looking at it until the visitor moves on.
+     *
+     * WHAT "SHOW ME" MEANS IN A WALK-THROUGH. The alternative -- flying the
+     * camera to the sofa -- leaves the person behind and zooms the house
+     * about; a visitor who asked to see a sofa should be walked to it. A
+     * guided tour is held for the visit and walked back to where it was on
+     * `resumeRoute`. A visitor walking themselves simply arrives, and their
+     * next key press is theirs.
+     *
+     * @param {object} what
+     * @param {THREE.Vector3} what.point      what to look at, world metres
+     * @param {object} [what.approach]        from `approachOf`; where to stand
+     * @param {THREE.Vector3} [what.standAt]  or say where to stand outright
+     * @returns {boolean} whether there is a walk to take
+     */
+    visit({ point, approach: spec = null, standAt = null } = {}) {
+      if (!active || !point) return false;
+      if (route && !routeHeld) routeHeld = true;
+      if (route && !visitFrom) visitFrom = position.clone();
+
+      const goal = standAt?.clone() ?? viewingSpot(spec, position, { requireLine: false });
+      const path = goal ? planPath(position, goal) : null;
+
+      focus = point.clone();
+      bodyTurning = false;
+      task = path ? goTo(path, { owner: "visit", pace: VISIT_PACE, lookAt: focus }) : null;
+      return Boolean(task);
+    },
+
+    /**
+     * The solved route, for finding a way to somewhere not in a straight line
+     * -- another room -- before any guided tour has been started.
+     */
+    setNetwork(waypoints) {
+      network = waypoints?.length ? waypoints : null;
     },
 
     get position() {
@@ -731,16 +1393,25 @@ export function createTourController(options = {}) {
 
       showWalker();
       character.position.copy(position);
-      character.rotation.y = heading;
+      // NEGATIVE, and it always had to be. The walk goes along
+      // (sin h, -cos h); the model faces -Z, and a positive rotation about Y
+      // turns -Z towards -X. So `rotation.y = heading` faced the figure the
+      // mirror image of where it walked -- the right way north and south,
+      // backwards east and west.
+      character.rotation.y = -heading;
 
       applyFov();
 
       // Snap the camera in rather than sweeping it across the whole site.
+      camYaw = heading;
+      camYawVelocity.value = 0;
+      [camVelocity, aimVelocity].forEach((v) => { v.x.value = 0; v.y.value = 0; v.z.value = 0; });
       forward.set(Math.sin(heading), 0, -Math.cos(heading));
+      camRight.set(Math.cos(heading), 0, Math.sin(heading));
       camera.position.set(
-        position.x - forward.x * view.back,
+        position.x - forward.x * view.back + camRight.x * view.side,
         position.y + view.up,
-        position.z - forward.z * view.back
+        position.z - forward.z * view.back + camRight.z * view.side
       );
       // Seed the aim rather than letting it ease in from wherever the orbit
       // camera happened to be pointed, which would start every tour with an
@@ -761,6 +1432,10 @@ export function createTourController(options = {}) {
       routeHeld = false;
       keys.clear();
       route = null;
+      task = null;
+      focus = null;
+      visitFrom = null;
+      stopState = null;
       clearShowcase();
       character.visible = false;
       restoreFov();
@@ -836,7 +1511,14 @@ export function createTourController(options = {}) {
       if (!active) this.enter();
 
       route = waypoints.map((point) => ({ ...point, done: false }));
+      network = route;
       dwellLeft = 0;
+      stopState = null;
+      trail = [];
+      task = null;
+      focus = null;
+      visitFrom = null;
+      routeHeld = false;
       clearShowcase();
       onArrive = arrived;
       showcase = showing;
@@ -859,6 +1541,11 @@ export function createTourController(options = {}) {
       onArrive = null;
       onShow = null;
       showcase = null;
+      stopState = null;
+      trail = [];
+      routeHeld = false;
+      visitFrom = null;
+      if (task?.owner !== "visit") task = null;
       clearShowcase();
       wallRay.far = COLLIDE_DISTANCE;
     },
@@ -904,171 +1591,50 @@ export function createTourController(options = {}) {
 
     /** Advance the walk. `delta` in seconds. */
     update(delta) {
-      // Held means held: nothing steps, nothing turns, nothing dwells, and
-      // the camera is somebody else's to move until `resumeRoute`.
-      //
-      // NOT called `held`: this function already has a local `const held =
-      // readKeys()` further down, and a `let held` in the closure would be
-      // shadowed by it for the whole body -- so this line read the local one
-      // before it existed and threw on the first frame.
-      if (!active || routeHeld) return;
+      // A HELD TOUR STILL DRAWS. The character stands (or walks to what the
+      // visitor asked to see), the camera stays with them, and the route
+      // simply is not stepped until `resumeRoute`.
+      if (!active) return;
 
       // Clamp: a long frame (tab regains focus) must not teleport anyone
-      // through a wall by stepping further than the collision ray reaches.
+      // through a wall by stepping further than the collision reaches.
       const step = Math.min(delta, 0.05);
+      const fromX = position.x;
+      const fromZ = position.z;
+      const fromHeading = heading;
 
       const held = readKeys();
       let turn = held.t + input.turn;
-      let drive = held.f + input.forward;
+      const drive = held.f + input.forward;
 
-      // ---- Guided tour -------------------------------------------------
-      // The route steers by writing the SAME two inputs a person would use,
-      // so everything below -- collision, sliding, ground following, the
-      // step limit -- applies unchanged. A separate "just teleport along the
-      // path" mode would have to re-solve all of it and would still walk
-      // through a sofa that was moved after the route was solved.
-      if (route) {
-        if (turn || drive) {
-          // Any manual input hands control back. A tour you cannot escape is
-          // a cutscene.
-          this.stopRoute();
-        } else {
-          const target = route[routeIndex];
-          const dx = target.position[0] - position.x;
-          const dz = target.position[1] - position.z;
-          const distance = Math.hypot(dx, dz);
+      // Any manual input hands control back. A tour you cannot escape is a
+      // cutscene.
+      if (turn || drive) {
+        if (route) this.stopRoute();
+        task = null;
+        focus = null;
+        visitFrom = null;
+      }
 
-          // ARRIVED, OR GONE PAST.
-          //
-          // Distance alone is not enough. Walking is continuous and turning
-          // takes time, so the character can sail past a waypoint by more
-          // than the arrival radius -- and then it turns round, comes back,
-          // overshoots the other way, and circles it forever. Nothing hits a
-          // wall; it simply never arrives. That is what stalled the walk at
-          // the laundry, where the route doubles back on itself.
-          //
-          // So a waypoint also counts as reached once the character is past
-          // the far end of the leg leading to it.
-          let passed = false;
-          if (routeIndex > 0) {
-            const prev = route[routeIndex - 1].position;
-            const legX = target.position[0] - prev[0];
-            const legZ = target.position[1] - prev[1];
-            const legLength = Math.hypot(legX, legZ);
-            if (legLength > 1e-4) {
-              const travelled =
-                ((position.x - prev[0]) * legX + (position.z - prev[1]) * legZ) /
-                legLength;
-              passed = travelled > legLength - ARRIVE_RADIUS * 0.5;
-            }
-          }
+      looking = null;
+      let automatic = false;
+      let want = 0;
 
-          if (distance < ARRIVE_RADIUS || passed) {
-            if (showTargets.length) {
-              // BEING SHOWN THE ROOM. The character turns to face each
-              // advertised thing in turn and holds still on it while its
-              // advert is on screen. This is the reason the tour exists, so
-              // it takes precedence over every other way of spending a pause.
-              showLeft -= step;
-              aimAt(showTargets[showIndex].point, step);
-
-              if (showLeft <= 0) {
-                showIndex += 1;
-                if (showIndex >= showTargets.length) {
-                  clearShowcase();
-                  dwellLeft = 0;
-                } else {
-                  showLeft = showTargets[showIndex].dwell;
-                  onShow?.(showTargets[showIndex], showIndex, showTargets.length);
-                }
-              }
-            } else if (dwellLeft > 0) {
-              dwellLeft -= step;
-              // NOTHING ADVERTISED HERE. A hallway, or a room whose products
-              // have all been withdrawn. Sweeping the heading through a slow
-              // full cycle -- right, back, left, back -- still takes the room
-              // in, and leaves the character facing where it came in so the
-              // next leg starts pointed sensibly.
-              const t = 1 - dwellLeft / Math.max(dwellTotal, 0.001);
-              heading = surveyFrom + Math.sin(t * Math.PI * 2) * SURVEY_ARC;
-            } else if (target.dwell && !target.done) {
-              // Reached a stop: tell whoever is listening, so the room lists
-              // can follow the visitor through the house, then work out what
-              // there is to show here.
-              target.done = true;
-              onArrive?.(target, routeIndex);
-
-              const showing = target.room && showcase
-                ? showcase.forRoom(target.room, position)
-                : [];
-
-              if (showing.length) {
-                showTargets = showing;
-                showIndex = 0;
-                showLeft = showing[0].dwell;
-                onShow?.(showing[0], 0, showing.length);
-              } else {
-                dwellLeft = target.dwell;
-                dwellTotal = target.dwell;
-                surveyFrom = heading;
-              }
-            } else {
-              advance();
-            }
-          } else {
-            // STALL GUARD. Something placed since the route was solved can
-            // block the way through rather than merely stand on a waypoint,
-            // and `settleRoute` cannot move a waypoint past a wardrobe across
-            // a doorway. Giving up on the waypoint and trying the next one
-            // walks around the obstruction often enough to be worth it, and
-            // when it does not, the tour at least keeps moving. See
-            // STALL_SECONDS.
-            if (distance < closestSoFar - STALL_PROGRESS) {
-              closestSoFar = distance;
-              stallFor = 0;
-            } else {
-              stallFor += step;
-              if (stallFor >= STALL_SECONDS) {
-                skipped += 1;
-                if (skipped <= 3 || skipped % 25 === 0) {
-                  console.warn(
-                    `[tour] cannot reach waypoint ${routeIndex}` +
-                    `${target.label ? ` (${target.label})` : ''} -- something is ` +
-                    `in the way that was not there when the route was solved. ` +
-                    `Skipping it.`
-                  );
-                }
-                advance();
-                return;
-              }
-            }
-
-            const wanted = Math.atan2(dx, -dz);
-            const diff = angleTo(heading, wanted);
-
-            if (Math.abs(diff) > 0.015) {
-              heading = smoothDampAngle(
-                heading, wanted, turnVelocity,
-                TURN_SMOOTH_GUIDED, step, GUIDED_TURN_SPEED * 1.5
-              );
-            } else {
-              // Settle exactly, and shed the velocity, so the next corner
-              // starts from rest rather than from whatever was left over.
-              heading = wanted;
-              turnVelocity.value = 0;
-            }
-            // TURN FIRST, THEN WALK. The tolerance here is the whole
-            // difference between following the route and grinding along a
-            // wall: at anything loose the character walks while still
-            // turning, which is an ARC, and the route is a series of straight
-            // lines. The arc cuts every corner -- and the corners are door
-            // reveals, so it cuts into the jamb and sticks there.
-            //
-            // Simulated over the solved route, 0.6 rad reached 2 waypoints of
-            // 46 before jamming. 0.12 walks the whole house.
-            drive = Math.abs(diff) < 0.12 ? 1 : 0;
-            turn = 0;
-          }
+      if (!turn && !drive) {
+        if (task && (task.owner === "visit" || !routeHeld)) {
+          automatic = true;
+          want = runTask(step);
+        } else if (route && !routeHeld) {
+          // The route steers by asking for the SAME motion a person would --
+          // a heading and a pace -- so collision, sliding, ground following
+          // and the step limit all apply unchanged. A separate "just move
+          // along the path" mode would have to re-solve all of it and would
+          // still walk through a sofa that was moved after the route was
+          // solved.
+          automatic = true;
+          want = runRoute(step);
+        } else if (focus) {
+          faceTowards(focus, step);
         }
       }
 
@@ -1082,22 +1648,24 @@ export function createTourController(options = {}) {
           heading, heading + turn * 0.6, turnVelocity,
           TURN_SMOOTH_MANUAL, step, TURN_SPEED
         );
-      } else if (!route && Math.abs(turnVelocity.value) > 0.001) {
+      } else if (!automatic && !focus && Math.abs(turnVelocity.value) > 0.001) {
         // Key released: let the turn run down rather than stopping dead.
         heading += turnVelocity.value * step;
         turnVelocity.value = damp(turnVelocity.value, 0, 12, step);
       }
 
-      // Ramp towards the pace the controls are asking for. Braking is quicker
-      // than accelerating, so letting go stops you sooner than pressing sets
-      // you off -- and the guided route, which drops to 0 to turn a corner,
-      // is standing still by the time the turn matters.
+      // Ramp towards the pace being asked for. Braking is quicker than
+      // setting off, as it is on foot. The automatic walk asks for a pace
+      // that falls away into bends and eases into stops, so this rarely has
+      // to brake hard at all.
       if (drive) lastDrive = Math.sign(drive);
-      pace = approach(pace, drive ? 1 : 0, drive ? ACCELERATE : BRAKE, step);
+      if (automatic) lastDrive = 1;
+      const goal = automatic ? want : drive ? 1 : 0;
+      pace = approach(pace, goal, goal > pace ? ACCELERATE : BRAKE, step);
 
       if (pace > 0.001) {
         forward.set(Math.sin(heading), 0, -Math.cos(heading));
-        const speed = route ? GUIDED_WALK_SPEED : WALK_SPEED;
+        const speed = automatic ? GUIDED_WALK_SPEED : WALK_SPEED;
         // `drive` carries the direction; `pace` carries how much of it.
         const heldDirection = drive === 0 ? lastDrive : Math.sign(drive);
         const distance = heldDirection * pace * speed * step;
@@ -1147,25 +1715,89 @@ export function createTourController(options = {}) {
       if (y !== null) lastGroundY = y;   // else keep the last known height
       position.y = lastGroundY;
 
-      // THE HOUSE NEVER MOVES. Only these two rotate -- the character turns
-      // on the spot and the camera swings to stay behind it. Nothing here
-      // touches the scene or the house group.
+      // THE HOUSE NEVER MOVES. Only the character and the camera do.
       character.position.copy(position);
-      character.rotation.y = heading;
+      character.rotation.y = -heading;   // see `enter` for why negative
 
-      // Chase camera: behind the character's heading, looking past them.
+      // ---- Where the eyes are -------------------------------------------
+      // On whatever is being looked at, or straight ahead.
       forward.set(Math.sin(heading), 0, -Math.cos(heading));
+      if (looking) {
+        lookPoint.copy(looking);
+      } else {
+        lookPoint.set(
+          position.x + forward.x * view.lookAhead,
+          position.y + view.lookHeight,
+          position.z + forward.z * view.lookAhead
+        );
+      }
+
+      // ---- The body -----------------------------------------------------
+      const moved = Math.hypot(position.x - fromX, position.z - fromZ) / step;
+      const turnRate = angleTo(fromHeading, heading) / step;
+      const lookDX = lookPoint.x - position.x;
+      const lookDZ = lookPoint.z - position.z;
+      const lookFlat = Math.hypot(lookDX, lookDZ);
+      gait.update(step, {
+        speed: moved,
+        turnRate,
+        lookYaw: lookFlat > 0.05 ? angleTo(heading, Math.atan2(lookDX, -lookDZ)) : 0,
+        lookPitch: Math.atan2(lookPoint.y - (position.y + EYE_HEIGHT), Math.max(lookFlat, 0.3)),
+      });
+
+      // ---- The companion camera ------------------------------------------
+      // Where it stands follows the character's heading -- promptly while
+      // they walk, slowly while they stand, and not at all while they stand
+      // roughly facing away from it, so turning to look at something turns
+      // the view rather than swinging the camera round them. First person is
+      // the eyes themselves, and follows the heading closely.
+      const firstPerson = view === VIEWS.first;
+      const standing = moved < 0.12;
+      const studying = Boolean(looking) && standing && !firstPerson;
+      const behind = Math.abs(angleTo(camYaw, heading));
+      if (firstPerson || !standing || studying || behind > CAM_HOLD_ANGLE) {
+        const follow = firstPerson ? 0.12
+          : !standing ? CAM_FOLLOW_WALK
+          : studying ? CAM_FOLLOW_LOOK
+          : CAM_FOLLOW_STAND;
+        camYaw = smoothDampAngle(camYaw, heading, camYawVelocity, follow, step);
+      } else {
+        camYawVelocity.value = damp(camYawVelocity.value, 0, 6, step);
+        camYaw += camYawVelocity.value * step;
+      }
+
+      camForward.set(Math.sin(camYaw), 0, -Math.cos(camYaw));
+      camRight.set(Math.cos(camYaw), 0, Math.sin(camYaw));
+
+      // Behind while walking, beside while studying something. The side is
+      // chosen as the step begins, and it is the shoulder with room to stand
+      // at: a companion does not stand inside the wall.
+      const wantPose = studying ? 1 : 0;
+      if (wantPose === 1 && pose.value < 0.02 && walkVolume && view.lookSide) {
+        const at = (sign) => walkVolume.resolve(
+          position.x - camForward.x * view.lookBack + camRight.x * view.lookSide * sign,
+          position.z - camForward.z * view.lookBack + camRight.z * view.lookSide * sign
+        ).hit;
+        poseSide = !at(1) ? 1 : !at(-1) ? -1 : 1;
+      }
+      pose.value = smoothDamp(pose.value, wantPose, pose.velocity, CAM_POSE_SMOOTH, step);
+      const p = view.lookSide ? pose.value : 0;
+      const back = view.back + ((view.lookBack ?? view.back) - view.back) * p;
+      const side = view.side + ((view.lookSide ?? view.side) * poseSide - view.side) * p;
+      const up = view.up + ((view.lookUp ?? view.up) - view.up) * p;
+
       head.set(position.x, position.y + view.lookHeight, position.z);
       camTarget.set(
-        position.x - forward.x * view.back,
-        position.y + view.up,
-        position.z - forward.z * view.back
+        position.x - camForward.x * back + camRight.x * side,
+        position.y + up,
+        position.z - camForward.z * back + camRight.z * side
       );
 
       // Keep the camera out of the building: cast from the character's head
       // to where the camera wants to be and, if a wall is in the way, pull
       // the camera in front of it. Without this the view ends up outside the
       // room whenever you back up to a wall.
+      let pulledIn = false;
       if (cameraObstacles.length) {
         camDir.copy(camTarget).sub(head);
         const reach = camDir.length();
@@ -1174,43 +1806,65 @@ export function createTourController(options = {}) {
           camRay.set(head, camDir);
           camRay.far = reach;
           const hits = camRay.intersectObjects(cameraObstacles, true);
+          const room = hits.length ? hits[0].distance - 0.25 : reach;
           if (hits.length) {
-            const pulled = Math.max(CAMERA_MIN, hits[0].distance - 0.25);
+            const pulled = Math.max(CAMERA_MIN, room);
             camTarget.copy(head).addScaledVector(camDir, pulled);
+            pulledIn = true;
+          }
+          if (!firstPerson) {
+            throughEyes = throughEyes ? room < EYES_BEYOND : room < EYES_WITHIN;
           }
         }
       }
-
-      // FRAME-RATE INDEPENDENT. `lerp(target, 0.35)` per frame means "35% of
-      // the way there, however often we happen to be called" -- two and a
-      // half times faster on a 144Hz screen than on a 60Hz one, and slower
-      // exactly when the frame rate dips and the camera most needs to hold
-      // steady. `frameRateSafe` converts the constant this was tuned at into
-      // the factor for the frame actually being drawn, so the feel is the one
-      // that was chosen and it is now the same feel everywhere.
-      stepFov(step);
-      camera.position.lerp(camTarget, frameRateSafe(CAMERA_LERP, step));
-
-      // WHERE THE CAMERA IS POINTED.
-      //
-      // Walking, it is AHEAD of the character and not AT them -- the
-      // difference between a walk-through of a house and a video of someone's
-      // back. Standing in a room being shown something, it is pointed at that
-      // thing instead, which is what lets the view tilt down to a floor tile
-      // or up to a ceiling light rather than being pinned at eye level.
-      const showing = showTargets.length > 0;
-      if (!showing) {
-        aimTarget.set(
-          position.x + forward.x * view.lookAhead,
-          position.y + view.lookHeight,
-          position.z + forward.z * view.lookAhead
+      if (throughEyes && !firstPerson) {
+        camTarget.set(
+          position.x + forward.x * 0.08,
+          position.y + EYE_HEIGHT + 0.03,
+          position.z + forward.z * 0.08
         );
+        pulledIn = true;
       }
-      aim.lerp(
-        aimTarget,
-        frameRateSafe(showing ? AIM_LERP_SHOW : AIM_LERP_WALK, step)
-      );
-      camera.lookAt(aim);
+
+      // SPRINGS, NOT LERPS. A lerp moves a fixed share of the distance each
+      // frame, so it leaves at full speed and crawls in; a critically damped
+      // spring gathers speed and settles, which is how a person carrying a
+      // camera moves. A wall pulling the camera in gets a much quicker one,
+      // or the camera would drift through the wall on its way.
+      const closing = pulledIn && camTarget.distanceTo(head) < camera.position.distanceTo(head);
+      const settle = firstPerson ? 0.06 : closing ? 0.06 : CAM_POSITION_SMOOTH;
+      camera.position.x = smoothDamp(camera.position.x, camTarget.x, camVelocity.x, settle, step);
+      camera.position.y = smoothDamp(camera.position.y, camTarget.y, camVelocity.y, settle, step);
+      camera.position.z = smoothDamp(camera.position.z, camTarget.z, camVelocity.z, settle, step);
+
+      // WHERE THE CAMERA IS POINTED: ahead while walking -- the room, not
+      // the back of someone's head -- and at the thing itself while looking
+      // at something, drifting onto it rather than snapping.
+      const aimSmooth = looking ? AIM_SMOOTH_LOOK : AIM_SMOOTH_WALK;
+      aim.x = smoothDamp(aim.x, lookPoint.x, aimVelocity.x, aimSmooth, step);
+      aim.y = smoothDamp(aim.y, lookPoint.y, aimVelocity.y, aimSmooth, step);
+      aim.z = smoothDamp(aim.z, lookPoint.z, aimVelocity.z, aimSmooth, step);
+
+      // A glance, not a crane shot: the tilt is limited to what a head does.
+      aimTarget.copy(aim);
+      const flat = Math.hypot(aim.x - camera.position.x, aim.z - camera.position.z);
+      if (flat > 0.05) {
+        const pitch = Math.atan2(aim.y - camera.position.y, flat);
+        const limited = Math.max(-PITCH_DOWN, Math.min(PITCH_UP, pitch));
+        if (limited !== pitch) aimTarget.y = camera.position.y + Math.tan(limited) * flat;
+      }
+
+      // Too close to draw the figure? Measured from the camera as it now is,
+      // with a gap between hiding and showing so it cannot flicker.
+      const toHead = camera.position.distanceTo(head);
+      const nowCrowded = crowded ? toHead < SHOW_BEYOND : toHead < HIDE_WITHIN;
+      if (nowCrowded !== crowded) {
+        crowded = nowCrowded;
+        showWalker();
+      }
+
+      stepFov(step);
+      camera.lookAt(aimTarget);
     },
   };
 }

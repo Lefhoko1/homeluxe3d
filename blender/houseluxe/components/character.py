@@ -46,11 +46,14 @@ class CharacterComponent(Component):
                 ),
                 "character_trousers",
             )
+            # The toe runs FORWARD, +Y, further than the heel runs back. This
+            # was -150..110, a heel longer than the foot, so the figure
+            # walked with its feet on backwards.
             part(
                 meshutil.rounded_box(
                     f"character.shoe_{side}",
-                    x - 85.0, -150.0, 0.0,
-                    x + 85.0, 110.0, 65.0,
+                    x - 85.0, -110.0, 0.0,
+                    x + 85.0, 150.0, 65.0,
                     radius=25.0,
                 ),
                 "character_shoes",

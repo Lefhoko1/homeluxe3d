@@ -26,6 +26,7 @@ import { getSupabase } from '../../lib/supabase/client';
 import { createAtmosphere } from './atmosphere/Atmosphere';
 import { createLighting } from './lighting/Lighting';
 import {
+  approachOf,
   ARRIVE_RADIUS,
   createTourController,
   createShowcase,
@@ -688,6 +689,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // converted to world here because the character lives in the scene.
         routeRef.current = await loadRoute(house);
         setRouteReady(Boolean(routeRef.current?.waypoints?.length));
+        // The ways through the house, so "show me" can walk to another room
+        // before any guided tour has run. See `visit` in TourController.
+        tourRef.current?.setNetwork(routeRef.current?.waypoints);
 
         // Deep link: /#tour drops the visitor straight onto the driveway.
         // Handy for "take the tour" links in an advert.
@@ -755,18 +759,17 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       // The tour takes the camera over when active; OrbitControls is
       // disabled then, so only one of these ever moves it.
       //
-      // A HELD TOUR HANDS IT BACK. That is what makes "pause and show me
-      // that sofa" possible: the walk keeps its place and its character, and
-      // the camera is free to fly somewhere else in the meantime.
-      const walking = tourRef.current?.active && !tourRef.current.paused;
+      // A HELD TOUR KEEPS IT. It used to hand the camera back so "pause and
+      // show me that sofa" could fly it there -- which left the person
+      // standing in the house behind and zoomed the building about. Now the
+      // character walks to the sofa and the camera goes with them (`visit`),
+      // so the walk-through is a walk-through the whole time. Flights are
+      // for the overview only, outside the tour.
+      const walking = Boolean(tourRef.current?.active);
 
-      // ONE THING MOVES THE CAMERA PER FRAME. A flight is only ever started
-      // while the walk is stopped or held -- the focus effect returns early
-      // otherwise -- but a held tour can be resumed while one is still in the
-      // air, and then both would write to camera.position on the same frame
-      // and the camera would judder between two answers. The walk wins; the
-      // flight is dropped where it is, which is somewhere sensible because it
-      // was easing towards somewhere sensible.
+      // ONE THING MOVES THE CAMERA PER FRAME. A flight started in the
+      // overview can still be in the air when the tour starts; the walk wins
+      // and the flight is dropped where it is.
       if (walking) {
         flightRef.current = null;
       } else if (flightRef.current && !flightRef.current.step(delta)) {
@@ -917,16 +920,57 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       : `${label} — click an item to see the advert`;
   }, [currentRoom, currentIndex, advert, roomLabel]);
 
-  // Selecting in the list flies the camera to that product. Skipped while
-  // the tour is WALKING, since it owns the camera then -- but allowed while
-  // it is held, because being held is exactly what the visitor asked for in
-  // order to look at this.
+  // Selecting in the list takes the visitor to that product.
+  //
+  // IN THE WALK-THROUGH, BY WALKING. The character goes and stands in front
+  // of it and the camera goes with them; nothing flies, and the house does
+  // not zoom about. A guided tour that is WALKING is skipped -- the page asks
+  // first, and holds the tour if the answer is yes -- and a held one, or a
+  // visitor walking themselves, walks there. Outside the tour, in the
+  // overview, the camera still flies: there is nobody standing in the house
+  // to walk.
   useEffect(() => {
     const controls = controlsRef.current;
     const camera = cameraRef.current;
     const house = houseRef.current;
+    const tour = tourRef.current;
     if (!focusProduct || !controls || !camera || !house) return;
-    if (tourRef.current?.active && !tourRef.current.paused) return;
+    if (tour?.active && tour.touring && !tour.paused) return;
+
+    if (tour?.active) {
+      if (focusProduct.position) {
+        // The piece as it stands in the scene now -- it may have been dragged
+        // since the catalogue was read -- for where its front is.
+        const placed = productsRef.current?.children.find(
+          (child) =>
+            (focusProduct.placementId && child.userData.placementId === focusProduct.placementId) ||
+            child.userData.productId === (focusProduct.productId ?? focusProduct.id)
+        );
+        const spec = placed ? approachOf(placed) : null;
+        const point = spec
+          ? spec.centre.clone().setY(Math.min(spec.centre.y + spec.height * 0.25, 1.1))
+          : new THREE.Vector3(...focusProduct.position).add(house.position).setY(0.8);
+        tour.visit({ point, approach: spec });
+      } else {
+        // A FINISH: paint, tile, hardware. It dresses a room rather than
+        // standing anywhere, so "show me" is the room: walk to where the
+        // tour stops in it and look into it.
+        const stop = routeRef.current?.waypoints?.find(
+          (point) => point.room === focusProduct.room && point.dwell
+        );
+        const room = collisionRoomsRef.current?.find((entry) => entry.room === focusProduct.room);
+        if (stop && room?.rect) {
+          const [x0, z0, x1, z1] = room.rect;
+          tour.visit({
+            point: new THREE.Vector3(
+              (x0 + x1) / 2 + house.position.x, 1.2, (z0 + z1) / 2 + house.position.z
+            ),
+            standAt: new THREE.Vector3(stop.position[0], 0, stop.position[1]),
+          });
+        }
+      }
+      return;
+    }
 
     // A FINISH HAS NO POSITION, AND USED TO GET NO FOCUS. Paint, tile and
     // coatings dress a whole surface rather than standing anywhere, so the

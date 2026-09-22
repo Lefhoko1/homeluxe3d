@@ -92,6 +92,44 @@ const FLOOR_LOOK_AHEAD = 1.7;
 const WALL_LOOK_HEIGHT = 1.5;
 
 /**
+ * Which way a placed piece faces, and how far it reaches from its middle.
+ *
+ * WHAT THE TOUR NEEDS TO WALK UP TO IT. A person shown a sofa does not stand
+ * in the middle of the room and turn their head; they go and stand in front
+ * of it. "In front" is the piece's own front -- the direction its placement
+ * turned it to face -- and how far in front depends on how deep it is, so
+ * both are read here, off the object as it stands in the scene now.
+ *
+ * Placements face -Z at rotation 0 (north, in the plan), and the products
+ * group itself is never rotated, so the object's own rotation is its facing.
+ *
+ * @param {THREE.Object3D} object  a direct child of the products group
+ * @returns {{centre: THREE.Vector3, front: THREE.Vector3, halfAlong: number,
+ *            halfAcross: number, height: number} | null}
+ */
+export function approachOf(object) {
+  if (!object) return null;
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  if (box.isEmpty()) return null;
+
+  const centre = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const turn = object.rotation.y;
+  const front = new THREE.Vector3(-Math.sin(turn), 0, -Math.cos(turn));
+
+  return {
+    centre,
+    front,
+    // The box is axis-aligned, so its depth along the front is read off
+    // whichever axis the front mostly lies on.
+    halfAlong: (Math.abs(front.x) * size.x + Math.abs(front.z) * size.z) / 2,
+    halfAcross: (Math.abs(front.z) * size.x + Math.abs(front.x) * size.z) / 2,
+    height: size.y,
+  };
+}
+
+/**
  * Build the look-list for one room.
  *
  * `from` is where the character is standing, which matters: the wall worth
@@ -299,6 +337,8 @@ export function createShowcase({
             advert: { ...data },
             caption: data.name ?? "Product",
             distance: (point.x - here.x) ** 2 + (point.z - here.z) ** 2,
+            // Where to stand to look at it. See `approachOf`.
+            approach: approachOf(child),
           });
         });
       }

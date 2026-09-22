@@ -287,7 +287,13 @@ const LuxeHomePage = () => {
     // still gets its tour; a fast desktop starts sooner than 900ms ever did.
     if (!cinematic || !tourState.ready || !sceneControls?.startGuided) return;
 
-    sceneControls.setWalkerVisible?.(false);
+    // THE FIGURE IS SHOWN NOW. It was hidden from the opening film because a
+    // statue gliding across the floor turned a house into a video game. It
+    // walks now -- steps, arm swing, a head that turns to what it is looking
+    // at -- and walking up to each piece is how the tour shows it, so the
+    // person doing the walking is part of the picture: the scale a
+    // walk-through exists to give.
+    sceneControls.setWalkerVisible?.(true);
     sceneControls.startGuided();
   }, [cinematic, tourState.ready, sceneControls]);
 

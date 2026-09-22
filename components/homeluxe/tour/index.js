@@ -15,7 +15,7 @@ export {
   COLLISION_URL,
   WALK_RADIUS,
 } from "./collision";
-export { createShowcase } from "./showcase";
+export { approachOf, createShowcase } from "./showcase";
 export {
   TOUR_START,
   TOUR_CHARACTER_URL,
