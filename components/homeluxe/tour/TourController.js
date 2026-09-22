@@ -347,9 +347,17 @@ export const VIEWS = {
     // the house. This was 68, which is 100 degrees across a 16:9 frame -- an
     // ultra-wide, and ultra-wides bend straight lines. A house is nothing
     // BUT straight lines, so every wall leaned as the camera turned and the
-    // building looked like it was flexing. 55 is 86 degrees across, still
-    // wide enough to see both sides of the smallest room in the plan.
+    // building looked like it was flexing. 55 is 86 degrees across on 16:9,
+    // and 88 on a wider window -- still a wide angle, still stretching the
+    // edges. So the lens is now set by the angle ACROSS: 68 degrees, near
+    // what the eye takes in of a room without turning. On a 16:9 screen
+    // that is about 42 degrees tall; `minFov` and `maxFov` keep a very wide
+    // window from becoming a letterbox and a tall phone from becoming a
+    // fish-eye. See `lensFor`. `fov` is what a camera with no aspect gets.
     fov: 55,
+    across: 68,
+    minFov: 40,
+    maxFov: 62,
     showCharacter: true,
   },
   first: {
@@ -362,6 +370,9 @@ export const VIEWS = {
     // rather than 2.3m back from it -- but nowhere near the old 74, which
     // was 107 degrees across and bowed the corners of every room.
     fov: 62,
+    across: 74,
+    minFov: 44,
+    maxFov: 66,
     showCharacter: false,
   },
 };
@@ -632,6 +643,7 @@ export function createTourController(options = {}) {
   const head = new THREE.Vector3();
   const camDir = new THREE.Vector3();
   const camForward = new THREE.Vector3();
+  const levelAim = new THREE.Vector3();
   const camRight = new THREE.Vector3();
 
   // Held input. Keyboard and on-screen buttons write into the same object so
@@ -689,14 +701,32 @@ export function createTourController(options = {}) {
    */
   let fovTarget = null;
 
+  /**
+   * The lens for this view on this screen, as a vertical angle in degrees.
+   *
+   * SET BY THE WIDTH, NOT THE HEIGHT. three.js's `fov` is vertical, so the
+   * same 55 degrees is about 88 across a wide desktop window -- a wide-angle
+   * lens, and wide angles stretch everything near the edges of the frame:
+   * doorways lean, a square tile becomes a long trapezium. So each view names
+   * the angle it wants ACROSS, near what an eye takes in of a room, and the
+   * vertical angle follows the shape of the screen -- within limits, so a
+   * tall phone does not end up looking through a slot.
+   */
+  function lensFor(v) {
+    if (!v.across || !camera?.aspect) return v.fov;
+    const half = THREE.MathUtils.degToRad(v.across / 2);
+    const vertical = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(half) / camera.aspect));
+    return Math.min(v.maxFov, Math.max(v.minFov, vertical));
+  }
+
   function applyFov() {
     if (!camera?.isPerspectiveCamera) return;
     if (savedFov === null) savedFov = camera.fov;
-    fovTarget = view.fov;
+    fovTarget = lensFor(view);
     // Entering the tour from the overview is a cut, not a lean: there is
     // nothing on screen yet to be continuous with.
     if (!active) {
-      camera.fov = view.fov;
+      camera.fov = fovTarget;
       camera.updateProjectionMatrix();
     }
   }
@@ -704,6 +734,8 @@ export function createTourController(options = {}) {
   /** Called once per frame; a no-op once the lens has arrived. */
   function stepFov(dt) {
     if (fovTarget === null || !camera?.isPerspectiveCamera) return;
+    // Re-read every frame: the window can be resized mid-walk.
+    fovTarget = lensFor(view);
     if (Math.abs(camera.fov - fovTarget) < 0.01) {
       if (camera.fov !== fovTarget) {
         camera.fov = fovTarget;
@@ -720,6 +752,9 @@ export function createTourController(options = {}) {
 
   function restoreFov() {
     fovTarget = null;
+    // The level-camera lens shift is the tour's alone; the overview orbits
+    // with an ordinary camera.
+    camera?.clearViewOffset?.();
     if (savedFov === null || !camera?.isPerspectiveCamera) return;
     camera.fov = savedFov;
     camera.updateProjectionMatrix();
@@ -1870,7 +1905,37 @@ export function createTourController(options = {}) {
       }
 
       stepFov(step);
-      camera.lookAt(aimTarget);
+
+      // THE CAMERA NEVER TILTS. Tilted up at a ceiling light or down at a
+      // coffee table, a camera makes every vertical line in the house lean
+      // in -- walls splay, door frames converge, a square becomes a
+      // trapezium -- which reads as the building bending. Architectural
+      // photographers use a shift lens for exactly this, and so does this:
+      // the camera turns only about the vertical and stays level, and
+      // looking up or down SLIDES the picture instead of tilting it. Walls
+      // stay upright whatever is being looked at.
+      const levelDX = aimTarget.x - camera.position.x;
+      const levelDZ = aimTarget.z - camera.position.z;
+      const levelFlat = Math.hypot(levelDX, levelDZ);
+      if (levelFlat > 0.05) {
+        levelAim.set(aimTarget.x, camera.position.y, aimTarget.z);
+        camera.lookAt(levelAim);
+        if (camera.isPerspectiveCamera && camera.setViewOffset) {
+          const pitch = Math.atan2(aimTarget.y - camera.position.y, levelFlat);
+          const halfView = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+          // In units of the view's height: a shift of 1 is the whole height,
+          // and a view looking up is one whose window has moved up.
+          //
+          // THE WIDTH PASSED IS THE ASPECT, NOT 1. setViewOffset sets the
+          // camera's aspect to fullWidth / fullHeight -- so a 1-by-1 offset
+          // quietly made every screen square and stretched the picture
+          // sideways, which is more distortion rather than less. Passing the
+          // real aspect as the width keeps it what the page set it to.
+          const aspect = camera.aspect;
+          const shift = -Math.tan(pitch) / (2 * halfView);
+          camera.setViewOffset(aspect, 1, 0, shift, aspect, 1);
+        }
+      }
     },
   };
 }
