@@ -55,6 +55,32 @@ const LIMBS = {
   head: ["head", "nose"],
 };
 
+/**
+ * The same joints again, as BONES, for a character that has a skeleton.
+ *
+ * A figure reconstructed from photographs is one continuous skin. Cut it into
+ * rigid parts and the hips and shoulders gape the moment a limb swings, so it
+ * is skinned instead: bones own overlapping shares of the skin, and it BENDS
+ * across a joint rather than coming apart. Those bones are exported standing
+ * upright with no rotation of their own, which is what lets everything below
+ * treat a bone exactly like one of the jointed model's groups -- `rotation.x`
+ * means "swing forward" on both. The walk is therefore shared entirely, and
+ * only the rigging differs.
+ *
+ * A bone may be missing. Where a scan has welded the arms to the body along
+ * their length they cannot swing without tearing the skin, so the rig ships
+ * without arm bones rather than ship a torn figure, and the walk leaves them
+ * out. The legs and head carry the walk; arms hanging still read as a person
+ * strolling, where a shredded hip does not.
+ */
+const BONE_NAMES = {
+  legLeft: "leg_left",
+  legRight: "leg_right",
+  armLeft: "arm_left",
+  armRight: "arm_right",
+  head: "head",
+};
+
 /** Hip to sole, model metres. What the body dips by is worked out from it. */
 const LEG_LENGTH = 0.88;
 
@@ -97,8 +123,54 @@ const findPart = (root, suffix) => {
 };
 
 /**
+ * Use the character's own skeleton, if it has one.
+ *
+ * Nothing is re-parented here, unlike the jointed model: the bones already sit
+ * where they belong, and the skin already knows which of them moves it. All
+ * that is added is the body group the walk dips and leans, wrapped round the
+ * whole figure -- skeleton and skin together, since separating them would
+ * leave the skin standing where it was.
+ *
+ * @param {THREE.Object3D} root  the loaded character, feet at its origin
+ * @returns {object|null} the rig, or null if this model has no skeleton
+ */
+function rigSkeleton(root) {
+  let hasSkin = false;
+  const bones = new Map();
+  root.traverse((child) => {
+    if (child.isSkinnedMesh) hasSkin = true;
+    // The exporter may decorate a name ("leg_left_1"), so match on the ending.
+    if (child.isBone) bones.set(child.name.replace(/[^a-z_]/gi, ""), child);
+  });
+  if (!hasSkin) return null;
+
+  const joints = {};
+  Object.entries(BONE_NAMES).forEach(([limb, suffix]) => {
+    const found = [...bones.entries()].find(([name]) => name.endsWith(suffix));
+    if (found) joints[limb] = found[1];
+  });
+  // Without legs there is no walk to drive, whatever else the file holds.
+  if (!joints.legLeft || !joints.legRight) return null;
+
+  const body = new THREE.Group();
+  body.name = "rig.body";
+  [...root.children].forEach((child) => {
+    child.removeFromParent();
+    body.add(child);
+  });
+  root.add(body);
+
+  const rig = { body, joints, skinned: true };
+  root.userData.rig = rig;
+  return rig;
+}
+
+/**
  * Hang the character's parts from joints. Idempotent: a model rigged once
  * keeps its rig.
+ *
+ * A skinned model is rigged by its own skeleton instead; a model built from
+ * rigid parts is hung from groups here.
  *
  * @param {THREE.Object3D} root  the loaded character, feet at its origin
  * @returns {object|null} the rig, or null if this is not the character model
@@ -106,6 +178,9 @@ const findPart = (root, suffix) => {
 export function rigCharacter(root) {
   if (!root) return null;
   if (root.userData.rig) return root.userData.rig;
+
+  const skeleton = rigSkeleton(root);
+  if (skeleton) return skeleton;
 
   const body = new THREE.Group();
   body.name = "rig.body";
@@ -217,11 +292,15 @@ export function createGait(rig) {
       const swing = Math.sin(phase) * stride;
       joints.legLeft.rotation.x = swing * LEG_SWING;
       joints.legRight.rotation.x = -swing * LEG_SWING;
-      joints.armLeft.rotation.x = -swing * ARM_SWING;
-      joints.armRight.rotation.x = swing * ARM_SWING;
-      // Arms hang slightly out from the body while walking, not glued to it.
-      joints.armLeft.rotation.z = -0.04 * stride;
-      joints.armRight.rotation.z = 0.04 * stride;
+      // A skinned figure whose arms are welded to its body has no arm bones to
+      // swing; it walks with its arms hanging, which is a way people walk.
+      if (joints.armLeft && joints.armRight) {
+        joints.armLeft.rotation.x = -swing * ARM_SWING;
+        joints.armRight.rotation.x = swing * ARM_SWING;
+        // Arms hang slightly out from the body while walking, not glued to it.
+        joints.armLeft.rotation.z = -0.04 * stride;
+        joints.armRight.rotation.z = 0.04 * stride;
+      }
 
       // The body is lowest when the legs are furthest apart, twice a cycle:
       // where a rigid leg of this length would put the hips, softened by the
@@ -249,8 +328,10 @@ export function createGait(rig) {
       headPitch.value = smoothDamp(headPitch.value, pitch, headPitch.velocity, 0.7, dt, 0.8);
       // The model faces -Z, so turning its head to the right is a negative
       // rotation about Y, and tilting it up is a positive one about X.
-      joints.head.rotation.y = -headYaw.value;
-      joints.head.rotation.x = headPitch.value;
+      if (joints.head) {
+        joints.head.rotation.y = -headYaw.value;
+        joints.head.rotation.x = headPitch.value;
+      }
     },
   };
 }
