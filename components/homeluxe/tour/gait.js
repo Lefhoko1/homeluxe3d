@@ -110,6 +110,9 @@ const DIP_SHARE = 0.55;
 const HEAD_YAW = 1.05;
 const HEAD_UP = 0.35;
 const HEAD_DOWN = 0.5;
+/** The same, for a head that shares its skin with the neck. */
+const SKINNED_HEAD_YAW = 0.6;
+const SKINNED_HEAD_UP = 0.22;
 
 const findPart = (root, suffix) => {
   let found = null;
@@ -322,8 +325,13 @@ export function createGait(rig) {
       // THE HEAD LEADS. It turns to what is being looked at on a quicker
       // spring than the body's, and as far as a neck goes, so a glance to
       // one side does not need the whole body to swing round.
-      const yaw = Math.max(-HEAD_YAW, Math.min(HEAD_YAW, lookYaw));
-      const pitch = Math.max(-HEAD_DOWN, Math.min(HEAD_UP, lookPitch));
+      // A jointed head is a solid part and turns as far as a neck allows. A skinned one is the
+      // same skin as the neck it sits on, so past about 35 degrees the throat stops following and
+      // creases; the figure looks wrong long before it looks expressive. The body turns to make up
+      // the difference anyway, since the head only ever leads it.
+      const yawLimit = rig.skinned ? SKINNED_HEAD_YAW : HEAD_YAW;
+      const yaw = Math.max(-yawLimit, Math.min(yawLimit, lookYaw));
+      const pitch = Math.max(-HEAD_DOWN, Math.min(rig.skinned ? SKINNED_HEAD_UP : HEAD_UP, lookPitch));
       headYaw.value = smoothDamp(headYaw.value, yaw, headYaw.velocity, 0.6, dt, 1.0);
       headPitch.value = smoothDamp(headPitch.value, pitch, headPitch.velocity, 0.7, dt, 0.8);
       // The model faces -Z, so turning its head to the right is a negative
