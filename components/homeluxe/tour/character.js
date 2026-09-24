@@ -5,19 +5,25 @@
  * controller's heading of 0 means -Z for exactly that reason: they have to
  * agree, or the character walks backwards.
  *
- * Two kinds of model work here. The original is built by
- * `blender/houseluxe/components/character.py` out of thirteen rigid parts. The
- * current one is a photographic reconstruction, a single skin over a skeleton,
- * rigged by the model generator's `blender/rig_character.py`. Both stand with
- * their feet at the origin and face -Z; `gait.js` tells them apart and drives
- * whichever it finds.
+ * Three kinds of model work here. The oldest is built by
+ * `blender/houseluxe/components/character.py` out of thirteen rigid parts. Then
+ * a photographic reconstruction, a single skin over a skeleton, rigged by the
+ * model generator's `blender/rig_character.py`. The current one is a MakeHuman
+ * figure built in MPFB -- dressed, and on heels, which is why she measures
+ * 1.85m rather than the 1.70m the reconstruction did. She carries a Mixamo
+ * skeleton, so her bones are named and oriented differently from the
+ * reconstruction's; `gait.js` handles that. All three stand with their feet at
+ * the origin and face -Z, and `gait.js` drives whichever it finds.
+ *
+ * Her heels are baked into the rest pose rather than posed on top of it, so a
+ * walk that rotates her legs cannot stand her flat-footed inside her shoes.
  */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
 import { createGltfLoader } from "../../../lib/gltf/decoders";
 
-export const TOUR_CHARACTER_URL = "/models/tour/woman.glb";
+export const TOUR_CHARACTER_URL = "/models/tour/woman_mpfb_v2.glb";
 
 /**
  * Where the visitor starts, in house-local metres AFTER recentring.

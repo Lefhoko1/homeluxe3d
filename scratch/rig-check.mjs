@@ -45,9 +45,14 @@ const walk = (label, scene) => {
   for (let i = 0; i < 60; i += 1) {
     gait.update(1 / 60, { speed: 1.2, turnRate: 0.2, lookYaw: 0.4, lookPitch: -0.1 });
   }
-  const angle = (joint) => (joint
-    ? [joint.rotation.x, joint.rotation.y, joint.rotation.z].map((v) => +v.toFixed(3)).join(", ")
-    : "absent");
+  // What the walk ASKED FOR, not what the quaternion ended up as: a Mixamo
+  // bone carries a rest rotation, so its euler says nothing about the swing.
+  const angle = (joint) => {
+    if (!joint) return "absent";
+    const drive = joint.userData.drive ?? joint.rotation;
+    return [drive.x, drive.y, drive.z].map((v) => +v.toFixed(3)).join(", ");
+  };
+  const driven = (joint, key) => (joint?.userData.drive ?? joint?.rotation)?.[key] ?? 0;
   console.log(`${label}`);
   console.log(`  kind      : ${rig.skinned ? "skinned skeleton" : "rigid parts"}   height ${height.toFixed(3)}m`);
   console.log(`  contents  : ${skinned} skinned mesh, ${meshes} plain meshes, bones [${bones.join(", ") || "none"}]`);
@@ -57,10 +62,10 @@ const walk = (label, scene) => {
   console.log(`  head      : ${angle(rig.joints.head)}`);
   console.log(`  body      : dip ${rig.body.position.y.toFixed(4)}m, lean ${rig.body.rotation.x.toFixed(4)}`);
 
-  const legs = rig.joints.legLeft.rotation.x * rig.joints.legRight.rotation.x < 0
-    && Math.abs(rig.joints.legLeft.rotation.x) > 0.01;
+  const legs = driven(rig.joints.legLeft, "x") * driven(rig.joints.legRight, "x") < 0
+    && Math.abs(driven(rig.joints.legLeft, "x")) > 0.01;
   const dips = rig.body.position.y < 0;
-  const looks = !rig.joints.head || Math.abs(rig.joints.head.rotation.y) > 0.01;
+  const looks = !rig.joints.head || Math.abs(driven(rig.joints.head, "y")) > 0.01;
   console.log(`  -> legs stride in opposition: ${legs}, body dips: ${dips}, head turns: ${looks}`);
   return legs && dips && looks;
 };
@@ -89,9 +94,12 @@ const jointedStandIn = () => {
 
 const results = [];
 try {
-  results.push(walk("public/models/tour/woman.glb (skinned)", await loadGlb("public/models/tour/woman.glb")));
+  // Kept in step with TOUR_CHARACTER_URL by hand: character.js imports through
+  // a Next alias that node cannot resolve, so it is not imported here.
+  const path = "public/models/tour/woman_mpfb_v2.glb";
+  results.push(walk(`${path} (skinned)`, await loadGlb(path)));
 } catch (error) {
-  console.log(`woman.glb FAILED: ${error}`);
+  console.log(`the tour character FAILED: ${error}`);
   results.push(false);
 }
 results.push(walk("jointed stand-in (regression)", jointedStandIn()));

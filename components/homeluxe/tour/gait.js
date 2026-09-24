@@ -61,11 +61,19 @@ const LIMBS = {
  * A figure reconstructed from photographs is one continuous skin. Cut it into
  * rigid parts and the hips and shoulders gape the moment a limb swings, so it
  * is skinned instead: bones own overlapping shares of the skin, and it BENDS
- * across a joint rather than coming apart. Those bones are exported standing
- * upright with no rotation of their own, which is what lets everything below
- * treat a bone exactly like one of the jointed model's groups -- `rotation.x`
- * means "swing forward" on both. The walk is therefore shared entirely, and
- * only the rigging differs.
+ * across a joint rather than coming apart.
+ *
+ * TWO SKELETONS ARRIVE HERE AND THEY DISAGREE ABOUT WHERE A BONE POINTS. The
+ * generator's own rig exports its bones standing upright with no rotation of
+ * their own, so `rotation.x` on a bone means "swing forward" directly. A
+ * MakeHuman figure is rigged to the Mixamo standard instead, whose bones run
+ * down the limb and carry a rest rotation saying so; assigning `rotation.x`
+ * there throws that rest rotation away and dislocates the limb. So nothing
+ * below assigns a rotation. Each joint gets a driver that remembers its rest
+ * pose and turns a swing into a rotation ABOUT THE CHARACTER'S OWN AXES,
+ * composed on top of that rest. On the upright rig the rest is the identity
+ * and those axes are the world's, so it reduces to exactly what it replaced --
+ * which is why the jointed model is driven through the same drivers.
  *
  * A bone may be missing. Where a scan has welded the arms to the body along
  * their length they cannot swing without tearing the skin, so the rig ships
@@ -74,11 +82,11 @@ const LIMBS = {
  * strolling, where a shredded hip does not.
  */
 const BONE_NAMES = {
-  legLeft: "leg_left",
-  legRight: "leg_right",
-  armLeft: "arm_left",
-  armRight: "arm_right",
-  head: "head",
+  legLeft: ["leg_left", "LeftUpLeg"],
+  legRight: ["leg_right", "RightUpLeg"],
+  armLeft: ["arm_left", "LeftArm"],
+  armRight: ["arm_right", "RightArm"],
+  head: ["head", "Head"],
 };
 
 /** Hip to sole, model metres. What the body dips by is worked out from it. */
@@ -114,6 +122,58 @@ const HEAD_DOWN = 0.5;
 const SKINNED_HEAD_YAW = 0.6;
 const SKINNED_HEAD_UP = 0.22;
 
+/**
+ * Turn a joint into something that can be swung, whatever its rest pose.
+ *
+ * The angles handed to `set` are the character's own: x swings forward, y
+ * turns, z leans sideways, exactly as they did when this code wrote
+ * `rotation.x` on an upright bone. Each is applied about the character's axis
+ * expressed in the joint's PARENT space -- worked out once, here, because none
+ * of a joint's ancestors is rotated by the walk, so the answer never changes.
+ * The result is composed onto the rest pose rather than replacing it, which is
+ * what keeps a Mixamo limb in its socket.
+ *
+ * The angles are also left on the joint as `userData.drive`, so a test can ask
+ * what the walk did without having to know how the skeleton was built.
+ *
+ * @param {THREE.Object3D} joint  a bone, or one of the jointed model's groups
+ * @param {THREE.Quaternion} facing  the character root's world rotation
+ */
+function makeDriver(joint, facing) {
+  const parent = new THREE.Quaternion();
+  if (joint.parent) joint.parent.getWorldQuaternion(parent);
+  const toParent = parent.invert();
+  const axis = (x, y, z) => new THREE.Vector3(x, y, z)
+    .applyQuaternion(facing).applyQuaternion(toParent).normalize();
+  const axes = { x: axis(1, 0, 0), y: axis(0, 1, 0), z: axis(0, 0, 1) };
+  const rest = joint.quaternion.clone();
+  const turn = new THREE.Quaternion();
+  const delta = new THREE.Quaternion();
+  const drive = { x: 0, y: 0, z: 0 };
+  joint.userData.drive = drive;
+
+  return (angles) => {
+    Object.assign(drive, { x: 0, y: 0, z: 0 }, angles);
+    // Composed x, then y, then z, matching how an XYZ euler used to read.
+    delta.identity();
+    ["x", "y", "z"].forEach((key) => {
+      if (drive[key]) delta.multiply(turn.setFromAxisAngle(axes[key], drive[key]));
+    });
+    joint.quaternion.copy(delta).multiply(rest);
+  };
+}
+
+/** A driver for every joint the rig found. Absent joints stay absent. */
+function makeDrivers(root, joints) {
+  root.updateWorldMatrix(true, true);
+  const facing = root.getWorldQuaternion(new THREE.Quaternion());
+  const drivers = {};
+  Object.entries(joints).forEach(([limb, joint]) => {
+    if (joint) drivers[limb] = makeDriver(joint, facing);
+  });
+  return drivers;
+}
+
 const findPart = (root, suffix) => {
   let found = null;
   root.traverse((child) => {
@@ -148,9 +208,14 @@ function rigSkeleton(root) {
   if (!hasSkin) return null;
 
   const joints = {};
-  Object.entries(BONE_NAMES).forEach(([limb, suffix]) => {
-    const found = [...bones.entries()].find(([name]) => name.endsWith(suffix));
-    if (found) joints[limb] = found[1];
+  Object.entries(BONE_NAMES).forEach(([limb, suffixes]) => {
+    // The naming conventions are tried in turn: the generator's own rig first,
+    // then Mixamo's, which is what a MakeHuman figure is rigged to.
+    suffixes.some((suffix) => {
+      const found = [...bones.entries()].find(([name]) => name.endsWith(suffix));
+      if (found) joints[limb] = found[1];
+      return Boolean(found);
+    });
   });
   // Without legs there is no walk to drive, whatever else the file holds.
   if (!joints.legLeft || !joints.legRight) return null;
@@ -163,7 +228,7 @@ function rigSkeleton(root) {
   });
   root.add(body);
 
-  const rig = { body, joints, skinned: true };
+  const rig = { body, joints, drivers: makeDrivers(root, joints), skinned: true };
   root.userData.rig = rig;
   return rig;
 }
@@ -233,7 +298,7 @@ export function rigCharacter(root) {
   if (!found) return null;   // not the character model; leave it alone
 
   root.add(body);
-  const rig = { body, joints };
+  const rig = { body, joints, drivers: makeDrivers(root, joints) };
   root.userData.rig = rig;
   return rig;
 }
@@ -264,7 +329,7 @@ export function createGait(rig) {
      */
     update(dt, { speed = 0, turnRate = 0, lookYaw = 0, lookPitch = 0 } = {}) {
       if (!rig || dt <= 0) return;
-      const { body, joints } = rig;
+      const { body, joints, drivers } = rig;
 
       const moving = Math.abs(speed);
       const turning = Math.abs(turnRate);
@@ -293,16 +358,15 @@ export function createGait(rig) {
       }
 
       const swing = Math.sin(phase) * stride;
-      joints.legLeft.rotation.x = swing * LEG_SWING;
-      joints.legRight.rotation.x = -swing * LEG_SWING;
+      drivers.legLeft({ x: swing * LEG_SWING });
+      drivers.legRight({ x: -swing * LEG_SWING });
       // A skinned figure whose arms are welded to its body has no arm bones to
       // swing; it walks with its arms hanging, which is a way people walk.
       if (joints.armLeft && joints.armRight) {
-        joints.armLeft.rotation.x = -swing * ARM_SWING;
-        joints.armRight.rotation.x = swing * ARM_SWING;
-        // Arms hang slightly out from the body while walking, not glued to it.
-        joints.armLeft.rotation.z = -0.04 * stride;
-        joints.armRight.rotation.z = 0.04 * stride;
+        // Arms swing against the legs, and hang slightly out from the body
+        // while walking rather than staying glued to it.
+        drivers.armLeft({ x: -swing * ARM_SWING, z: -0.04 * stride });
+        drivers.armRight({ x: swing * ARM_SWING, z: 0.04 * stride });
       }
 
       // The body is lowest when the legs are furthest apart, twice a cycle:
@@ -337,8 +401,7 @@ export function createGait(rig) {
       // The model faces -Z, so turning its head to the right is a negative
       // rotation about Y, and tilting it up is a positive one about X.
       if (joints.head) {
-        joints.head.rotation.y = -headYaw.value;
-        joints.head.rotation.x = headPitch.value;
+        drivers.head({ x: headPitch.value, y: -headYaw.value });
       }
     },
   };
