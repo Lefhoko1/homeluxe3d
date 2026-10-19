@@ -18,55 +18,55 @@ from __future__ import annotations
 import os
 import sys
 
-# Allow `import houseluxe` when Blender runs this file directly.
+# Allow `import spacivelle` when Blender runs this file directly.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import bpy  # noqa: E402
 
-from houseluxe.catalog import CATALOG  # noqa: E402
-from houseluxe.catalog.staging import stage_house  # noqa: E402
-from houseluxe.components import default_components  # noqa: E402
-from houseluxe.components.character import CharacterComponent  # noqa: E402
-from houseluxe.components.products import product_components  # noqa: E402
-from houseluxe.components.site import site_components  # noqa: E402
-from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER  # noqa: E402
-from houseluxe.config.slots import check as check_slots  # noqa: E402
-from houseluxe.config.slots_3bed import SLOTS, SWING_CONFLICTS  # noqa: E402
-from houseluxe.config.site_3bed import SITE  # noqa: E402
-from houseluxe.core.scene import SceneBuilder, purge_scene  # noqa: E402
-from houseluxe.export.catalog_json import (  # noqa: E402
+from spacivelle.catalog import CATALOG  # noqa: E402
+from spacivelle.catalog.staging import stage_house  # noqa: E402
+from spacivelle.components import default_components  # noqa: E402
+from spacivelle.components.character import CharacterComponent  # noqa: E402
+from spacivelle.components.products import product_components  # noqa: E402
+from spacivelle.components.site import site_components  # noqa: E402
+from spacivelle.config.plan_3bed import PLAN, TOUR_ORDER  # noqa: E402
+from spacivelle.config.slots import check as check_slots  # noqa: E402
+from spacivelle.config.slots_3bed import SLOTS, SWING_CONFLICTS  # noqa: E402
+from spacivelle.config.site_3bed import SITE  # noqa: E402
+from spacivelle.core.scene import SceneBuilder, purge_scene  # noqa: E402
+from spacivelle.export.catalog_json import (  # noqa: E402
     report as catalog_report,
     write_manifest,
 )
-from houseluxe.export.collision_json import (  # noqa: E402
+from spacivelle.export.collision_json import (  # noqa: E402
     report as collision_report,
     write_manifest as write_collision_manifest,
 )
-from houseluxe.export.doors_json import (  # noqa: E402
+from spacivelle.export.doors_json import (  # noqa: E402
     report as doors_report,
     write_manifest as write_doors_manifest,
 )
-from houseluxe.export.gltf import GLBExporter, report as export_report  # noqa: E402
-from houseluxe.export.lights_json import (  # noqa: E402
+from spacivelle.export.gltf import GLBExporter, report as export_report  # noqa: E402
+from spacivelle.export.lights_json import (  # noqa: E402
     report as lights_report,
     write_manifest as write_lights_manifest,
 )
-from houseluxe.export.planting_json import (  # noqa: E402
+from spacivelle.export.planting_json import (  # noqa: E402
     report as planting_report,
     write_manifest as write_planting_manifest,
 )
-from houseluxe.export.slots_json import (  # noqa: E402
+from spacivelle.export.slots_json import (  # noqa: E402
     report as slots_report,
     write_manifest as write_slots_manifest,
 )
-from houseluxe.export.tour_json import (  # noqa: E402
+from spacivelle.export.tour_json import (  # noqa: E402
     report as tour_report,
     verify as verify_tour,
     write_manifest as write_tour_manifest,
 )
-from houseluxe.materials.library import MaterialLibrary  # noqa: E402
+from spacivelle.materials.library import MaterialLibrary  # noqa: E402
 
 REPO_ROOT = os.path.dirname(_HERE)
 MODEL_DIR = os.path.join(REPO_ROOT, "public", "models", "house")

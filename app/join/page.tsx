@@ -2,10 +2,10 @@
 
 import React from "react";
 
-import { useAdmin } from "../../components/homeluxe/admin";
-import JoinPanel from "../../components/homeluxe/visitor/JoinPanel";
-import "../../components/homeluxe/homeluxe.css";
-import "../../components/homeluxe/visitor.css";
+import { useAdmin } from "../../components/spacivelle/admin";
+import JoinPanel from "../../components/spacivelle/visitor/JoinPanel";
+import "../../components/spacivelle/spacivelle.css";
+import "../../components/spacivelle/visitor.css";
 
 /**
  * Registering, on its own page, for the links that say "join".
@@ -25,7 +25,7 @@ export default function JoinPage() {
     <main className="luxe-page">
       <div className="luxe-top">
         <a className="luxe-wordmark" href="/">
-          <strong>HomeLuxe 3D</strong>
+          <strong>Spacivelle 3D</strong>
           <span>virtual showroom</span>
         </a>
         <a className="luxe-btn ghost" href="/showroom">Back to the house</a>

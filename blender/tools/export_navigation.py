@@ -34,26 +34,26 @@ _SUPABASE = os.path.join(_REPO, "supabase")
 if _SUPABASE not in sys.path:
     sys.path.insert(0, _SUPABASE)
 
-from houseluxe.config.plan_3bed import PLAN, TOUR_ORDER     # noqa: E402
-from houseluxe.config.slots import check as check_slots     # noqa: E402
-from houseluxe.catalog import CATALOG                        # noqa: E402
-from houseluxe.config.slots_3bed import SLOTS, SWING_CONFLICTS  # noqa: E402
-from houseluxe.export.catalog_json import (                  # noqa: E402
+from spacivelle.config.plan_3bed import PLAN, TOUR_ORDER     # noqa: E402
+from spacivelle.config.slots import check as check_slots     # noqa: E402
+from spacivelle.catalog import CATALOG                        # noqa: E402
+from spacivelle.config.slots_3bed import SLOTS, SWING_CONFLICTS  # noqa: E402
+from spacivelle.export.catalog_json import (                  # noqa: E402
     write_manifest as write_catalog,
 )
-from houseluxe.export.collision_json import (               # noqa: E402
+from spacivelle.export.collision_json import (               # noqa: E402
     report as collision_report,
     write_manifest as write_collision_manifest,
 )
-from houseluxe.export.doors_json import (                   # noqa: E402
+from spacivelle.export.doors_json import (                   # noqa: E402
     report as doors_report,
     write_manifest as write_doors_manifest,
 )
-from houseluxe.export.slots_json import (                   # noqa: E402
+from spacivelle.export.slots_json import (                   # noqa: E402
     report as slots_report,
     write_manifest as write_slots_manifest,
 )
-from houseluxe.export.tour_json import (                    # noqa: E402
+from spacivelle.export.tour_json import (                    # noqa: E402
     report as tour_report,
     verify as verify_tour,
     write_manifest as write_tour_manifest,

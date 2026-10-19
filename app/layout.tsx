@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   // Says what it IS. "Immersive 3D experiences" could be about anything, and
   // this is the line that appears in a search result and in a shared link.
   title: {
-    default: "HomeLuxe 3D — walk through a furnished house",
-    template: "%s · HomeLuxe 3D",
+    default: "Spacivelle 3D — Interactive Home & Furniture Showroom",
+    template: "%s · Spacivelle 3D",
   },
   description:
     "A virtual house furnished with real products from Gaborone shops. " +
@@ -62,7 +62,7 @@ export default function RootLayout({
 
           It comes from npm (`three` + `three-stdlib`) and is imported by the
           components that need it. The r128 CDN tags that used to sit here
-          were left over from the standalone public/homeluxe-3d.html page.
+          were left over from the standalone public/spacivelle-3d.html page.
           They loaded a second, older copy of the library into every page,
           which produced "THREE.WARNING: Multiple instances of Three.js being
           imported" and blocked first render on five synchronous scripts.

@@ -18,9 +18,9 @@ pixels inside one are not readable by the page that embeds it -- that is the
 origin model doing its job. There is no supported way to get a frame out of
 it and onto a 3D surface, and the ways that appear to work are extracting the
 underlying stream, which is against YouTube's terms and is someone else's
-film besides. See `components/homeluxe/products/screens.js`.
+film besides. See `components/spacivelle/products/screens.js`.
 
 The screen will play any ordinary video file. To change what is on it, drop
 an `.mp4`, `.webm` or `.m3u8` here and point the product's `texture` at it
-(`blender/houseluxe/catalog/shops/bradlows/__init__.py`), or set the
+(`blender/spacivelle/catalog/shops/bradlows/__init__.py`), or set the
 variant's `texture_url` from the admin Products screen.

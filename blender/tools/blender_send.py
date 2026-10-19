@@ -64,7 +64,7 @@ path = r"{REPO_BLENDER_DIR}"
 if path not in sys.path:
     sys.path.insert(0, path)
 
-for name in [m for m in list(sys.modules) if m == "build" or m.startswith("houseluxe")]:
+for name in [m for m in list(sys.modules) if m == "build" or m.startswith("spacivelle")]:
     del sys.modules[name]
 
 try:

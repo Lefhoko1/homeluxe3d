@@ -245,7 +245,7 @@ as $$
         </td></tr>
         <tr><td style="padding:0 30px 26px;border-top:1px solid #ece7df;">
           <p style="margin:16px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.6;color:#9a8f80;">
-            You are getting this because you follow %s on HomeLuxe 3D.
+            You are getting this because you follow %s on Spacivelle 3D.
             You can stop these from your notification settings.
           </p>
         </td></tr>

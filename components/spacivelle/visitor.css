@@ -1,0 +1,507 @@
+/* ===========================================================================
+   The visitor's side
+   ===========================================================================
+
+   The opening title over the tour, and the pages somebody uses once they have
+   decided they want to hear from a shop.
+
+   LIGHT, LIKE THE REST OF IT. This is a shop window: the whole point is a bed
+   you can imagine in your own room, and nobody imagines furniture in the
+   dark. Contrast does the work -- a white card on warm paper, a hairline
+   rule, and one saturated colour reserved for prices and offers.
+
+   The tokens live in spacivelle.css; this file only ever spends them.
+
+   The layout rule everywhere here: ONE COLUMN, NARROW. These are pages you
+   read and make a decision on, not dashboards you scan, and a 1200px-wide
+   form is a form nobody finishes.
+   ========================================================================== */
+
+/* -- page eyebrow --------------------------------------------------------- */
+
+/* The small uppercase line above a heading. It was `.cinematic-eyebrow` and
+   lived with a card that sat over the 3D view; the card is gone -- the canvas
+   is one column of three and already the smallest part of the screen it
+   should be, and a 25rem panel on top of it spent the one thing the page is
+   for. The eyebrow outlived it because the visitor pages use it. */
+.luxe-eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent-deep);
+}
+
+/* -- buttons -------------------------------------------------------------- */
+
+.luxe-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+.luxe-btn:active { transform: translateY(1px); }
+.luxe-btn:focus-visible { outline: 2px solid var(--secondary); outline-offset: 3px; }
+.luxe-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+/* NAVY CARRIES THE BUTTONS, not the amber. White on amber fails contrast at
+   this size; white on navy is legible at any size, and it leaves the amber
+   free to mean one thing only -- see .product-price-block. */
+.luxe-btn.primary { background: var(--primary); color: var(--on-dark); }
+.luxe-btn.primary:hover { background: #22303F; }
+
+.luxe-btn.ghost {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--primary);
+}
+.luxe-btn.ghost:hover { border-color: var(--secondary); color: var(--secondary); }
+
+.luxe-btn.quiet {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.luxe-btn.quiet:hover { color: var(--text); border-color: var(--muted); }
+
+/* -- the visitor pages ---------------------------------------------------- */
+
+.luxe-page {
+  min-height: 100vh;
+  /* Two very faint washes, so the page is not a flat rectangle of off-white.
+     Barely visible on purpose: this is stationery, not a gradient hero. */
+  background:
+    radial-gradient(900px 460px at 82% -6%, rgba(192, 138, 46, 0.10), transparent 62%),
+    radial-gradient(760px 420px at 4% 2%, rgba(31, 111, 139, 0.08), transparent 64%),
+    var(--paper);
+  color: var(--text);
+  font-family: 'Archivo', system-ui, sans-serif;
+  padding: 0 20px 80px;
+}
+
+.luxe-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 20px 0 30px;
+}
+.luxe-wordmark {
+  display: flex; align-items: baseline; gap: 9px;
+  text-decoration: none; color: var(--primary);
+}
+.luxe-wordmark strong {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600; font-size: 20px; letter-spacing: -0.012em;
+}
+.luxe-wordmark span {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+}
+
+.luxe-narrow { max-width: 30rem; margin: 0 auto; }
+.luxe-wide { max-width: 62rem; margin: 0 auto; }
+
+.luxe-lede {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.14;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+  margin: 0 0 8px;
+  color: var(--primary);
+}
+.luxe-sub {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.62;
+  max-width: 54ch;
+}
+
+.luxe-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 22px 24px;
+  box-shadow: 0 1px 2px rgba(23, 33, 46, 0.04), 0 12px 30px rgba(23, 33, 46, 0.05);
+}
+
+/* -- forms ---------------------------------------------------------------- */
+
+.luxe-form { display: flex; flex-direction: column; gap: 14px; }
+.luxe-field { display: flex; flex-direction: column; gap: 6px; }
+.luxe-field > span {
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  font-weight: 600; color: var(--muted);
+}
+.luxe-field input {
+  font: inherit;
+  font-size: 14px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.luxe-field input:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
+}
+.luxe-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.luxe-note {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  border: 1px solid transparent;
+}
+.luxe-note.bad {
+  background: #FCECEA; border-color: #F0C6C0; color: #8E2B20;
+}
+.luxe-note.good {
+  background: #E8F5EE; border-color: #BFE3CE; color: #1E5F42;
+}
+
+.luxe-switchers {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; margin-top: 16px; font-size: 13px; color: var(--muted);
+}
+.luxe-link {
+  background: none; border: 0; padding: 0; font: inherit;
+  color: var(--secondary); font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.luxe-link:hover { text-decoration: underline; }
+
+/* -- the shop list -------------------------------------------------------- */
+
+.luxe-shops {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 14px;
+}
+
+.luxe-shop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 15px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+.luxe-shop:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(23, 33, 46, 0.07);
+}
+/* Followed shops carry the amber edge -- the one place on this page the
+   accent appears, because it is the state the page exists to produce. */
+.luxe-shop.following { border-color: var(--accent); }
+
+.luxe-shop-head { display: flex; align-items: flex-start; gap: 12px; }
+.luxe-shop-mark {
+  width: 42px; height: 42px; border-radius: 11px; flex: none;
+  display: grid; place-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600; font-size: 18px; color: var(--secondary);
+}
+.luxe-shop-name {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600; font-size: 17px; color: var(--primary);
+}
+.luxe-shop-meta { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+.luxe-shop-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px; font-weight: 600; color: var(--accent-deep);
+  margin: 3px 0 0;
+}
+
+/* -- notification preferences --------------------------------------------- */
+
+.luxe-prefs {
+  display: flex; flex-direction: column; gap: 9px;
+  padding-top: 13px; border-top: 1px solid var(--border);
+}
+.luxe-pref {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 13px; color: var(--text); cursor: pointer;
+}
+.luxe-pref input { margin-top: 2px; accent-color: var(--secondary); }
+.luxe-pref em { display: block; font-style: normal; font-size: 11px; color: var(--muted); }
+.luxe-pref.off { opacity: 0.45; }
+
+/* -- notifications -------------------------------------------------------- */
+
+.luxe-feed { display: flex; flex-direction: column; gap: 10px; }
+.luxe-item {
+  display: flex; gap: 13px; align-items: flex-start;
+  padding: 15px 16px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+}
+.luxe-item.unread { border-color: var(--accent); background: #FFFCF5; }
+.luxe-item:hover { box-shadow: 0 8px 22px rgba(23, 33, 46, 0.06); }
+.luxe-item-dot {
+  width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; flex: none;
+  background: var(--accent);
+}
+.luxe-item.read .luxe-item-dot { background: var(--border); }
+.luxe-item h3 {
+  margin: 0 0 3px;
+  font-size: 15px; font-weight: 600; color: var(--primary);
+}
+.luxe-item p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
+.luxe-item-when {
+  font-size: 11px; color: var(--muted); white-space: nowrap; margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.luxe-empty {
+  padding: 40px 22px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 15px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* -- the follow control in the showroom header ---------------------------- */
+
+.follow-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.follow-btn:hover { border-color: var(--accent); color: var(--accent-deep); }
+.follow-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.follow-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* The count on "My shops". Absent at zero -- a badge that always shows a
+   number stops meaning anything. */
+.header-unread {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 17px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .luxe-shops { grid-template-columns: 1fr; }
+}
+
+/* -- asking a shop something ---------------------------------------------- */
+
+.ask-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(23, 33, 46, 0.42);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 16px 24px;
+  overflow-y: auto;
+}
+
+.ask-dialog {
+  width: min(30rem, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(23, 33, 46, 0.22);
+  overflow: hidden;
+}
+
+.ask-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ask-eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  font-weight: 600; color: var(--accent-deep);
+}
+.ask-title {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600; font-size: 20px; line-height: 1.2;
+  color: var(--primary);
+  text-wrap: balance;
+}
+.ask-close {
+  appearance: none; border: 0; background: none; font-size: 17px;
+  color: var(--muted); cursor: pointer; line-height: 1; padding: 2px 4px;
+}
+.ask-close:hover { color: var(--text); }
+
+.ask-body {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 22px 22px;
+}
+.ask-body textarea {
+  font: inherit; font-size: 14px; line-height: 1.55;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+.ask-body textarea:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
+}
+
+/* The shop's own phone and email. Somebody who wants an answer in ten
+   minutes should ring; the form is for everyone else. */
+.ask-or {
+  margin: 2px 0 -6px;
+  font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase;
+  font-weight: 600; color: var(--muted);
+}
+.ask-contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 7px; }
+.ask-contacts a {
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--secondary);
+  text-decoration: none;
+}
+.ask-contacts a:hover { border-color: var(--secondary); background: var(--surface); }
+
+.ask-foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding-top: 6px; border-top: 1px solid var(--border); margin-top: 2px;
+}
+
+/* -- your questions, and what came back ----------------------------------- */
+
+.ask-thread {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ask-thread.answered { border-color: var(--live); }
+
+.ask-thread-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ask-thread-head strong { font-size: 15px; color: var(--primary); }
+.ask-thread-head .ask-when { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+.ask-status {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+}
+.ask-status.replied { background: #E8F5EE; color: #1E5F42; }
+.ask-status.new { background: #FFF6E5; color: var(--accent-deep); }
+
+.ask-bubbles { display: flex; flex-direction: column; gap: 8px; }
+.ask-bubble {
+  padding: 10px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 46ch;
+}
+/* Yours on the left in plain grey, theirs on the right in the shop's colour.
+   Side and colour both, because colour alone fails for anybody who cannot
+   distinguish the two. */
+.ask-bubble.mine { background: var(--surface-2); color: var(--text); align-self: flex-start; }
+.ask-bubble.theirs {
+  background: #EAF3F7; color: #123B4B; align-self: flex-end;
+  border: 1px solid #CFE4EC;
+}
+.ask-bubble-who {
+  display: block; font-size: 10px; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 3px;
+}
+
+.ask-reply { display: flex; gap: 8px; align-items: flex-start; }
+.ask-reply textarea {
+  flex: 1; font: inherit; font-size: 13px; padding: 9px 11px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); resize: vertical;
+}
+
+/* -- searching for a shop to follow --------------------------------------- */
+
+.shop-search { position: relative; margin-bottom: 16px; }
+.shop-search input {
+  width: 100%;
+  font: inherit; font-size: 14px;
+  padding: 11px 13px 11px 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.shop-search input:focus {
+  outline: none; border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
+}
+.shop-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 14px; pointer-events: none;
+}
+.shop-search-count { margin: 6px 2px 0; font-size: 12px; color: var(--muted); }

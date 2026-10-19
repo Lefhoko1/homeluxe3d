@@ -76,5 +76,5 @@ that **those tables have row-level security switched off**, so anything
 holding the anon key can read them. That is a decision for whoever owns that
 app; it does not affect these tables, which all have RLS on.
 
-If HomeLuxe is meant to stand alone, give it its own Supabase project and
+If Spacivelle 3D is meant to stand alone, give it its own Supabase project and
 re-run the two migrations plus the seed there.

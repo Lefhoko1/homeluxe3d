@@ -23,7 +23,7 @@ globalThis.URL.revokeObjectURL = () => {};
 const THREE = await import("three");
 const { MeshoptDecoder } = await import("three/examples/jsm/libs/meshopt_decoder.module.js");
 const { GLTFLoader } = await import("three-stdlib");
-const { createGait, rigCharacter } = await import("../components/homeluxe/tour/gait.js");
+const { createGait, rigCharacter } = await import("../components/spacivelle/tour/gait.js");
 
 const walk = (label, scene) => {
   let skinned = 0;

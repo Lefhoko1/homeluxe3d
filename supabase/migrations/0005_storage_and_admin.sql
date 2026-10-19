@@ -101,7 +101,7 @@ create policy slots_admin_write on placement_slots
 -- 4. ANCHORING AN UPLOADED MODEL
 --
 -- The placement contract is: origin at the footprint centre, sitting on y=0,
--- facing +Y. Models built by blender/houseluxe obey it because the builder
+-- facing +Y. Models built by blender/spacivelle obey it because the builder
 -- makes them obey it. An uploaded .glb obeys nothing -- exported from any
 -- tool it may be centred on its middle, offset by metres, or built in
 -- centimetres.

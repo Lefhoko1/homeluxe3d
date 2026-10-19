@@ -1,0 +1,408 @@
+/**
+ * The walking figure's body: joints, and a walk that is driven by the walk.
+ *
+ * THE CHARACTER USED TO BE A STATUE ON CASTORS. character.glb is thirteen
+ * rigid parts -- legs, shoes, arms, hands, hips, torso, neck, head, nose --
+ * with no skeleton and no animation, every part's origin at the feet. So the
+ * figure slid across the floor with its legs together and its arms at its
+ * sides, and turned on the spot like a turntable. However smooth the path,
+ * that reads as a model being moved rather than a person walking.
+ *
+ * So the parts are hung from joints when the model loads -- legs from the
+ * hips, arms from the shoulders, the head from the neck -- and a gait swings
+ * them. Nothing here is keyframed: the stride is TIED TO THE DISTANCE
+ * ACTUALLY COVERED, so the feet keep pace with the floor at any speed. A
+ * figure whose legs cycle at a fixed rate while it speeds up and slows down
+ * skates, and skating is exactly the unreality this is here to remove.
+ *
+ * What it does, all of it from two numbers the controller already has --
+ * how fast the figure is going and how fast it is turning:
+ *
+ *   - legs swing from the hips, arms against them, as people walk
+ *   - the body dips as the legs spread and rises as they pass, twice a stride
+ *   - a slight lean into the walk, and a slight sway side to side
+ *   - turning on the spot shuffles the feet instead of pivoting on a pin
+ *   - standing still, the legs settle together and the arms hang
+ *   - the head turns to what is being looked at BEFORE the body does, and
+ *     further than the body does, as a person's head leads their shoulders
+ */
+
+import * as THREE from "three";
+
+import { damp, smoothDamp } from "./easing.js";
+
+/**
+ * Where the joints are, in the model's own metres (built 1.70m tall, feet at
+ * the origin, facing -Z). Read off the parts' bounding boxes: each leg hangs
+ * from y 0.88 and sits 95mm either side of the middle, each arm from y 1.37,
+ * and the head sits on the neck at 1.42. See blender/spacivelle/components/
+ * character.py.
+ */
+const JOINTS = {
+  legLeft: [-0.095, 0.88, 0],
+  legRight: [0.095, 0.88, 0],
+  armLeft: [-0.225, 1.37, 0],
+  armRight: [0.225, 1.37, 0],
+  head: [0, 1.42, 0],
+};
+
+/** Which parts hang from which joint, by the end of their exported names. */
+const LIMBS = {
+  legLeft: ["leg_left", "shoe_left"],
+  legRight: ["leg_right", "shoe_right"],
+  armLeft: ["arm_left", "hand_left"],
+  armRight: ["arm_right", "hand_right"],
+  head: ["head", "nose"],
+};
+
+/**
+ * The same joints again, as BONES, for a character that has a skeleton.
+ *
+ * A figure reconstructed from photographs is one continuous skin. Cut it into
+ * rigid parts and the hips and shoulders gape the moment a limb swings, so it
+ * is skinned instead: bones own overlapping shares of the skin, and it BENDS
+ * across a joint rather than coming apart.
+ *
+ * TWO SKELETONS ARRIVE HERE AND THEY DISAGREE ABOUT WHERE A BONE POINTS. The
+ * generator's own rig exports its bones standing upright with no rotation of
+ * their own, so `rotation.x` on a bone means "swing forward" directly. A
+ * MakeHuman figure is rigged to the Mixamo standard instead, whose bones run
+ * down the limb and carry a rest rotation saying so; assigning `rotation.x`
+ * there throws that rest rotation away and dislocates the limb. So nothing
+ * below assigns a rotation. Each joint gets a driver that remembers its rest
+ * pose and turns a swing into a rotation ABOUT THE CHARACTER'S OWN AXES,
+ * composed on top of that rest. On the upright rig the rest is the identity
+ * and those axes are the world's, so it reduces to exactly what it replaced --
+ * which is why the jointed model is driven through the same drivers.
+ *
+ * A bone may be missing. Where a scan has welded the arms to the body along
+ * their length they cannot swing without tearing the skin, so the rig ships
+ * without arm bones rather than ship a torn figure, and the walk leaves them
+ * out. The legs and head carry the walk; arms hanging still read as a person
+ * strolling, where a shredded hip does not.
+ */
+const BONE_NAMES = {
+  legLeft: ["leg_left", "LeftUpLeg"],
+  legRight: ["leg_right", "RightUpLeg"],
+  armLeft: ["arm_left", "LeftArm"],
+  armRight: ["arm_right", "RightArm"],
+  head: ["head", "Head"],
+};
+
+/** Hip to sole, model metres. What the body dips by is worked out from it. */
+const LEG_LENGTH = 0.88;
+
+/** Radians each leg swings either side of straight, at a normal walk. */
+const LEG_SWING = 0.36;
+/** And each arm, against the leg on its own side. */
+const ARM_SWING = 0.3;
+
+/**
+ * Metres covered by one full cycle -- left step and right step -- as a
+ * function of speed. People lengthen their stride as they speed up as well
+ * as stepping faster: about 1.25m per cycle at a stroll, 1.6m at a brisk walk.
+ */
+const cycleLength = (speed) => 1.05 + 0.22 * Math.min(speed, 2.5);
+
+/** The speed a "normal" stride is sized for, m/s. */
+const STRIDE_SPEED = 1.05;
+
+/**
+ * How much of the geometric dip the body actually makes. A rigid leg would
+ * drop the hips 5cm at full stride; knees absorb most of it, and 2-3cm is
+ * what reads as a walk rather than a bounce.
+ */
+const DIP_SHARE = 0.55;
+
+/** Radians the head may turn from the body, and tilt up and down. */
+const HEAD_YAW = 1.05;
+const HEAD_UP = 0.35;
+const HEAD_DOWN = 0.5;
+/** The same, for a head that shares its skin with the neck. */
+const SKINNED_HEAD_YAW = 0.6;
+const SKINNED_HEAD_UP = 0.22;
+
+/**
+ * Turn a joint into something that can be swung, whatever its rest pose.
+ *
+ * The angles handed to `set` are the character's own: x swings forward, y
+ * turns, z leans sideways, exactly as they did when this code wrote
+ * `rotation.x` on an upright bone. Each is applied about the character's axis
+ * expressed in the joint's PARENT space -- worked out once, here, because none
+ * of a joint's ancestors is rotated by the walk, so the answer never changes.
+ * The result is composed onto the rest pose rather than replacing it, which is
+ * what keeps a Mixamo limb in its socket.
+ *
+ * The angles are also left on the joint as `userData.drive`, so a test can ask
+ * what the walk did without having to know how the skeleton was built.
+ *
+ * @param {THREE.Object3D} joint  a bone, or one of the jointed model's groups
+ * @param {THREE.Quaternion} facing  the character root's world rotation
+ */
+function makeDriver(joint, facing) {
+  const parent = new THREE.Quaternion();
+  if (joint.parent) joint.parent.getWorldQuaternion(parent);
+  const toParent = parent.invert();
+  const axis = (x, y, z) => new THREE.Vector3(x, y, z)
+    .applyQuaternion(facing).applyQuaternion(toParent).normalize();
+  const axes = { x: axis(1, 0, 0), y: axis(0, 1, 0), z: axis(0, 0, 1) };
+  const rest = joint.quaternion.clone();
+  const turn = new THREE.Quaternion();
+  const delta = new THREE.Quaternion();
+  const drive = { x: 0, y: 0, z: 0 };
+  joint.userData.drive = drive;
+
+  return (angles) => {
+    Object.assign(drive, { x: 0, y: 0, z: 0 }, angles);
+    // Composed x, then y, then z, matching how an XYZ euler used to read.
+    delta.identity();
+    ["x", "y", "z"].forEach((key) => {
+      if (drive[key]) delta.multiply(turn.setFromAxisAngle(axes[key], drive[key]));
+    });
+    joint.quaternion.copy(delta).multiply(rest);
+  };
+}
+
+/** A driver for every joint the rig found. Absent joints stay absent. */
+function makeDrivers(root, joints) {
+  root.updateWorldMatrix(true, true);
+  const facing = root.getWorldQuaternion(new THREE.Quaternion());
+  const drivers = {};
+  Object.entries(joints).forEach(([limb, joint]) => {
+    if (joint) drivers[limb] = makeDriver(joint, facing);
+  });
+  return drivers;
+}
+
+const findPart = (root, suffix) => {
+  let found = null;
+  root.traverse((child) => {
+    // GLTFLoader strips the dot from "character.leg_left", so match the end.
+    if (!found && child.isMesh && child.name.replace(/[^a-z_]/gi, "").endsWith(suffix)) {
+      found = child;
+    }
+  });
+  return found;
+};
+
+/**
+ * Use the character's own skeleton, if it has one.
+ *
+ * Nothing is re-parented here, unlike the jointed model: the bones already sit
+ * where they belong, and the skin already knows which of them moves it. All
+ * that is added is the body group the walk dips and leans, wrapped round the
+ * whole figure -- skeleton and skin together, since separating them would
+ * leave the skin standing where it was.
+ *
+ * @param {THREE.Object3D} root  the loaded character, feet at its origin
+ * @returns {object|null} the rig, or null if this model has no skeleton
+ */
+function rigSkeleton(root) {
+  let hasSkin = false;
+  const bones = new Map();
+  root.traverse((child) => {
+    if (child.isSkinnedMesh) hasSkin = true;
+    // The exporter may decorate a name ("leg_left_1"), so match on the ending.
+    if (child.isBone) bones.set(child.name.replace(/[^a-z_]/gi, ""), child);
+  });
+  if (!hasSkin) return null;
+
+  const joints = {};
+  Object.entries(BONE_NAMES).forEach(([limb, suffixes]) => {
+    // The naming conventions are tried in turn: the generator's own rig first,
+    // then Mixamo's, which is what a MakeHuman figure is rigged to.
+    suffixes.some((suffix) => {
+      const found = [...bones.entries()].find(([name]) => name.endsWith(suffix));
+      if (found) joints[limb] = found[1];
+      return Boolean(found);
+    });
+  });
+  // Without legs there is no walk to drive, whatever else the file holds.
+  if (!joints.legLeft || !joints.legRight) return null;
+
+  const body = new THREE.Group();
+  body.name = "rig.body";
+  [...root.children].forEach((child) => {
+    child.removeFromParent();
+    body.add(child);
+  });
+  root.add(body);
+
+  const rig = { body, joints, drivers: makeDrivers(root, joints), skinned: true };
+  root.userData.rig = rig;
+  return rig;
+}
+
+/**
+ * Hang the character's parts from joints. Idempotent: a model rigged once
+ * keeps its rig.
+ *
+ * A skinned model is rigged by its own skeleton instead; a model built from
+ * rigid parts is hung from groups here.
+ *
+ * @param {THREE.Object3D} root  the loaded character, feet at its origin
+ * @returns {object|null} the rig, or null if this is not the character model
+ */
+export function rigCharacter(root) {
+  if (!root) return null;
+  if (root.userData.rig) return root.userData.rig;
+
+  const skeleton = rigSkeleton(root);
+  if (skeleton) return skeleton;
+
+  const body = new THREE.Group();
+  body.name = "rig.body";
+
+  const joints = {};
+  let found = 0;
+
+  Object.entries(LIMBS).forEach(([limb, parts]) => {
+    const joint = new THREE.Group();
+    joint.name = `rig.${limb}`;
+    joint.position.fromArray(JOINTS[limb]);
+    body.add(joint);
+    joints[limb] = joint;
+
+    parts.forEach((suffix) => {
+      const part = findPart(root, suffix);
+      if (!part) return;
+      found += 1;
+      part.removeFromParent();
+      // The part keeps its place in the model: it moves to the joint and is
+      // offset back by the joint's position, so only the ROTATION changes
+      // where it ends up.
+      part.position.sub(joint.position);
+      joint.add(part);
+
+      // A SHOE WHOSE TOE POINTS BACKWARDS IS TURNED ROUND. The generator
+      // built each shoe 150mm behind the ankle and 110mm in front of it -- a
+      // heel longer than the foot -- which character.py now corrects. The
+      // model is measured rather than trusted, so an export from before the
+      // fix is mended and one from after it is left alone. Forward is -Z.
+      if (suffix.startsWith("shoe")) {
+        part.geometry.computeBoundingBox();
+        const { min, max } = part.geometry.boundingBox;
+        if (max.z > -min.z + 0.01) part.scale.z *= -1;
+      }
+    });
+  });
+
+  // Everything else -- hips, torso, neck -- rides on the body.
+  [...root.children].forEach((child) => {
+    if (child.isMesh) {
+      child.removeFromParent();
+      body.add(child);
+    }
+  });
+
+  if (!found) return null;   // not the character model; leave it alone
+
+  root.add(body);
+  const rig = { body, joints, drivers: makeDrivers(root, joints) };
+  root.userData.rig = rig;
+  return rig;
+}
+
+/**
+ * A walk for a rigged character.
+ *
+ * @param {object|null} rig  from `rigCharacter`; null gives a gait that does
+ *        nothing, so the controller never has to ask
+ */
+export function createGait(rig) {
+  let phase = 0;
+  let stride = 0;          // 0 standing .. 1 a full stride
+  let lean = 0;
+  let breathe = 0;
+  const headYaw = { value: 0, velocity: { value: 0 } };
+  const headPitch = { value: 0, velocity: { value: 0 } };
+
+  return {
+    /**
+     * @param {number} dt  seconds
+     * @param {object} motion
+     * @param {number} motion.speed     metres per second actually covered
+     * @param {number} motion.turnRate  radians per second the body is turning
+     * @param {number} [motion.lookYaw]    radians, where the eyes want to be
+     *        relative to where the body faces; positive is to the RIGHT
+     * @param {number} [motion.lookPitch]  radians, positive is up
+     */
+    update(dt, { speed = 0, turnRate = 0, lookYaw = 0, lookPitch = 0 } = {}) {
+      if (!rig || dt <= 0) return;
+      const { body, joints, drivers } = rig;
+
+      const moving = Math.abs(speed);
+      const turning = Math.abs(turnRate);
+
+      // TURNING ON THE SPOT IS STEPPING ON THE SPOT. Nobody rotates on a
+      // pin; they take two or three small steps round. So a turn with
+      // little forward speed keeps the feet going at a shorter stride.
+      const shuffle = moving < 0.25 ? Math.min(turning / 1.4, 1) * 0.55 : 0;
+      const wanted = Math.max(Math.min(moving / STRIDE_SPEED, 1.25), shuffle);
+
+      // The stride opens as the walk starts and closes as it stops, rather
+      // than the legs snapping together on the frame the walker halts.
+      stride = damp(stride, wanted, wanted > stride ? 6 : 4, dt);
+
+      // Distance drives the cycle; the shuffle is driven by the turn.
+      const cyclesPerSecond = moving > 0.05
+        ? moving / cycleLength(moving)
+        : turning * 0.35;
+      phase = (phase + cyclesPerSecond * Math.PI * 2 * dt) % (Math.PI * 4);
+
+      // Once standing, let the legs finish the step they were in rather than
+      // freezing mid-stride: the phase is drawn home to the nearest rest.
+      if (stride < 0.02) {
+        const rest = Math.round(phase / Math.PI) * Math.PI;
+        phase = damp(phase, rest, 5, dt);
+      }
+
+      const swing = Math.sin(phase) * stride;
+      drivers.legLeft({ x: swing * LEG_SWING });
+      drivers.legRight({ x: -swing * LEG_SWING });
+      // A skinned figure whose arms are welded to its body has no arm bones to
+      // swing; it walks with its arms hanging, which is a way people walk.
+      if (joints.armLeft && joints.armRight) {
+        // Arms swing against the legs, and hang slightly out from the body
+        // while walking rather than staying glued to it.
+        drivers.armLeft({ x: -swing * ARM_SWING, z: -0.04 * stride });
+        drivers.armRight({ x: swing * ARM_SWING, z: 0.04 * stride });
+      }
+
+      // The body is lowest when the legs are furthest apart, twice a cycle:
+      // where a rigid leg of this length would put the hips, softened by the
+      // knees the model does not have.
+      const legAngle = Math.abs(swing) * LEG_SWING;
+      const dip = LEG_LENGTH * (1 - Math.cos(legAngle)) * DIP_SHARE;
+
+      // Breathing, standing still: a few millimetres, every four seconds.
+      breathe += dt;
+      const rest = (1 - Math.min(stride * 3, 1)) * Math.sin(breathe * 1.6) * 0.003;
+
+      body.position.y = -dip + rest;
+      // Weight shifts over the foot that is down.
+      body.rotation.z = Math.sin(phase) * 0.02 * stride;
+      // A little forward lean into a walk; none standing.
+      lean = damp(lean, Math.min(moving / 2.4, 1) * 0.06, 4, dt);
+      body.rotation.x = -lean;
+
+      // THE HEAD LEADS. It turns to what is being looked at on a quicker
+      // spring than the body's, and as far as a neck goes, so a glance to
+      // one side does not need the whole body to swing round.
+      // A jointed head is a solid part and turns as far as a neck allows. A skinned one is the
+      // same skin as the neck it sits on, so past about 35 degrees the throat stops following and
+      // creases; the figure looks wrong long before it looks expressive. The body turns to make up
+      // the difference anyway, since the head only ever leads it.
+      const yawLimit = rig.skinned ? SKINNED_HEAD_YAW : HEAD_YAW;
+      const yaw = Math.max(-yawLimit, Math.min(yawLimit, lookYaw));
+      const pitch = Math.max(-HEAD_DOWN, Math.min(rig.skinned ? SKINNED_HEAD_UP : HEAD_UP, lookPitch));
+      headYaw.value = smoothDamp(headYaw.value, yaw, headYaw.velocity, 0.6, dt, 1.0);
+      headPitch.value = smoothDamp(headPitch.value, pitch, headPitch.velocity, 0.7, dt, 0.8);
+      // The model faces -Z, so turning its head to the right is a negative
+      // rotation about Y, and tilting it up is a positive one about X.
+      if (joints.head) {
+        drivers.head({ x: headPitch.value, y: -headYaw.value });
+      }
+    },
+  };
+}

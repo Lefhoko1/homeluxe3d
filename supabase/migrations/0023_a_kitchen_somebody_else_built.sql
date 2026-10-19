@@ -1,7 +1,7 @@
 -- =============================================================================
 -- A kitchen unit that did not come out of the generator
 --
--- Every product in the house so far was modelled by `blender/houseluxe` and
+-- Every product in the house so far was modelled by `blender/spacivelle` and
 -- reached the database through the seed, which is derived from catalog.json.
 -- This one arrived as a finished .glb from outside: 98 named objects, seven
 -- PBR materials, 1,988 triangles, 3367 x 676 x 2050mm, metres, Y up.
@@ -70,7 +70,7 @@ on conflict (product_id, room_type) do nothing;
 --
 -- THE ANCHOR IS NOT DECORATION. Products built by the generator come out with
 -- their footprint centred on the origin and their underside on the floor,
--- because `blender/houseluxe` is written to that convention. An uploaded file
+-- because `blender/spacivelle` is written to that convention. An uploaded file
 -- has whatever its author left behind, and this one spans x -1.675..1.692 and
 -- z 0..0.666 -- centred across but sitting entirely in FRONT of its own
 -- origin. Placed as-is it would stand a third of a metre into the room.
@@ -147,7 +147,7 @@ on conflict (scene_id, code) do update set
 -- route is solved in Blender against the catalogue; a product inserted by
 -- migration is not in the catalogue, so `tour.json` still read 110 waypoints
 -- at 300mm clearance -- true, and solved against a house that no longer
--- existed. `components/homeluxe/tour/clearance.test.mjs` now compares the
+-- existed. `components/spacivelle/tour/clearance.test.mjs` now compares the
 -- live placements against the solved waypoints and fails on exactly this.
 --
 -- To stand it up: give it the kitchen's north wall and stop the generator

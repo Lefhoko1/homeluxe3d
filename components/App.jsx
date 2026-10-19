@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { LuxeHomePage } from './homeluxe';
+import { LuxeHomePage } from './spacivelle';
 
 function App() {
   return <LuxeHomePage />;

@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { LuxeHomePage } from "../../components/homeluxe";
+import { LuxeHomePage } from "../../components/spacivelle";
 
 /**
  * The house.

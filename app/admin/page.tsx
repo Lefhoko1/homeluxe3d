@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 
-import { AdminShell, useAdmin } from "../../components/homeluxe/admin";
-import LoginModal from "../../components/homeluxe/LoginModal";
-import "../../components/homeluxe/homeluxe.css";
+import { AdminShell, useAdmin } from "../../components/spacivelle/admin";
+import LoginModal from "../../components/spacivelle/LoginModal";
+import "../../components/spacivelle/spacivelle.css";
 
 /**
  * The management application, away from the 3D view.
@@ -49,7 +49,7 @@ export default function AdminPage() {
   if (!isSignedIn) {
     return (
       <main className="admin-page">
-        <h1>HomeLuxe admin</h1>
+        <h1>Spacivelle 3D admin</h1>
         <p>Sign in to manage the house.</p>
         <button
           className="admin-btn primary"
@@ -75,7 +75,7 @@ export default function AdminPage() {
     // than an empty application, which reads as "there is nothing here".
     return (
       <main className="admin-page">
-        <h1>HomeLuxe admin</h1>
+        <h1>Spacivelle 3D admin</h1>
         <p>
           You are signed in as {displayName}, but this account does not manage
           any shop. Ask a platform admin to add you to one.

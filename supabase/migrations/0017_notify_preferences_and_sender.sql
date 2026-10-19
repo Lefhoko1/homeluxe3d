@@ -64,7 +64,7 @@ as $$
   select format($html$<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
 <body style="margin:0;padding:0;background:#f2efe9;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">%s — now showing at HomeLuxe 3D. %s</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">%s — now showing at Spacivelle 3D. %s</div>
   <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#f2efe9;padding:32px 14px;">
     <tr><td align="center">
       <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="max-width:540px;background:#ffffff;border-radius:16px;overflow:hidden;">
@@ -96,7 +96,7 @@ as $$
         <tr><td style="padding:0 28px 24px;">
           <div style="border-top:1px solid #ece7de;padding-top:14px;">
             <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.6;color:#a89a86;">
-              You follow %s on HomeLuxe 3D, the virtual furniture showroom.
+              You follow %s on Spacivelle 3D, the virtual furniture showroom.
               Change what you hear about, or stop these, in your notification settings.
             </p>
           </div>

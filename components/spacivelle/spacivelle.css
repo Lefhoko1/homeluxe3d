@@ -1,0 +1,2099 @@
+/* ===========================================================================
+   Spacivelle 3D -- the showroom
+   ===========================================================================
+
+   BRIGHT, BECAUSE IT IS AN ADVERTISING APPLICATION. A dark chrome makes the
+   render pop, which is a real argument and the wrong one: this is a shop
+   window, and shop windows are lit. Everything on sale here -- a bed, a tile,
+   a wall colour -- is bought by people imagining it in a room with the
+   curtains open, and a black frame around it sells software, not furniture.
+
+   So the ground is paper and the house sits on it like a photograph on a
+   page. Contrast does the work that darkness was doing: a white card on a
+   warm off-white ground, a hairline rule, and one saturated colour used only
+   where money is involved.
+
+   The palette is still taken from what the house actually sells -- amber from
+   the brass hinge on every door, teal from the pool -- but it is spent
+   differently on a light ground. Navy carries the buttons, because white on
+   navy is legible at any size; amber carries prices and offers with INK on
+   top of it, because white on amber is not.
+
+   Type is Fraunces and Archivo. Fraunces is a variable serif with optical
+   sizing -- it holds its character at 42px over a hero and stops shouting at
+   15px in a product name, which one static weight cannot do. Archivo carries
+   everything else.
+
+   EVERY COLOUR IS A TOKEN, which is what made this switch a rewrite of one
+   block rather than a search-and-replace through 1,300 lines.
+   ========================================================================== */
+
+/* The faces are linked from app/layout.tsx rather than @imported here: an
+   @import cannot begin downloading until this file has arrived and been
+   parsed, so the fonts queue behind the CSS instead of loading beside it. */
+
+:root {
+  /* Grounds, lightest first. The page is a warm off-white and the cards are
+     pure white, so a card reads as raised without needing a shadow. */
+  --paper: #FAF9F6;
+  --surface: #FFFFFF;
+  --surface-2: #F1F0EB;
+  --border: #E4E1DA;
+
+  /* Ink. The muted tone is warm-biased to sit with the paper -- a cold grey
+     on a warm ground looks like a rendering error. */
+  --text: #1B1D21;
+  --muted: #71736F;
+  --on-dark: #FFFFFF;      /* text that sits on navy or on the 3D view */
+
+  /* Structure. Navy carries buttons, headers and the active state. */
+  --primary: #17212E;
+  --secondary: #1F6F8B;
+  --secondary-lift: #2E88A6;
+
+  /* Amber, from the brass. Prices, offers, the one thing on the page that
+     is allowed to shout -- always with ink on top, never white. */
+  --accent: #C08A2E;
+  /* Two steps darker than the accent it is named after, and the darkness is
+     measured rather than chosen: this carries 10px uppercase labels, and at
+     #9A6C1F they came out at 4.43:1 on the paper -- under the 4.5 that small
+     text needs. #8B5F16 clears it on white, on paper and on the frosted rail. */
+  --accent-deep: #8B5F16;
+  --on-accent: #1B1405;
+
+  /* Semantic, and separate from the accent on purpose: "live" must not be
+     mistakeable for "featured". */
+  --live: #2F855A;
+  --warn: #B7791F;
+  --stop: #C0392B;
+
+  /* The one place that stays dark, and deliberately. These chips float ON
+     the 3D view, which is a bright kitchen in one room and a shaded corridor
+     in the next -- a light control would vanish against half the house. */
+  --over-canvas: rgba(23, 33, 46, 0.88);
+  --over-canvas-hover: rgba(23, 33, 46, 0.97);
+
+  --light: var(--surface-2);   /* kept: older rules still name it */
+
+  /* -- GLASS ---------------------------------------------------------------
+     The cards that float over the showroom. They are see-through on purpose:
+     the house is the page, and a row of solid white slabs sitting on it
+     turns the picture back into a small picture with panels round it.
+
+     THE TINT IS THE ELEGANCE. Not a colour -- a colour over a moving 3D
+     scene fights whatever it happens to be over. It is a slow gradient from
+     the barest cool at the top left to the barest warm at the bottom right,
+     which is what real glass does with a sky at one end and a room at the
+     other, plus a lit top edge. You cannot name the colour, which is the
+     point; you can see that it is not flat white.
+
+     0.68 IS A MEASURED NUMBER, not a taste. It is as transparent as the
+     cards can be while the darkest thing the house shows -- the roof -- is
+     still a legible ground for text. See --glass-muted. */
+  --glass-face:
+    linear-gradient(152deg,
+      rgba(255, 255, 255, 0.74) 0%,
+      rgba(240, 245, 248, 0.60) 46%,      /* a breath of the teal */
+      rgba(252, 249, 243, 0.68) 100%);    /* and of the paper */
+  --glass-edge: rgba(255, 255, 255, 0.60);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 2px 6px rgba(23, 33, 46, 0.06),
+    0 18px 44px rgba(23, 33, 46, 0.19);
+
+  /* SECONDARY TEXT HAS TO GET DARKER TO SURVIVE THE GLASS. On paper, --muted
+     at #71736F clears 4.5:1 comfortably. On a 68% card floating over a dark
+     roof the card lands near #bbbcbf and the same grey measures 2.5:1 --
+     unreadable, and only over part of the house, which is the worst kind of
+     unreadable because it comes and goes as the camera moves.
+
+     #46483F is the lightest ink that clears 4.5:1 against every ground the
+     house shows: lawn 7.0, roof 4.9, sky 8.5, pool 6.4. It is redefined ON
+     the glass containers rather than swapped at every call site, so every
+     descendant that already says var(--muted) simply gets the darker one. */
+  --glass-muted: #46483F;
+}
+
+html, body {
+  background: var(--paper);
+  color: var(--text);
+}
+
+body {
+  font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Digits that line up wherever they are counted or compared. */
+.product-price, .product-price-was, .product-spec-value,
+.progress-text, .furniture-count, .shop-chip-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   THE HOUSE IS THE PAGE
+
+   This was a three-column, five-row grid: 320px of room list, the house,
+   380px of product detail, with a header, a shops strip, a rooms strip and a
+   tour bar stacked above and below. On a 1440 x 900 screen that left the
+   house 740 x 610 -- a third of the pixels -- and the yard, the pool and the
+   roofline never appeared at all. Every one of those bands was reasonable on
+   its own and together they ate the product.
+
+   So: one row of chrome, and the house takes the rest. The panels are still
+   here, all of them, floating over the picture as cards. Nothing was deleted
+   -- it was lifted off the layout.
+   --------------------------------------------------------------------------- */
+
+.app-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  /* The bar, and then everything else. */
+  grid-template-rows: 62px 1fr;
+  height: 100vh;
+  /* On a phone 100vh includes the strip behind the browser's toolbar, so the
+     bottom of the house -- and the tour controls -- sat underneath it. dvh is
+     the height actually visible; browsers without it keep the line above. */
+  height: 100dvh;
+  gap: 0;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;      /* so the canvas may shrink inside the grid row */
+  overflow: hidden;
+}
+
+/* Every dock is positioned against the stage and floats above the canvas.
+   The stage itself takes no pointer events away from the house: each card
+   turns them back on for itself, so the gaps between cards are still the 3D
+   view and can still be dragged. */
+.dock-left {
+  position: absolute;
+  z-index: 20;
+  top: 16px;
+  left: 16px;
+  bottom: 16px;
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.dock-left > * { pointer-events: auto; }
+
+/* The shared face of everything that floats. See --glass-face above for why
+   it is transparent and why it is tinted rather than white.
+
+   `saturate` on the backdrop is what stops the blurred lawn behind the card
+   going to grey mush: blur alone averages colour towards neutral, and a
+   little saturation back gives the glass something to be tinted BY. */
+.dock-left > *,
+#product-panel,
+#room-tabs,
+#tour-controls,
+.room-total {
+  background: var(--glass-face);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  /* One line instead of hunting every muted-coloured descendant: custom
+     properties inherit, so redefining it here darkens all of them. */
+  --muted: var(--glass-muted);
+}
+
+/* -- the title bar --------------------------------------------------------
+   THE SAME BAR AS THE FRONT PAGE. The wordmark and the buttons are now
+   `.luxe-wordmark` and `.luxe-btn`, shared with `/`, `/join` and `/following`
+   -- so what is left here is only the part that is genuinely different: this
+   one is a row of a 100vh grid rather than a block in a document, and it has
+   a rule under it because there is a house directly below it.
+
+   What went: an <h1> at 24px with a second line under it, and buttons with
+   2px borders and a teal fill that exist nowhere else on the site. Walking
+   from the front page into the showroom read as leaving for another
+   company's product.
+   ------------------------------------------------------------------------ */
+
+#header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  /* 24px matches .lp-top's inner padding, so the wordmark does not jump
+     sideways between the two pages. */
+  padding: 0 24px;
+  z-index: 30;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+/* The bar is 70px, and .luxe-btn is sized for a document with room around
+   it. A touch shorter here, where five controls share a fixed row. */
+#header .luxe-btn {
+  padding: 9px 15px;
+  font-size: 12.5px;
+}
+
+/* A phone has about 375px for the wordmark and two or three buttons, and the
+   row is a fixed 62px: anything that wraps grows out of it and over the house.
+   So nothing wraps, the place name and the signed-in name give way, and if the
+   buttons still do not fit they scroll sideways rather than stack. */
+@media (max-width: 560px) {
+  #header { padding: 0 14px; gap: 10px; }
+  #header .luxe-wordmark { flex-shrink: 0; }
+  #header .luxe-wordmark strong { font-size: 18px; white-space: nowrap; }
+  #header .luxe-wordmark span,
+  #header .header-user { display: none; }
+  #admin-controls {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  #header .luxe-btn { padding: 8px 11px; white-space: nowrap; flex-shrink: 0; }
+}
+
+/* Left Panel - Tour Navigation */
+#tour-panel {
+  flex: 1;
+  min-height: 0;          /* so it scrolls rather than pushing the dock down */
+  overflow-y: auto;
+  border-radius: 18px;
+  /* No padding here: the sticky head needs to reach the edges, and the list
+     below it carries its own. */
+  padding: 0;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+.tour-header {
+  margin-bottom: 15px;
+}
+
+.tour-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 5px;
+}
+
+.tour-header p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.progress-section {
+  background: var(--surface-2);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--secondary), var(--accent));
+  border-radius: 3px;
+  transition: width 0.6s ease;
+  width: 0%;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: var(--secondary);
+  font-weight: 600;
+}
+
+.furniture-list {
+  list-style: none;
+}
+
+.furniture-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  /* Barely there. A solid white row inside a see-through card is a white
+     card with a translucent margin round it. */
+  background: rgba(255, 255, 255, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.furniture-item:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.furniture-item.active {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-lift) 100%);
+  color: var(--on-dark);
+  border-color: var(--secondary);
+}
+
+.furniture-icon {
+  font-size: 28px;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.furniture-item.active .furniture-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.furniture-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.furniture-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.furniture-shop {
+  font-size: 10px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Center - 3D Canvas */
+#canvas-container {
+  position: absolute;
+  inset: 0;
+  /* Sky, not navy. The old gradient was the backdrop behind a small canvas;
+     at full bleed it is what the page looks like for the second before the
+     atmosphere loads, and a dark blue flash under a paper-white bar reads as
+     a fault. */
+  background: linear-gradient(180deg, #cfe0ee 0%, #e8eef2 100%);
+  overflow: hidden;
+}
+
+.canvas-overlay {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 12px 25px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.rotation-indicator {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--over-canvas);
+  color: var(--on-dark);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.rotation-icon {
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.camera-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.camera-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--over-canvas);
+  color: var(--on-dark);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.camera-btn:hover {
+  background: var(--accent);
+  transform: scale(1.1);
+}
+
+.edit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--over-canvas);
+  color: var(--on-dark);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+  background: var(--accent);
+  transform: scale(1.1);
+}
+
+.transform-sub-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transform-sub-btn {
+  width: 35px;
+  height: 35px;
+  background: var(--over-canvas);
+  color: var(--on-dark);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.transform-sub-btn:hover {
+  background: var(--accent);
+  transform: scale(1.1);
+}
+
+/* Right Panel - Product Details */
+/* KEPT LIGHT, DELIBERATELY. The reference design has this card dark, and it
+   looks well there -- but "an advertising application cant be dark" was a
+   direct instruction, and a black slab is the most prominent thing on the
+   screen after the house. The form is the reference's: a floating rounded
+   card over the render rather than a column welded to the edge. */
+#product-panel {
+  position: absolute;
+  z-index: 20;
+  top: 16px;
+  right: 16px;
+  width: 336px;
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  border-radius: 18px;
+  padding: 0;
+}
+
+.product-header {
+  /* WHITE, LIKE EVERY OTHER HEADING ON THE SITE. This was a navy-to-teal
+     gradient with white type on it -- the last surviving piece of the dark
+     theme, sitting directly beside the amber price card, so the top of the
+     panel shouted in one colour scheme and the middle of it in another.
+     The front page introduces a product with an eyebrow, a serif name and
+     the price under it; so does this now. */
+  background: rgba(255, 255, 255, 0.62);
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px 18px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+
+
+
+/* The name is styled by `.product-name` further down -- one rule, near the
+   price it sits above. This used to set a second, different size here. */
+.product-header h2 { margin: 0; }
+
+.product-category {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.product-body {
+  padding: 25px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+.shop-section {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.shop-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.shop-icon-large {
+  font-size: 36px;
+  width: 55px;
+  height: 55px;
+  background: var(--surface);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+}
+
+.shop-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-info h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 3px;
+}
+
+.shop-info p {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.contact-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.contact-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--secondary);
+  color: var(--on-dark);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.cta-button {
+  width: 100%;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  color: var(--on-dark);
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(44, 95, 122, 0.3);
+}
+
+/* Bottom Controls */
+/* The mode switcher, floating at the bottom of the picture where the eye
+   goes last. It was a full-width band with a rule above it, spending 90px of
+   height on three buttons. */
+#tour-controls {
+  position: absolute;
+  z-index: 20;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 10px;
+  border-radius: 999px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  /* 700px of that was the two docks it had to fit between. */
+  max-width: min(calc(100% - 120px), 760px);
+}
+
+/* Asking a question needs room to say it, so that state is a card rather
+   than a pill and sits a little higher, clear of the switcher. */
+#tour-controls.asking {
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  max-width: min(30rem, 60vw);
+}
+
+/* THE QUIET ONES GO TRANSLUCENT; THE CALL TO ACTION DOES NOT.
+   `#tour-controls .control-btn` outranks `.control-btn.primary` -- one id
+   beats two classes -- so the first version of this rule washed the fill out
+   of Auto Tour, which is the one button on the bar anybody is meant to
+   press. `:not()` keeps the specificity where it is and hands the filled
+   states back. */
+#tour-controls .control-btn:not(.primary):not(.accent) {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.34);
+}
+#tour-controls .control-btn:not(.primary):not(.accent):hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+#tour-controls .control-btn {
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 12.5px;
+}
+
+/* Solid, and a shade deeper than the navy on paper: a filled button on glass
+   over a bright lawn needs more weight than the same button on a white page
+   to read as the same button. */
+#tour-controls .control-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-dark);
+}
+#tour-controls .control-btn.primary:hover:not(:disabled) {
+  background: #22303F;
+  border-color: #22303F;
+  color: var(--on-dark);
+}
+
+.control-btn {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  color: var(--primary);
+  padding: 12px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Archivo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.control-btn.primary {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  color: var(--on-dark);
+}
+
+.control-btn.primary:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.control-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Login Modal */
+.login-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.login-content {
+  background: var(--surface);
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+}
+
+.login-content h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--primary);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--text);
+}
+
+.form-group input {
+  padding: 10px;
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.login-btn {
+  background: var(--secondary);
+  color: var(--on-dark);
+  border: none;
+  padding: 12px;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.login-btn:hover {
+  background: var(--primary);
+}
+
+.login-error {
+  color: var(--stop);
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* Mobile Responsive */
+/* THE HOUSE WAS 45px TALL ON A PHONE. This block used to give .app-container
+   six rows, from when the page was bar, tabs, strip, panel, canvas, controls
+   stacked in a grid. It is two children now -- the bar and .stage -- so the
+   stage landed in the second row, 45px, and the four empty rows under it
+   showed as a blank page. The rows are the base rule's, at every width. */
+@media (max-width: 1024px) {
+  #product-panel {
+    display: none;
+  }
+
+  .furniture-list {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 10px;
+  }
+
+  .furniture-item {
+    min-width: 200px;
+  }
+
+  .camera-controls {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .camera-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+  border-radius: 3px;
+}
+
+/* =========================================================================
+   Catalogue-driven panels
+   =========================================================================
+   Styles for the rebuilt TourPanel, ShopsBanner and ProductPanel, which now
+   render real shops and products from the catalogue rather than a hardcoded
+   list. Uses the existing tokens so it sits inside the current design.
+   ========================================================================= */
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin: -4px 0 12px;
+}
+
+.panel-empty {
+  padding: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* -- Tour list ----------------------------------------------------------- */
+.tour-section { margin-top: 26px; }
+
+.tour-progress { margin-bottom: 14px; }
+.tour-progress-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.tour-progress-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.tour-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--secondary), var(--accent));
+  transition: width 0.25s ease;
+}
+
+.tour-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+  /* Barely there. A solid white row inside a see-through card is a white
+     card with a translucent margin around it. */
+  background: rgba(255, 255, 255, 0.32);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.tour-item:hover { background: rgba(255, 255, 255, 0.52); }
+.tour-item:hover { border-color: var(--secondary); transform: translateX(2px); }
+.tour-item.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  color: var(--on-dark);
+}
+.tour-item-icon {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.tour-item.active .tour-item-icon { background: rgba(255, 255, 255, 0.18); }
+.tour-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.tour-item-name { font-weight: 600; font-size: 13px; }
+.tour-item-shop { font-size: 11px; opacity: 0.75; }
+.tour-item-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #3a2a12;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* -- Shops banner -------------------------------------------------------- */
+.shop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  margin-right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.34);
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.shop-chip-icon { font-size: 15px; }
+.shop-chip-name { font-weight: 600; color: var(--text); }
+.shop-chip-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-dark);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* -- Product detail ------------------------------------------------------ */
+.product-shop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.product-price-was {
+  margin-top: 4px;
+  font-size: 15px;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.product-promo {
+  margin: 16px 20px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(212, 165, 116, 0.14);
+  border: 1px solid rgba(212, 165, 116, 0.4);
+}
+.product-promo-label { font-weight: 700; color: #8a5a20; font-size: 13px; }
+.product-promo-ends { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.product-promo-terms { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+.product-specs-title {
+  margin: 22px 20px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.product-specs { margin: 0 20px 22px; }
+.product-spec {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.product-spec-label { color: var(--muted); }
+.product-spec-value { font-weight: 600; text-align: right; color: var(--text); }
+
+/* The shops strip holds pill chips now, which are taller than the text it
+   used to hold. Without this the row clips them in half. */
+/* A CARD IN THE LEFT DOCK, not a band across the top of the page. It is a
+   filter on the list directly beneath it, and it spent a year at the top of
+   the screen pretending to be a banner -- which is why it read as decoration
+   and why nobody pressed Follow. */
+#shops-banner {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 12px 13px;
+  border-radius: 16px;
+}
+.shops-banner-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* WRAPS, RATHER THAN CLIPPING OR SCROLLING SIDEWAYS.
+   `overflow: hidden` was the original mistake -- with three shops it looked
+   fine and a fourth silently did not exist. Sideways scrolling fixed that
+   while the strip was as wide as the page; in a 290px card it shows one shop
+   and hides the rest behind a gesture nobody makes. A card can afford
+   height, so the chips wrap and the card scrolls if there are many. */
+.shops-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-height: 128px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.shops-scroll::-webkit-scrollbar { display: none; }
+
+/* The chip was sized for a full-width band. */
+.shop-chip {
+  margin-right: 0;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.shop-chip-name { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+
+/* A finish is advertised in the room list but is not a placed object, so it
+   reads differently from the furniture around it. */
+.tour-item-badge.finish {
+  background: var(--muted);
+  color: var(--on-dark);
+}
+
+.product-enquire {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 18px 20px 4px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--on-dark);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.product-enquire:hover { background: #22303F; }
+
+/* Shop chips are filters, so they must look pressable and show which one is
+   active. `shops` in useCatalog stays unfiltered on purpose -- the banner
+   must keep offering every shop, including the one not currently selected. */
+.shop-chip {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.shop-chip:hover { border-color: var(--secondary); transform: translateY(-1px); }
+.shop-chip.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+}
+.shop-chip.active .shop-chip-name { color: var(--on-dark); }
+.shop-chip.active .shop-chip-count { background: rgba(255, 255, 255, 0.25); }
+.shop-chip.clear {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   THE ADVERT'S PICTURE
+
+   `thumbnail_url` has been travelling from the database through the
+   repository and onto the mesh since the catalogue was wired up, and nothing
+   rendered it. It renders now that shops have a way to upload one.
+   ========================================================================== */
+
+.product-gallery {
+  margin: -20px -20px 16px;
+}
+
+.product-hero {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-2);
+}
+
+.product-thumbs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 20px 0;
+  overflow-x: auto;
+}
+
+.product-thumbs img {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* -- who is signed in ---------------------------------------------------- */
+
+#admin-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The admin entry point is an <a> when it navigates and a <button> when it
+   opens the dialog, so both have to look the same. */
+#admin-controls a.control-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* WHITE TEXT ON A WHITE BAR. Left behind when the chrome went from dark to
+   paper: a signed-in visitor's own name was invisible, and the only reason
+   nobody reported it is that you have to be signed in to see nothing. */
+.header-user {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-role {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--secondary);
+  color: var(--on-dark);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.login-cancel {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 6px;
+  display: block;
+  width: 100%;
+}
+
+/* Which source the catalogue came from. "static" means the app is reading the
+   file the Blender build wrote, and nothing can be saved. */
+.catalog-source {
+  position: fixed;
+  bottom: 4px;
+  left: 6px;
+  font-size: 9px;
+  color: rgba(120, 130, 145, 0.55);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---------------------------------------------------------------------------
+   THE CATALOGUE FAILED
+   ---------------------------------------------------------------------------
+   Loud on purpose. The catalogue used to fall back to the file the Blender
+   build writes, so a database that had never been seeded produced a house
+   that looked completely normal -- and the missing shop read as a bug in the
+   3D scene rather than as a database nobody had told.
+
+   So this sits across the top of the window, in front of everything, and does
+   not go away on its own. A quiet indicator would be the same failure again.
+--------------------------------------------------------------------------- */
+.catalog-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--stop);
+  color: rgba(224, 107, 94, 0.14);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.catalog-error strong {
+  color: var(--on-dark);
+}
+
+.catalog-error span {
+  /* The error text names the fix -- the seed command, or the missing
+     environment variables -- so it has to be readable, not truncated. */
+  flex: 1 1 320px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.catalog-error button {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: var(--on-dark);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.catalog-error button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+
+/* -- the chip became a group ---------------------------------------------
+   It used to be one button. It now holds two controls side by side -- filter
+   the house by this shop, and follow it -- because they are different actions
+   and nesting one inside the other is invalid HTML that browsers recover from
+   in different ways, one of which is losing the click. */
+
+.shop-chip {
+  padding: 4px 5px 4px 6px;
+  gap: 4px;
+  cursor: default;
+}
+.shop-chip:hover { transform: none; }
+
+.shop-chip-filter {
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.shop-chip-filter:hover { color: var(--accent); }
+.shop-chip-filter:focus-visible,
+.shop-chip .follow-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The follow control sits at the end and stays quiet until it is used --
+   it is the second thing you might want from a chip, not the first. */
+.shop-chip .follow-btn { margin-right: 3px; }
+.shop-chip.active .follow-btn {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--on-dark);
+}
+.shop-chip.active .follow-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+
+/* ===========================================================================
+   The price, and the panel around it
+   ===========================================================================
+
+   THE PRICE HAD NO STYLES AT ALL. `.product-price-block`, its label and its
+   value were in the markup and in nothing else, so a price rendered as plain
+   text hard against the panel's left edge -- no padding, no size, no weight.
+   On a platform whose whole business is putting a product in front of
+   somebody, the number they are being asked to pay was the least considered
+   thing on the screen.
+
+   It is the point of the panel now. A tinted card, a small currency mark
+   beside a large number in the display face, and enough room around it that
+   the eye stops there. Amber, because in this palette amber means money and
+   nothing else does.
+   ========================================================================== */
+
+.product-name {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: 25px;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin: 6px 0 0;
+}
+
+.product-price-block {
+  /* Matches the 20px side margin the rest of the panel body uses, which is
+     what was missing: the block was flush to the panel edge because nothing
+     had ever given it a margin. */
+  margin: 18px 20px 0;
+  padding: 16px 18px 17px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(253, 246, 231, 0.94) 0%, rgba(251, 240, 218, 0.9) 100%);
+  border: 1px solid rgba(234, 214, 169, 0.9);
+}
+
+.product-price-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+}
+
+.product-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 3px;
+  color: var(--primary);
+}
+
+/* The currency mark is a mark, not part of the number. Baseline-aligned and
+   two thirds the size, so the eye lands on the figure. */
+.product-price-symbol {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--accent-deep);
+}
+
+.product-price-amount {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Only ever shown beside a reduced price, which is why it says "was". A
+   struck-through number with no word in front of it reads as a mistake. */
+.product-price-was {
+  margin-top: 5px;
+  font-size: 13px;
+  /* Not --muted. That tone is measured against the page's paper and comes out
+     at 4.45:1 on this warmer, lighter card -- just under what small text
+     needs. A card with its own ground needs its own quiet colour. */
+  color: #676357;
+}
+
+/* The description is prose, not a callout. It had a card and an amber rule
+   down its left edge, which made a paragraph of specification text look like
+   a warning, and put a second amber accent directly under the price -- so
+   neither of them meant anything. */
+.product-description {
+  margin: 16px 20px 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+
+/* -- the bar under the house asks one question ----------------------------
+   Somebody picked a product from the list while the guided tour was walking.
+   It cannot just fly there -- that abandons a walk they may be halfway
+   through -- and it cannot do nothing. So it asks, HERE, below the canvas.
+   Asking over the 3D view would cover the house to ask a question about the
+   house. */
+
+#tour-controls.asking {
+  gap: 18px;
+  background: linear-gradient(180deg, #FFFDF7 0%, var(--surface) 100%);
+  border-top: 2px solid var(--accent);
+}
+
+.tour-ask-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.4;
+  text-align: right;
+}
+.tour-ask-text strong { color: var(--primary); }
+.tour-ask-text em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.tour-ask-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* Held mid-way: the one button that matters wears the accent, because the
+   only thing anybody wants from this bar while paused is the way back. */
+#tour-controls .control-btn.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+#tour-controls .control-btn.accent:hover { background: #CE9740; }
+
+.tour-hint {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+@media (max-width: 720px) {
+  #tour-controls.asking { flex-direction: column; gap: 8px; padding: 10px 14px; }
+  .tour-ask-text { text-align: center; }
+}
+
+
+/* -- the rooms strip -------------------------------------------------------
+   A short, fixed set of choices that changes the whole screen: that is a row
+   of tabs, not a list in a column. It sits under the shops because the two
+   are the same kind of control -- pick a shop, pick a room -- and because
+   the column beside the house is now only for what is IN the room. */
+
+#room-tabs {
+  position: absolute;
+  z-index: 20;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  /* The docks are drawers now, so the only things it must not reach are the
+     two handles on the edges and the round buttons in the corner. */
+  max-width: min(64vw, 760px);
+  min-width: 0;
+}
+
+.room-tabs-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: none;
+}
+
+.room-tabs-empty { font-size: 12px; color: var(--muted); }
+
+.room-tabs-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  /* The strip scrolls, and its scrollbar would sit across the house below
+     it. Hidden here and reachable by dragging, the arrow keys, or the
+     scroll-into-view in RoomTabs. */
+  scrollbar-width: none;
+  min-width: 0;
+  padding: 6px 0;
+}
+.room-tabs-strip::-webkit-scrollbar { display: none; }
+
+.room-tab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.3);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.room-tab:hover { border-color: var(--secondary); color: var(--secondary); }
+.room-tab:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
+
+.room-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-dark);
+  font-weight: 600;
+}
+
+.room-tab-icon { font-size: 14px; line-height: 1; }
+.room-tab-count {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.room-tab.active .room-tab-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--on-dark);
+}
+
+/* -- the left column, now products only ----------------------------------
+   The heading stays put while the list scrolls under it, so "which room is
+   this?" is answerable without scrolling back up. */
+
+.panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* Opaque ENOUGH to hide the list scrolling under it, and no more. It sits
+     on blurred glass already, so it needs no backdrop-filter of its own --
+     stacking those over a live WebGL canvas costs frames for nothing. */
+  background: rgba(255, 255, 255, 0.62);
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px 18px 0 0;
+}
+.panel-head .panel-title { margin-bottom: 2px; }
+.panel-head .panel-sub { margin-bottom: 0; }
+
+/* Bar and count on one line: the count was a separate row above the bar,
+   which is two lines of chrome for six characters. */
+.panel-head .tour-progress {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 9px;
+}
+.panel-head .tour-progress-bar { flex: 1; margin: 0; }
+.panel-head .tour-progress-label {
+  margin: 0;
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+#tour-panel .tour-section { padding: 10px 14px 20px; }
+
+@media (max-width: 1024px) {
+  #room-tabs { grid-row: 3 / 4; padding: 0 12px; }
+  .room-tabs-label { display: none; }
+}
+
+/* The wordmark in the showroom header is a link home now: the house is no
+   longer the whole site, and the logo is the first place anybody looks. */
+.header-brand { text-decoration: none; }
+.header-brand:hover strong { color: var(--secondary); }
+
+
+/* -- the unread badge -----------------------------------------------------
+   Rendered by Header.jsx since notifications were added and styled by
+   nothing: the count appeared as a bare numeral run up against the word
+   "shops", which reads as part of the label rather than as a count.
+   ------------------------------------------------------------------------ */
+
+.header-unread {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  /* Amber means "there is something here for you", the same as it means
+     money on the price card -- both are the thing worth stopping for. Ink on
+     top, never white; white on amber does not clear contrast at this size. */
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+
+/* -- what the room comes to -----------------------------------------------
+   Bottom right, opposite the mode switcher, in the corner a shopper's eye
+   lands on last. Amber, because in this palette amber means money.
+   ------------------------------------------------------------------------ */
+
+.room-total {
+  position: absolute;
+  z-index: 20;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 16px;
+  border-radius: 16px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 140ms ease;
+}
+.room-total:hover { transform: translateY(-1px); }
+.room-total:focus-visible { outline: 2px solid var(--secondary); outline-offset: 3px; }
+
+.room-total-text { display: flex; flex-direction: column; gap: 1px; }
+.room-total-text strong { font-size: 13px; color: var(--primary); }
+.room-total-count { font-size: 11px; color: var(--muted); }
+
+.room-total-sum {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--accent-deep);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* -- the round buttons move to the top right ------------------------------
+   Away from the bottom edge, which now belongs to the mode switcher and the
+   room total, and clear of the detail card below them.
+   ------------------------------------------------------------------------ */
+
+/* A COLUMN, not a row. Laid out sideways they reached left far enough to
+   run under the room pills; stacked they occupy one 38px lane in the gutter
+   between the detail card and the house. */
+.camera-controls {
+  top: 16px;
+  right: 16px;           /* the detail card is a drawer now; the corner is free */
+  bottom: auto;
+  flex-direction: column;
+  z-index: 21;
+}
+
+.camera-btn {
+  width: 38px;
+  height: 38px;
+  background: var(--glass-face);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-edge);
+  color: var(--primary);
+  box-shadow: var(--glass-shadow);
+  font-size: 16px;
+}
+.camera-btn:hover { background: rgba(255, 255, 255, 0.86); transform: scale(1.06); }
+.camera-btn.active { background: var(--primary); color: var(--on-dark); }
+
+/* The room caption and the 360 chip sat top-centre and bottom-centre, which
+   is where the room pills and the mode switcher live now. */
+/* Bottom left of the HOUSE, not of the window -- the left dock reaches the
+   bottom of the screen, so 16px from the edge is underneath the room list. */
+/* Both used to start at 322px, clearing a 290px dock that is a drawer now. */
+.canvas-overlay {
+  top: auto;
+  bottom: 16px;
+  left: 44px;
+  transform: none;
+  font-size: 12px;
+  padding: 9px 15px;
+}
+
+.rotation-indicator {
+  top: auto;
+  bottom: 58px;
+  left: 44px;
+  right: auto;
+  transform: none;
+  font-size: 11px;
+  padding: 7px 13px;
+}
+
+/* -- narrow screens --------------------------------------------------------
+   Below about a laptop the two docks cannot both sit over the house without
+   covering it. The detail card goes to the bottom, the left dock narrows,
+   and the house keeps the middle.
+   ------------------------------------------------------------------------ */
+
+@media (max-width: 1180px) {
+  .dock-left { width: 244px; }
+  .camera-controls,
+  .rotation-indicator { right: 16px; }
+  #product-panel {
+    top: auto;
+    bottom: 74px;
+    right: 16px;
+    width: 300px;
+    max-height: 52%;
+  }
+  #tour-controls { max-width: calc(100% - 32px); }
+  .room-total { display: none; }   /* the panel it duplicates is right there */
+}
+
+@media (max-width: 820px) {
+  .dock-left { width: min(62vw, 260px); bottom: auto; max-height: 46%; }
+  #room-tabs { max-width: calc(100% - 32px); left: 16px; transform: none; }
+  #product-panel { width: calc(100% - 32px); max-height: 40%; }
+}
+
+/* -- the walking pad -------------------------------------------------------
+   Stop, resume, steer, and how far through the room's list the tour has got.
+
+   IT WAS INVISIBLE FOR THREE COMMITS. The pad placed itself bottom-left with
+   an inline style, which was right while the canvas was the middle column of
+   a three-column grid: bottom-left of the canvas was empty. Making the house
+   full screen moved bottom-left underneath the product dock -- same z-index,
+   later in the DOM, so the dock won and every control on the pad went with
+   it. The tour still ran; there was simply no longer any way to stop it, take
+   it over, or resume it after looking at something.
+
+   So it clears the dock, by the same 322px the room caption uses: 290 of dock
+   plus its 16 either side. One number, stated twice; if the dock changes
+   width both move together because both are written against it.
+   ------------------------------------------------------------------------ */
+
+.tour-pad {
+  position: absolute;
+  z-index: 22;            /* above the docks, not merely equal to them */
+  left: 44px;             /* clear of the Browse handle on the edge */
+  bottom: 16px;
+}
+
+/* The room caption and the 360 chip live in this corner too, but never at the
+   same time: they belong to orbiting and the pad belongs to walking. */
+
+@media (max-width: 1180px) {
+  /* The dock narrows to 244, and the mode switcher stops being a small pill
+     in the middle and grows towards the full width -- so the pad has to clear
+     it VERTICALLY as well as horizontally. It wins on z-index either way, but
+     a pad sitting on top of the tour's own buttons is not much better than a
+     pad underneath the product list. */
+  .tour-pad { bottom: 88px; }
+}
+
+@media (max-width: 820px) {
+  /* The dock is a floating card at the top on a phone, so the pad takes the
+     bottom-left corner back. */
+  .tour-pad { left: 16px; }
+}
+
+
+/* ===========================================================================
+   PHONES: THE DOCKS FOLD INTO THE EDGES
+   ===========================================================================
+
+   On a phone the shops card and the room's list covered the top half of the
+   house between them, hid the room tabs, and squeezed the list until its
+   items showed through its own heading -- and the product card, with the
+   price and the Enquire button, was not shown at all. So below 820px each
+   dock folds into an edge of the screen behind a small tall handle: Browse
+   on the left (shops, then what is in this room), Details on the right. Tap
+   or drag a handle and the panel slides out. See EdgeDrawer.jsx.
+
+   THE PANELS ARE NEARLY OPAQUE, unlike the glass cards on a desktop. A
+   drawer covers most of a small screen and is read for longer than a
+   floating card is glanced at; see-through text over a moving house is
+   tolerable in a label and tiring in a list.
+   ------------------------------------------------------------------------ */
+
+.edge-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 39;
+  background: rgba(12, 18, 28, 0.34);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+.edge-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.edge-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 40;
+  width: min(86vw, 340px);
+  background: rgba(250, 249, 246, 0.95);
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+  touch-action: pan-y;          /* sideways is the drawer's, up and down the list's */
+}
+.edge-drawer.dragging { transition: none; }
+.edge-drawer.edge-left  { left: 0;  border-radius: 0 20px 20px 0; }
+.edge-drawer.edge-right { right: 0; border-radius: 20px 0 0 20px; }
+/* Only when it is out: folded away, a shadow would bleed a grey line onto
+   the edge of the house. */
+.edge-drawer.open,
+.edge-drawer.dragging {
+  box-shadow: 0 0 0 1px var(--glass-edge), 0 24px 60px rgba(23, 33, 46, 0.28);
+}
+
+.edge-drawer-body {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 12px calc(16px + env(safe-area-inset-bottom));
+  border-radius: inherit;
+  /* STATED HERE AS WELL AS ON THE PANEL, and it has to be. A browser works
+     out what a finger may do from the touched element up to the nearest
+     SCROLLER -- which is this body, not the panel around it. With `auto`
+     here the browser claimed every sideways swipe as its own, cancelled the
+     pointer, and the panel could not be swiped closed. */
+  touch-action: pan-y;
+}
+.edge-right .edge-drawer-body { padding: 0 0 calc(16px + env(safe-area-inset-bottom)); }
+/* A mouse pressed on the product photo and moved sideways starts the
+   browser's own image drag, which cancels the swipe that closes the panel. */
+.edge-drawer img { -webkit-user-drag: none; user-select: none; }
+
+/* THE HANDLE: a slim tab on the panel's outer edge, so it rides with the
+   panel. 26px is slim enough to leave the house alone; the ::before gives it
+   a thumb-sized target. Same paper as the panel -- it reads as a tab OF the
+   drawer, not as another button on the house. */
+.edge-handle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 116px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--glass-edge);
+  background: rgba(250, 249, 246, 0.95);
+  box-shadow: 0 6px 20px rgba(23, 33, 46, 0.22);
+  color: var(--primary);
+  font: inherit;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.edge-left .edge-handle  { right: -26px; border-left: 0;  border-radius: 0 14px 14px 0; }
+.edge-right .edge-handle { left: -26px;  border-right: 0; border-radius: 14px 0 0 14px; }
+.edge-handle::before { content: ''; position: absolute; inset: -10px -14px; }
+.edge-handle { transition: opacity 200ms ease; }
+.edge-drawer.away .edge-handle { opacity: 0; pointer-events: none; }
+.edge-handle:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
+
+.edge-grip {
+  width: 3px;
+  height: 22px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.edge-label {
+  writing-mode: vertical-rl;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.edge-left .edge-label { transform: rotate(180deg); }   /* reads bottom to top on the left, as spines do */
+
+/* Something new is on the Details side -- the visitor tapped a sofa, or the
+   tour moved on. Amber because it is about a product, and it only pulses
+   twice: a light that never stops blinking is a light nobody sees. */
+.edge-notice {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: edge-notice 1.4s ease-out 2;
+}
+@keyframes edge-notice {
+  from { box-shadow: 0 0 0 0 rgba(192, 138, 46, 0.6); }
+  to   { box-shadow: 0 0 0 10px rgba(192, 138, 46, 0); }
+}
+
+/* -- inside the Browse drawer ------------------------------------------- */
+
+.edge-drawer #shops-banner,
+.edge-drawer #tour-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+/* The drawer scrolls as one; a second scroller inside it fights the thumb. */
+.edge-drawer #tour-panel { flex: none; overflow: visible; }
+.edge-drawer .panel-head { position: static; background: transparent; }
+.edge-drawer #tour-panel .tour-section { margin-top: 0; }
+
+/* FEATURED SHOPS AS ROWS, NOT CHIPS. Wrapped chips suited a narrow card on a
+   wide screen; on a phone they truncated the names ("Tubod Enter...") and
+   made each shop a small target beside an even smaller Follow. A row per
+   shop: the whole name, the count, and a Follow button a thumb can hit. */
+.edge-drawer #shops-banner { padding: 14px 12px; gap: 10px; }
+.edge-drawer .shops-banner-label { font-size: 11px; padding-left: 4px; }
+.edge-drawer .shops-scroll {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+  max-height: none;
+  overflow: visible;
+}
+.edge-drawer .shop-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  padding: 4px 6px 4px 2px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--paper);
+  font-size: 14px;
+  white-space: normal;
+}
+.edge-drawer .shop-chip-filter {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 10px;
+  text-align: left;
+}
+.edge-drawer .shop-chip-icon { font-size: 18px; }
+.edge-drawer .shop-chip-name { max-width: none; white-space: normal; line-height: 1.25; }
+.edge-drawer .shop-chip .follow-btn { flex: none; padding: 8px 13px; font-size: 11.5px; }
+.edge-drawer .shop-chip.clear { justify-content: center; padding: 10px; }
+
+/* -- inside the Details drawer ------------------------------------------ */
+
+/* The drawer is the card now, so the panel stops being one: no position,
+   no glass, no width of its own -- and shown, where the old tablet rule hid
+   it outright. */
+.edge-drawer #product-panel {
+  display: block;
+  position: static;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* -- everything else on a phone ----------------------------------------- */
+
+@media (max-width: 820px) {
+  /* With the docks folded away the room tabs get the top of the screen,
+     short of the round buttons in the corner. */
+  #room-tabs {
+    top: 10px;
+    left: 12px;
+    right: 60px;
+    max-width: none;
+    transform: none;
+    padding: 2px 8px;
+  }
+  .camera-controls { top: 10px; right: 12px; }
+
+  /* "360° View Active" and "Click furniture to explore" have no corner of
+     their own on a phone and landed on the tour bar. The house explains
+     itself; the chips go. */
+  .canvas-overlay,
+  .rotation-indicator { display: none; }
+
+  /* ONE LINE, ALWAYS. "Stop the tour" wrapped to three lines, which made the
+     bar three times as tall and put the walking pad's Exit on top of
+     Previous. */
+  #tour-controls {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    padding: 6px;
+    gap: 6px;
+    max-width: calc(100% - 24px);
+  }
+  #tour-controls .control-btn {
+    padding: 9px 13px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Above the bar, and clear of the Browse handle on the left edge. */
+  .tour-pad { left: 36px; bottom: calc(76px + env(safe-area-inset-bottom)); }
+}

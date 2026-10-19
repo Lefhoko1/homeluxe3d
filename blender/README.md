@@ -1,7 +1,7 @@
-# HouseLuxe — procedural house generation
+# Spacivelle 3D — procedural house generation
 
 The house is **generated from code**, not hand-modelled. Blender is the renderer
-and exporter; the source of truth is `houseluxe/config/plan_3bed.py`.
+and exporter; the source of truth is `spacivelle/config/plan_3bed.py`.
 
 That choice is what makes the house cheap to change. Swapping windows, roofing,
 doors, brickwork or paint is an edit to one file followed by a rebuild — nothing
@@ -36,7 +36,7 @@ the same result as running it once.
 ## Layout
 
 ```
-houseluxe/
+spacivelle/
   config/       Plan data. Pure values. No Blender imports.
     plan.py         Wall / Opening / Room / RoofSpec vocabulary
     plan_3bed.py    THE 3-BEDROOM HOUSE — every dimension lives here
@@ -104,9 +104,9 @@ harmless, but turning it on without wiring it up will produce a blank scene.
 
 ## The catalogue
 
-Everything in a house is an advert for something a shop sells. `houseluxe/catalog`
+Everything in a house is an advert for something a shop sells. `spacivelle/catalog`
 holds shops, their products, and where each product stands in each house — see
-[catalog/README.md](houseluxe/catalog/README.md).
+[catalog/README.md](spacivelle/catalog/README.md).
 
 ```
 shops/bradlows/       the range (5 products)

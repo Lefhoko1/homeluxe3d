@@ -1,5 +1,5 @@
 -- =============================================================================
--- HomeLuxe 3D -- core schema
+-- Spacivelle 3D -- core schema
 --
 -- A 3D advertising marketplace. Shops subscribe to the platform and are given
 -- advertising space inside 3D scenes (houses). Visitors tour those scenes,
@@ -77,7 +77,7 @@ do $do$ begin
   end if;
 end $do$;
 
--- Mirrors ProductCategory in blender/houseluxe/catalog/product.py.
+-- Mirrors ProductCategory in blender/spacivelle/catalog/product.py.
 -- `is_finish` products dress a surface instead of being placed as an object.
 do $do$ begin
   if not exists (select 1 from pg_type where typname = 'product_kind') then
@@ -256,7 +256,7 @@ create table if not exists product_variants (
   colour        text,
 
   -- OBJECTS: the glTF to place. Built at the origin, footprint centred,
-  -- facing +Y -- see blender/houseluxe/catalog/README.md.
+  -- facing +Y -- see blender/spacivelle/catalog/README.md.
   model_url     text,
 
   -- FINISHES: the Blender material name this dresses, and its image. This is

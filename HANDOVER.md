@@ -9,7 +9,7 @@ fresh session: read it, then read `SYSTEM_AUDIT.md` for the system as a whole.*
 > plinth, carcass, doors and worktop, at the right coordinates -- was built by
 > `components/kitchen.py`, exported, painted into the route solver and treated
 > as solid by `collision.json`, and **was missing from `HOUSE_PARTS` in
-> `components/homeluxe/house/houseConfig.js`**. Nothing in the repository
+> `components/spacivelle/house/houseConfig.js`**. Nothing in the repository
 > referenced the filename. The character had been squeezing past cabinets
 > nobody could see, which is why the kitchen read as an empty room with slots
 > in it. One line; it renders now. Read §2 below knowing the room was always
@@ -118,7 +118,7 @@ inserted by migration is not in the catalogue, so the solver never sees it.
 `tour.json` goes on reading 110 waypoints at 300mm clearance — true, and
 solved against a house that no longer exists. Every file-reading test agrees.
 
-`components/homeluxe/tour/clearance.test.mjs` now compares the **live
+`components/spacivelle/tour/clearance.test.mjs` now compares the **live
 placements** against the **solved waypoints** and fails by name and millimetre.
 Run it after any placement change. It was verified against the real failure
 before being trusted.
@@ -130,15 +130,15 @@ before being trusted.
 The shape of the work, in order. Nothing here is started.
 
 1. **Give the kitchen a backed wall long enough.** Look at
-   `blender/houseluxe/config/plan_3bed.py` for the kitchen's north openings.
+   `blender/spacivelle/config/plan_3bed.py` for the kitchen's north openings.
    Either move or narrow one so the north backed span reaches ~2000mm for the
    tall section, or accept the counter-only end running past a window and
    position accordingly. This is the decision to put to the user — it changes
    the building.
 2. **Stop the generator building its own run where the product goes.**
-   `blender/houseluxe/config/kitchen.py` — `joinery_footprints()` sets out the
+   `blender/spacivelle/config/kitchen.py` — `joinery_footprints()` sets out the
    runs from `backed_spans()`, and `JOINERY_ROOMS = ("kitchen",)`. Geometry is
-   `blender/houseluxe/components/kitchen.py`. Both the footprint and the
+   `blender/spacivelle/components/kitchen.py`. Both the footprint and the
    geometry must stop together, or you get an invisible obstacle or a visible
    overlap.
 3. **Let the solver see the unit.** Its footprint has to reach
@@ -161,7 +161,7 @@ python supabase/apply.py --seed-only
 python supabase/check_drift.py
 # then re-activate the retired slot and placement from migration 0023,
 # and publish_scene('3bed', '...') as a platform admin
-node components/homeluxe/tour/clearance.test.mjs   # the one that matters
+node components/spacivelle/tour/clearance.test.mjs   # the one that matters
 ```
 
 A build that reports `UNREACHABLE:` or a clearance test that names the unit

@@ -87,7 +87,7 @@ python supabase/generate_seed.py
 It is derived from two things that are already the truth:
 
 - `public/models/products/catalog.json` — shops, products, placements
-- `blender/houseluxe/config/plan_3bed.py` — rooms and their finishes
+- `blender/spacivelle/config/plan_3bed.py` — rooms and their finishes
 
 so the database starts out **agreeing with the 3D scene** instead of drifting
 from it on day one. Each existing hand-authored placement becomes a slot, so

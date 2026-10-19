@@ -1,4 +1,4 @@
-# HomeLuxe 3D — system audit
+# Spacivelle 3D — system audit
 
 *Compiled from the code and the live database at commit `f53a4ac`.*
 
@@ -151,7 +151,7 @@ The glass opacity is a measured number, not a taste: secondary text darkens to
 
 ### 5.1 Scale
 
-- **41 HomeLuxe tables**, all with row-level security on, 73 policies between them
+- **41 Spacivelle 3D tables**, all with row-level security on, 73 policies between them
 - **16 views**, 11 of which are `security_invoker = on`
 - **70 functions**, 38 of them `SECURITY DEFINER`
 - **24 triggers**
@@ -162,7 +162,7 @@ The glass opacity is a measured number, not a taste: secondary text darkens to
 > tables (`User`, `Page`, `Order`, `Lesson`, `Story`, …) sit in the same
 > `public` schema with **RLS off and no policies**. They belong to a different
 > product. This was raised and the decision was to leave them alone. They are
-> not HomeLuxe's, but they are exposed through the same PostgREST endpoint and
+> not Spacivelle 3D's, but they are exposed through the same PostgREST endpoint and
 > the same anon key, so anything readable there is readable by anyone with the
 > site's public key. Worth revisiting.
 
@@ -303,7 +303,7 @@ holds a Supabase query of its own, so two screens cannot disagree about what
 
 ## 8. What Blender builds
 
-`blender/houseluxe/` is a **generative** package: 65 Python modules, no manual
+`blender/spacivelle/` is a **generative** package: 65 Python modules, no manual
 modelling. A plan expressed as dataclasses produces geometry and manifests.
 Run with `blender/build.py`.
 
@@ -580,7 +580,7 @@ Read this section before planning.
 
 ```bash
 npm run dev                  # or npm run build && npm start
-node components/homeluxe/tour/walk.test.mjs      # any suite, directly
+node components/spacivelle/tour/walk.test.mjs      # any suite, directly
 python supabase/check_drift.py                   # data vs geometry
 python supabase/apply.py                         # apply migrations
 blender --background --python blender/build.py   # rebuild the house

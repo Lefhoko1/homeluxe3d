@@ -1,8 +1,8 @@
-# HomeLuxe 3D Conversion TODO
+# Spacivelle 3D Conversion TODO
 
 ## ✅ Completed Tasks
-- [x] Created homeluxe components folder structure
-- [x] Extracted CSS styles from HTML into homeluxe.css
+- [x] Created spacivelle components folder structure
+- [x] Extracted CSS styles from HTML into spacivelle.css
 - [x] Created Header component
 - [x] Created ShopsBanner component
 - [x] Created TourPanel component

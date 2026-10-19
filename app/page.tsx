@@ -1,6 +1,6 @@
 "use client";
 
-import Landing from "../components/homeluxe/landing/Landing";
+import Landing from "../components/spacivelle/landing/Landing";
 
 /**
  * The front door.

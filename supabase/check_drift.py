@@ -93,7 +93,7 @@ def authored_placements() -> dict:
 
 def authored_slots() -> dict:
     """Every slot the plan declares, by its stable external id."""
-    from houseluxe.config.slots_3bed import SLOTS
+    from spacivelle.config.slots_3bed import SLOTS
 
     return {s.id: (round(s.x, 1), round(s.y, 1)) for s in SLOTS}
 

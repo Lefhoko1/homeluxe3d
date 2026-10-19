@@ -64,7 +64,7 @@ create table if not exists materials (
   renderer      material_renderer not null default 'procedural',
 
   -- Which generator draws it, for 'procedural'. Matches the export in
-  -- components/homeluxe/house/textures/proceduralTextures.js.
+  -- components/spacivelle/house/textures/proceduralTextures.js.
   procedural_key text,
 
   -- REAL-WORLD SIZE, in millimetres, and this is the point of the table.

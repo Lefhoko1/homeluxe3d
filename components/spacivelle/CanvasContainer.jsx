@@ -1,0 +1,1655 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three-stdlib';
+
+import {
+  loadHouse,
+  disposeHouse,
+  getDracoLoader,
+  disposeDracoLoader,
+  createHouseMaterials,
+  disposeHouseMaterials,
+  loadDoors,
+  loadSlots,
+  HOUSE_VIEWS,
+} from './house';
+import {
+  loadProducts, loadOneProduct, disposeProducts, advertFor, attachScreens,
+} from './products';
+import { applyFinishes } from './house/textures/finishOverrides';
+import {
+  applyDatabaseMaterials,
+  loadMaterialFinishes,
+} from './house/textures/databaseMaterials';
+import { publishScene, recordEvent } from '../../lib/catalog/repository';
+import { getSupabase } from '../../lib/supabase/client';
+import { createAtmosphere } from './atmosphere/Atmosphere';
+import { createLighting } from './lighting/Lighting';
+import {
+  approachOf,
+  ARRIVE_RADIUS,
+  createTourController,
+  createShowcase,
+  createWalkVolume,
+  disposeCharacter,
+  footprintsOf,
+  loadCharacter,
+  loadCollision,
+  loadRoute,
+  settleRoute,
+  TourPad,
+  TOUR_START,
+} from './tour';
+import { createTween, easeInOutCubic } from './tour/easing';
+import {
+  AdminBar,
+  AdminGate,
+  AdminList,
+  AiPlacementPanel,
+  PlacementEditor,
+  UploadDialog,
+} from './admin';
+import { PlacementService } from '../../lib/admin/PlacementService';
+
+const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
+                          shops = [], focusProduct = null, onSelect,
+                          onCatalogChanged, onTourApi, onTourState,
+                          roomLabel = null }) => {
+  const canvasRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
+  const productsRef = useRef(null);
+  const houseRef = useRef(null);
+  const houseMaterialsRef = useRef(null);
+  const atmosphereRef = useRef(null);
+  const lightingRef = useRef(null);
+  const interiorBoxRef = useRef(null);
+  const cameraBlockersRef = useRef([]);
+  const tourRef = useRef(null);
+  const characterRef = useRef(null);
+  // The solid world the walk is pushed out of, and the list of what is
+  // advertised in each room. Both are built once the scene has loaded and
+  // both are refs rather than state: they are read sixty times a second by
+  // the animation loop and never drawn by React.
+  const walkVolumeRef = useRef(null);
+  const showcaseRef = useRef(null);
+  const doorsRef = useRef(null);
+  const slotsRef = useRef(null);
+  const [showSlots, setShowSlots] = useState(false);
+  const [slotCount, setSlotCount] = useState(0);
+  // Cached because it only changes when an admin moves something.
+  const furnitureRectsRef = useRef([]);
+  /** Video textures and their standby timers, so they stop with the scene. */
+  const screensRef = useRef(null);
+  /**
+   * The camera flight currently in progress, if any.
+   *
+   * CLICKING A PRODUCT USED TO TELEPORT. The camera was assigned its new
+   * position and the orbit target with it, so the house cut from one view to
+   * another with nothing in between -- and because the two views are often in
+   * different rooms, there was no way to tell what had moved or which way you
+   * were now facing. Flown, the same move explains itself: the walls slide
+   * past and you arrive knowing where you are.
+   *
+   * Stepped by the render loop rather than by a timer of its own, so it
+   * shares the clock with everything else on screen.
+   */
+  const flightRef = useRef(null);
+  // Room extents, so a stop displaced by new furniture is re-seated inside
+  // its own room rather than in the corridor outside it.
+  const collisionRoomsRef = useRef([]);
+  const [touring, setTouring] = useState(false);
+  const [paused, setPaused] = useState(false);
+  /**
+   * Whether there is a route to walk yet.
+   *
+   * THE AUTO TOUR BUTTON WAS DEAD FOR THE FIRST FEW SECONDS AND SAID NOTHING.
+   * `toggleGuided` returns early on a missing route -- correctly, there is
+   * nothing to walk -- but the route is loaded at the END of the scene chain,
+   * after the house, the products, the finishes and the textures. Press the
+   * button before that and it silently does nothing, which is indistinguish-
+   * able from a broken button; and because the guided tour never starts, the
+   * one interruption in the application -- "pause and go to that product?" --
+   * can never fire either. The whole feature looked deleted.
+   */
+  const [routeReady, setRouteReady] = useState(false);
+  const [advert, setAdvert] = useState(null);
+  // Guided-tour state, mirrored into React so the pad can draw itself.
+  const routeRef = useRef(null);
+  const [guided, setGuided] = useState(false);
+  const [tourView, setTourView] = useState('third');
+  const [stopLabel, setStopLabel] = useState(null);
+  const [progress, setProgress] = useState(null);
+  // What the character is looking at right now, and how far through the
+  // room's list it is -- "Sandton 3-seater · 2 of 8".
+  const [showing, setShowing] = useState(null);
+  // The pointer handler is installed once; a ref keeps it from capturing
+  // the first render's onSelect forever.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  // ---- Admin editing ------------------------------------------------------
+  // The gizmo is a plain three.js object, not a component: it moves meshes
+  // sixty times a second and routing that through React state would re-render
+  // the page on every mouse move. React owns the toolbar; the editor owns the
+  // scene; `adminState` is the small amount that has to cross between them.
+  const editorRef = useRef(null);
+  const pickedNodeRef = useRef(null);
+  const placementsRef = useRef(null);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [adminState, setAdminState] = useState({
+    mode: 'translate', snap: true, lockY: true,
+    hasSelection: false, isDirty: false, transform: null, advert: null,
+  });
+  const [saving, setSaving] = useState(false);
+  const [adminMessage, setAdminMessage] = useState(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showList, setShowList] = useState(false);
+  // The AI placement conversation, docked over the scene for the selection.
+  const [showAi, setShowAi] = useState(false);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    // Initialize Three.js scene
+    let disposed = false;
+    let cleanupPointer = null;   // set once the products group exists
+
+    const scene = new THREE.Scene();
+    // Background and fog are set by the atmosphere below, so the sky, the
+    // fog and the cloud layers cannot drift out of agreement.
+
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      canvasRef.current.clientWidth / canvasRef.current.clientHeight,
+      0.1,
+      1000
+    );
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
+
+    canvasRef.current.appendChild(renderer.domElement);
+
+    // Orbit Controls
+    const orbitControls = new OrbitControls(camera, renderer.domElement);
+    orbitControls.enableDamping = true;
+    orbitControls.dampingFactor = 0.05;
+    orbitControls.screenSpacePanning = true;
+    // The house is ~14m across, so the old 10m ceiling put the camera inside
+    // the building at full zoom-out.
+    orbitControls.minDistance = 1.5;
+    orbitControls.maxDistance = 75;   // far enough to see the whole 30x40 yard
+    orbitControls.maxPolarAngle = Math.PI / 2;
+    orbitControls.enabled = true;
+
+    // Store references
+    sceneRef.current = scene;
+    rendererRef.current = renderer;
+    cameraRef.current = camera;
+    controlsRef.current = orbitControls;
+
+    // ---- Sky, clouds, fog ------------------------------------------------
+    const atmosphere = createAtmosphere({
+      anisotropy: renderer.capabilities.getMaxAnisotropy(),
+    });
+    atmosphere.applyTo(scene);
+    atmosphereRef.current = atmosphere;
+
+    // ---- The house and its yard ------------------------------------------
+    // Loaded from the per-component GLBs generated by blender/spacivelle.
+    // Textures are applied here, in three.js, keyed by Blender material name.
+    const houseMaterials = createHouseMaterials({
+      anisotropy: renderer.capabilities.getMaxAnisotropy(),
+    });
+    houseMaterialsRef.current = houseMaterials;
+
+    // Products are loaded AFTER the house and parented to it, not to the
+    // scene. The house group carries the recentring offset; a product added
+    // to the scene instead would sit at raw Blender coordinates, metres away.
+    // Chaining also avoids racing the two loads against each other.
+    (async () => {
+      try {
+        const { house, errors, stats } = await loadHouse({
+          materials: houseMaterials,
+        });
+
+        // The component can unmount while the GLBs are still in flight.
+        if (disposed) {
+          disposeHouse(house);
+          return;
+        }
+
+        scene.add(house);
+        houseRef.current = house;
+
+        if (errors.length) {
+          console.error(
+            '[house] %d part(s) failed to load:',
+            errors.length,
+            errors.map((e) => `${e.file}: ${e.error?.message ?? e.error}`)
+          );
+        }
+        if (stats.untextured.size) {
+          console.warn(
+            '[house] no three.js material for:',
+            [...stats.untextured].join(', ')
+          );
+        }
+
+        // ---- Shop products ---------------------------------------------
+        // Real retail furniture from the Blender catalogue, positioned by
+        // the manifest. The old primitive sofas and sofa.glb are gone.
+        const { group, placed, errors: productErrors, products } = await loadProducts({
+          house: '3bed',
+          materials: houseMaterials,
+          dracoLoader: getDracoLoader(),
+        });
+
+        if (disposed) {
+          disposeProducts(group);
+          return;
+        }
+
+        house.add(group);
+        productsRef.current = group;
+
+        // Give any television in the room something to play. See screens.js
+        // for why that cannot be a YouTube video and what it is instead.
+        screensRef.current?.dispose();
+        screensRef.current = attachScreens(group, products);
+        if (screensRef.current.screens) {
+          console.info(`[screens] ${screensRef.current.screens} screen(s) live`);
+        }
+        // The admin editor is created in its own effect, which cannot run
+        // until there is something to edit.
+        setSceneReady(true);
+
+        // ---- Activate placed finishes -----------------------------------
+        // Which product dresses which surface is DATA. A paint or coating
+        // placed on wall.<room> repaints exactly that room; a surface with
+        // no placement keeps what Blender gave it.
+        const finishSpecs = (placed ?? [])
+          .filter((p) => p.isFinish && p.surface)
+          .map((p) => {
+            // A product sold in several colours carries the colour on the
+            // VARIANT, so the placement has to say which one -- otherwise
+            // every gamazine wall would come out the default shade.
+            const variant = (p.product?.variants ?? []).find(
+              (v) => v.slug === p.variant
+            );
+            return {
+              surface: p.surface,
+              category: p.product?.category,
+              material: variant?.material ?? p.product?.material ?? p.surface,
+              texture: variant?.texture ?? p.product?.texture,
+              swatch: variant?.swatch ?? p.product?.swatch,
+              // The variant's own repeat first; the product's width only as a
+              // fallback for older rows that carry no module. See repository.js.
+              tileMm: p.product?.textureTileMm ?? p.product?.dimensions?.width,
+              product: p.product,
+              room: p.room,
+              variantName: variant?.name,
+            };
+          });
+
+        const { applied } = applyFinishes(
+          // THE FENCE IS A ROOT TOO. Finishes are only found on the roots
+          // they are handed; the boundary infill is a dressable surface
+          // like a wall, and leaving it out means a placed fencing
+          // product silently changes nothing.
+          [
+            house.userData.parts?.floors,
+            house.userData.parts?.wall_finishes,
+            house.userData.parts?.yard_fence,
+          ],
+          finishSpecs,
+          { anisotropy: renderer.capabilities.getMaxAnisotropy() }
+        );
+
+        // ---- Textures somebody uploaded ---------------------------------
+        //
+        // AFTER the placed finishes, and over the WHOLE house rather than
+        // just the floors and walls. A material with an albedo map in the
+        // database is drawn from that photograph; everything else keeps the
+        // procedural texture it has always had, which is why the house looks
+        // finished before anyone has uploaded anything.
+        //
+        // Blender's material name is the key on both sides, so a shop
+        // supplying a photograph of their tile is now an upload rather than a
+        // constant in textures/materialLibrary.js and a deploy.
+        try {
+          const supabase = getSupabase();
+          const finishes = await loadMaterialFinishes(supabase);
+          const { applied: textured, codes } = applyDatabaseMaterials(
+            [house],
+            finishes,
+            {
+              publicUrl: (path) =>
+                supabase.storage.from('material-maps').getPublicUrl(path).data.publicUrl,
+              anisotropy: renderer.capabilities.getMaxAnisotropy(),
+            }
+          );
+          if (textured) {
+            console.info(
+              `[materials] ${codes.length} surface(s) drawn from uploaded ` +
+              `textures (${textured} mesh(es)): ${codes.join(', ')}`
+            );
+          }
+        } catch (error) {
+          console.error('[materials] uploaded textures not applied:', error?.message);
+        }
+        if (finishSpecs.length) {
+          console.info(
+            `[finishes] ${finishSpecs.length} placed, applied to ${applied} mesh(es)`
+          );
+        }
+
+        // ---- Click an advert --------------------------------------------
+        // Raycast only against the products group, never the whole scene:
+        // clicking a wall should do nothing, and testing 160 house meshes on
+        // every click would be wasted work.
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let downAt = null;
+
+        // Finishes are advertised on SURFACES, not as objects, so they are
+        // not in the products group and a raycast against it can never hit
+        // them. The link is the material name: Blender bakes it into the
+        // mesh, and a finish product declares which one it supplies.
+        // Keyed by BOTH names a surface can be wearing: the one Blender baked
+        // in, and the one a placed finish replaced it with. A painted wall
+        // reports the second, an undressed surface the first -- and looking up
+        // only the product's base name finds neither.
+        const finishByMaterial = new Map();
+        products.forEach((product) => {
+          if (product.material) finishByMaterial.set(product.material, product);
+        });
+        finishSpecs.forEach((spec) => {
+          if (spec.product) {
+            finishByMaterial.set(spec.surface, spec.product);
+            finishByMaterial.set(spec.material, spec.product);
+          }
+        });
+
+        // Surfaces worth testing. Floors, walls -- and DOORS, because the
+        // hinges hung on them wear a material Tubod sells, so a click on any
+        // hinge in the house has to trace back to that product the same way a
+        // click on a floor traces back to the tile.
+        const surfaces = ['floors', 'wall_finishes', 'doors']
+          .map((id) => house.userData.parts?.[id])
+          .filter(Boolean);
+
+        const onPointerDown = (event) => {
+          // A press that lands on a transform handle belongs to the gizmo.
+          // `controls.axis` is non-null while the pointer is over one, which
+          // is the only reliable way to tell before the drag begins --
+          // otherwise letting go of a handle without moving deselects the
+          // very thing being edited.
+          if (editorRef.current?.controls?.axis != null) {
+            downAt = null;
+            return;
+          }
+          downAt = { x: event.clientX, y: event.clientY };
+        };
+
+        const onPointerUp = (event) => {
+          // A drag is an orbit, not a click. Without this, every time you
+          // rotate the view over a sofa the advert would open.
+          if (!downAt) return;
+          if (editorRef.current?.isDragging) { downAt = null; return; }
+          const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+          downAt = null;
+          if (moved > 6) return;
+
+          const rect = renderer.domElement.getBoundingClientRect();
+          pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+          raycaster.setFromCamera(pointer, camera);
+
+          // Objects first: a sofa standing ON a floor should win over the
+          // floor behind it.
+          let picked = null;
+          let pickedNode = null;
+          const hits = raycaster.intersectObject(group, true);
+
+          if (hits.length) {
+            // The hit is a mesh deep inside the product. Climb to the DIRECT
+            // CHILD of the products group: that node holds the placement's
+            // transform, and it is what the gizmo must move -- grabbing the
+            // mesh instead would move a sofa's arm relative to its own seat.
+            // `tag()` copies the advert onto every level, so the userData is
+            // there either way.
+            let node = hits[0].object;
+            while (node && node.parent && node.parent !== group) node = node.parent;
+            if (node?.userData?.productId) {
+              picked = { ...node.userData };
+              pickedNode = node;
+            }
+          } else if (surfaces.length) {
+            // Then surfaces. The mesh is named floors.<room>, so the hit
+            // names the room as well as the material.
+            const surfaceHits = raycaster.intersectObjects(surfaces, true);
+            const mesh = surfaceHits[0]?.object;
+            const product = mesh && finishByMaterial.get(mesh.material?.name);
+            if (product) {
+              // floors.living -> living ; wall.master -> master
+              const room = mesh.name?.split('.')[1] ?? null;
+              // A finish has no placement of its own in the scene graph, so
+              // the room is supplied here rather than read off a placement.
+              picked = { ...advertFor(product, { room }), isFinish: true };
+            }
+          }
+
+          if (!picked) {
+            setAdvert(null);
+            pickedNodeRef.current = null;
+            editorRef.current?.detach();
+            onSelectRef.current?.(null);
+            return;
+          }
+          setAdvert(picked);
+          // Clicking a product also selects it for editing, when there is an
+          // editor. A finish has no object, so it can be advertised but not
+          // moved -- it dresses a surface the house already has.
+          pickedNodeRef.current = pickedNode;
+          if (pickedNode) editorRef.current?.attach(pickedNode);
+          else editorRef.current?.detach();
+          onSelectRef.current?.(picked);      // tell the panels
+          // THE IDS, NOT JUST THE SLUGS. The slugs in `metadata` are for
+          // reading; the ids are what the event is attributed BY. Passing
+          // only metadata left 126 clicks in the database belonging to no
+          // shop and no product, which is the one thing a shop is paying
+          // for -- see migration 0014, which fills in the rest from these.
+          recordEvent('product_click', {
+            placementId: picked.placementId ?? null,
+            variantId: picked.variantId ?? null,
+            metadata: {
+              product: picked.productId,
+              shop: picked.shop,
+              room: picked.room,
+            },
+          });
+        };
+
+        const dom = renderer.domElement;
+        dom.addEventListener('pointerdown', onPointerDown);
+        dom.addEventListener('pointerup', onPointerUp);
+        cleanupPointer = () => {
+          dom.removeEventListener('pointerdown', onPointerDown);
+          dom.removeEventListener('pointerup', onPointerUp);
+        };
+
+        if (productErrors.length) {
+          console.error(
+            '[products] %d problem(s):',
+            productErrors.length,
+            productErrors.map(
+              (e) => `${e.stage}:${e.productId ?? ''} ${e.error?.message}`
+            )
+          );
+        }
+        console.log(`[products] placed ${placed.length} item(s)`);
+
+        // ---- Walk-through tour ------------------------------------------
+        // The character goes in the SCENE, not the house group -- unlike the
+        // products. The controller drives the camera and fires raycasts, and
+        // both work in world space; parenting the character to the recentred
+        // house would leave it offset from its own camera by ~7 metres.
+        // TOUR_START is therefore given in world coordinates.
+        const character = await loadCharacter({
+          materials: houseMaterials,
+          dracoLoader: getDracoLoader(),
+        });
+        if (disposed) {
+          disposeCharacter(character);
+          return;
+        }
+
+        scene.add(character);
+        characterRef.current = character;
+
+        // Raycasts read world matrices, which are otherwise only refreshed
+        // during render -- so the first ground probe would use stale ones.
+        house.updateMatrixWorld(true);
+
+        // Ground = anything you can stand on.
+        // Doors are not in it and not in the collision model either: every
+        // door is treated as open, and at walking height a doorway is a real
+        // gap in the wall geometry.
+        const part = (id) => house.userData.parts?.[id];
+        const groundObjects = [
+          'slab', 'floors', 'porch', 'yard_ground', 'yard_paving', 'yard_beds',
+        ].map(part).filter(Boolean);
+
+        // ---- What the visitor cannot walk through ------------------------
+        // THE WALLS DO NOT COME FROM THE MODEL. Each wall is exported as one
+        // joined object, so its bounding box swallows its own doorway and
+        // there is nothing left in the file to tell brick from opening. They
+        // come from collision.json, built out of the same decomposition the
+        // wall geometry itself is -- see blender/spacivelle/export/
+        // collision_json.py -- and are tested as a VOLUME rather than with a
+        // ray, so a long frame cannot step over one. See tour/collision.js.
+        //
+        // The furniture is measured from the scene instead, because that is
+        // the one part an admin can move after the fact.
+        const collision = await loadCollision(house);
+        const walkVolume = createWalkVolume({ fixed: collision?.walls ?? [] });
+        walkVolumeRef.current = walkVolume;
+
+        // ---- Doors that open ---------------------------------------------
+        // Every hinged leaf is exported with its origin on its own hinge
+        // axis, so opening one is a rotation and nothing has to be rebuilt
+        // here. A leaf that is still shut is SOLID -- it joins the walk
+        // volume alongside the furniture -- which is what stops the tour
+        // walking through a closed door. See house/doors.js.
+        const doors = await loadDoors(house);
+        doorsRef.current = doors;
+
+        // The furniture is measured when it moves; the doors are measured
+        // every frame, because they are moving. Keeping the two apart means
+        // a Box3 per sofa is not recomputed sixty times a second to get the
+        // same answer.
+        furnitureRectsRef.current = footprintsOf(group);
+        // AND THE DOORS ARE TOLD WHAT IS IN THE ROOM. A leaf stops when it
+        // meets a sofa instead of swinging through it, and only the browser
+        // knows where the sofa actually is -- the placements come from the
+        // database, not from the plan the swing was set out in.
+        doors?.setObstacles(furnitureRectsRef.current);
+        walkVolume.setDynamic([
+          ...furnitureRectsRef.current,
+          ...(doors?.footprints() ?? []),
+        ]);
+        collisionRoomsRef.current = collision?.rooms ?? [];
+
+        // The yard: geometry the plan knows nothing about, so it cannot be in
+        // the manifest and stays a raycast. Planting is included for its tree
+        // trunks; the canopies sit above 2m so the walk rays never reach them.
+        const obstacles = [
+          ...['porch', 'pool_fence', 'yard_fence', 'yard_hedges',
+              'yard_planting', 'yard_trees'].map(part).filter(Boolean),
+        ];
+
+        // What the CAMERA may not pass through. THE CEILING IS IN THIS LIST:
+        // without it the chase camera rose out through the ceiling in any
+        // room it was backed up against and the shot became a plan view of
+        // the roof. It is structure, and the camera has to respect it exactly
+        // as it respects a wall.
+        const cameraStructure = [
+          'walls_exterior', 'walls_interior', 'ceiling', 'porch',
+          'pool_fence', 'yard_fence',
+        ].map(part).filter(Boolean);
+
+        // ---- Keep the camera in the room it is looking into --------------
+        // Orbiting a sofa at close range used to swing the camera straight
+        // through the wall behind it, so the shot became: lawn in the
+        // foreground, the living room floating beyond it. The walk-through
+        // already solved this for itself with `cameraObstacles`; the orbit
+        // camera had no equivalent.
+        //
+        // The envelope is the exterior walls' own bounds, so it needs no
+        // hardcoded dimensions and follows the plan.
+        const exterior = part('walls_exterior');
+        if (exterior) {
+          interiorBoxRef.current = new THREE.Box3().setFromObject(exterior);
+          // Ceiling included: orbiting upward should stop at it rather than
+          // rising through the roof for a plan view of the furniture.
+          cameraBlockersRef.current = ['walls_exterior', 'ceiling', 'roof']
+            .map(part).filter(Boolean);
+        }
+
+        const tour = createTourController({
+          character,
+          camera,
+          controls: orbitControls,
+          groundObjects,
+          walkVolume,
+          obstacles,
+          cameraObstacles: cameraStructure,
+          start: TOUR_START.position,
+          startHeading: TOUR_START.heading,
+        });
+        tour.attach(window);
+        tourRef.current = tour;
+
+        // ---- What there is to show, room by room -------------------------
+        // Read off the scene as it now stands rather than written down: the
+        // furniture is whatever the catalogue placed, the finishes are
+        // whichever surfaces a placement dressed, the fittings come from the
+        // lights manifest. Withdraw a product and the tour stops showing it,
+        // because the tour looks rather than remembers.
+        //
+        // A finish dresses a SURFACE and has no object in the scene, so it
+        // can never be found by pointing at something -- which is exactly why
+        // it has to be listed here, or the tiles and the paint would be the
+        // one advertised thing a walk-through never shows.
+        // A finish is advertised on a surface, and WHICH surface decides where
+        // the tour has to look. Paint is on a wall, tile is underfoot, and a
+        // hinge is on a door at chest height -- aiming the camera at the floor
+        // for a hinge would show a visitor the one thing it is not on.
+        const finishKind = (spec) => {
+          if (spec.category === 'hardware') return 'fitting';
+          return /^wall/i.test(spec.surface ?? '') ? 'wall' : 'floor';
+        };
+
+        const finishAdverts = finishSpecs
+          .filter((spec) => spec.product && spec.room && spec.room !== 'exterior')
+          .map((spec) => ({
+            room: spec.room,
+            kind: finishKind(spec),
+            advert: {
+              ...advertFor(spec.product, { room: spec.room }),
+              isFinish: true,
+            },
+          }));
+
+        // The ceiling fittings, in world space -- the manifest is house-local
+        // and the character lives in the scene. Same offset the route needs.
+        const fittings = (house.userData.roomLights?.fittings ?? []).map(
+          (fitting) => ({
+            room: fitting.room,
+            point: new THREE.Vector3(...fitting.position).add(house.position),
+          })
+        );
+
+        // ---- The advertising inventory -----------------------------------
+        // Every position a product can be sold into, drawn as the box it
+        // would fill. Off by default: it is a view of the inventory, not part
+        // of the house. See house/slots.js.
+        const slots = await loadSlots(house);
+        slotsRef.current = slots;
+        if (slots) {
+          slots.hideOccupied(placed.filter((p) => !p.isFinish));
+          setSlotCount(slots.count);
+        }
+
+        showcaseRef.current = createShowcase({
+          products: group,
+          finishes: finishAdverts,
+          fittings,
+          rooms: collision?.rooms ?? [],
+          ceiling: collision?.ceiling ?? 2.4,
+          // Where the hinges are: on the doors. Taken from the same manifest
+          // that swings them, in world metres.
+          doors: (doors?.points?.() ?? []),
+          // Empty positions are worth showing too: a visitor being sold
+          // space needs to see the space.
+          slots: slots?.worldEntries() ?? [],
+        });
+
+        // The solved route through the house. House-local in the manifest,
+        // converted to world here because the character lives in the scene.
+        routeRef.current = await loadRoute(house);
+        setRouteReady(Boolean(routeRef.current?.waypoints?.length));
+        // The ways through the house, so "show me" can walk to another room
+        // before any guided tour has run. See `visit` in TourController.
+        tourRef.current?.setNetwork(routeRef.current?.waypoints);
+
+        // Deep link: /#tour drops the visitor straight onto the driveway.
+        // Handy for "take the tour" links in an advert.
+        if (window.location.hash === '#tour') {
+          tour.enter();
+          setTouring(true);
+        }
+      } catch (error) {
+        console.error('[scene] failed to load:', error);
+      }
+    })();
+
+    const lighting = createLighting({ sunDirection: atmosphere.sunDirection });
+    lighting.applyTo(scene);
+    lightingRef.current = lighting;
+
+    // Set initial camera position
+    const view = HOUSE_VIEWS.overview;
+    camera.position.set(...view.position);
+    camera.lookAt(...view.target);
+    orbitControls.target.set(...view.target);
+
+    // Animation loop
+    const clock = new THREE.Clock();
+    const camRay = new THREE.Raycaster();
+    const toCamera = new THREE.Vector3();
+
+    /**
+     * Stop the orbit camera leaving the room it is looking into.
+     *
+     * Only applies CLOSE UP. Pulled back for the overview the camera is
+     * supposed to be outside, and clamping there would yank the viewer into
+     * the building the moment they tried to look at the house. So the rule
+     * is: if what you are looking at is inside the building AND you are
+     * near it, you are inside with it.
+     */
+    const INSIDE_RANGE = 15;
+    const clampCameraToInterior = () => {
+      const box = interiorBoxRef.current;
+      const blockers = cameraBlockersRef.current;
+      if (!box || !blockers.length || tourRef.current?.active) return;
+      if (!box.containsPoint(orbitControls.target)) return;
+
+      toCamera.subVectors(camera.position, orbitControls.target);
+      const distance = toCamera.length();
+      if (distance < 0.05 || distance > INSIDE_RANGE) return;
+
+      toCamera.divideScalar(distance);
+      camRay.set(orbitControls.target, toCamera);
+      camRay.far = distance;
+
+      const hit = camRay.intersectObjects(blockers, true)[0];
+      if (!hit) return;
+
+      // Just short of whatever was hit, and never so close to the target
+      // that the near plane clips through it.
+      const pulled = Math.max(0.7, hit.distance - 0.25);
+      camera.position.copy(orbitControls.target).addScaledVector(toCamera, pulled);
+    };
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // The tour takes the camera over when active; OrbitControls is
+      // disabled then, so only one of these ever moves it.
+      //
+      // A HELD TOUR KEEPS IT. It used to hand the camera back so "pause and
+      // show me that sofa" could fly it there -- which left the person
+      // standing in the house behind and zoomed the building about. Now the
+      // character walks to the sofa and the camera goes with them (`visit`),
+      // so the walk-through is a walk-through the whole time. Flights are
+      // for the overview only, outside the tour.
+      const walking = Boolean(tourRef.current?.active);
+
+      // ONE THING MOVES THE CAMERA PER FRAME. A flight started in the
+      // overview can still be in the air when the tour starts; the walk wins
+      // and the flight is dropped where it is.
+      if (walking) {
+        flightRef.current = null;
+      } else if (flightRef.current && !flightRef.current.step(delta)) {
+        flightRef.current = null;
+      }
+      if (walking) {
+        tourRef.current.update(delta);
+      } else {
+        orbitControls.update();
+        clampCameraToInterior();
+      }
+
+      // ---- Doors ---------------------------------------------------------
+      // Whoever is "at" the door is the character while the tour is walking,
+      // and what the camera is looking at while it is not -- orbit close to a
+      // doorway and it should open, or the house reads as sealed.
+      //
+      // The volume is refreshed from them every frame because a door that has
+      // just swung clear has to stop blocking on the SAME frame the walk sees
+      // it. A door is four numbers; the furniture is cached beside it.
+      const doorsNow = doorsRef.current;
+      if (doorsNow) {
+        doorsNow.update(
+          delta,
+          // While the tour is HELD the character is standing still somewhere
+          // else entirely, so the doors follow the camera instead -- opening
+          // a door two rooms away because the paused walker is near it would
+          // be a door opening for nobody.
+          tourRef.current?.active && !tourRef.current.paused
+            ? tourRef.current.position
+            : orbitControls.target
+        );
+        walkVolumeRef.current?.setDynamic([
+          ...furnitureRectsRef.current,
+          ...doorsNow.footprints(),
+        ]);
+      }
+
+      atmosphere.update(delta);
+
+      // Keep the sky centred on the viewer so it can never be reached.
+      atmosphere.group.position.set(camera.position.x, 0, camera.position.z);
+      // And the shadow frustum centred on what is being looked at.
+      lighting.follow(orbitControls.target);
+      // Six lights serve sixteen fittings, so they follow the viewer. See
+      // lighting/roomLights.js.
+      houseRef.current?.userData.roomLights?.update(delta, camera);
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    /**
+     * Keep the drawing buffer the same shape as the box it is drawn in.
+     *
+     * WATCHING THE ELEMENT, NOT THE WINDOW. This canvas is one cell of a
+     * three-column grid, and most of what changes its size is not a window
+     * resize at all: the product panel appearing when something is selected,
+     * the tour panel growing with a longer room list, the columns collapsing
+     * at 1024. None of those fire a resize event, so the renderer kept the
+     * size it was given on the very first frame -- which is why the house
+     * drew into part of the frame and left the rest as empty background.
+     *
+     * The aspect goes with it. A camera whose aspect does not match the
+     * buffer stretches everything it draws, and that stretch is the
+     * distortion you see when the house is turning: straight walls lean.
+     */
+    const resize = () => {
+      const box = canvasRef.current;
+      if (!box) return;
+      const width = box.clientWidth;
+      const height = box.clientHeight;
+      if (!width || !height) return;      // laid out but not yet measured
+
+      // Guard against re-entering: setSize writes inline styles on the
+      // canvas, which the observer would otherwise report as a change.
+      if (width === lastWidth && height === lastHeight) return;
+      lastWidth = width;
+      lastHeight = height;
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, true);
+      // Sharp on a phone, and capped: at devicePixelRatio 3 the house is
+      // nine times the pixels for no visible gain.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    };
+
+    let lastWidth = 0;
+    let lastHeight = 0;
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvasRef.current);
+    // Once immediately: the first measurement above happened before the grid
+    // had settled, and the observer's first callback can be a frame late.
+    resize();
+
+    // Cleanup
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      cleanupPointer?.();
+
+      tourRef.current?.detach(window);
+      tourRef.current = null;
+      walkVolumeRef.current = null;
+      showcaseRef.current = null;
+      doorsRef.current = null;
+      slotsRef.current?.dispose();
+      slotsRef.current = null;
+      furnitureRectsRef.current = [];
+      screensRef.current?.dispose();
+      screensRef.current = null;
+      setRouteReady(false);
+      collisionRoomsRef.current = [];
+      disposeCharacter(characterRef.current);
+      characterRef.current = null;
+      houseRef.current?.userData.roomLights?.dispose();
+      disposeProducts(productsRef.current);
+      disposeHouse(houseRef.current);
+      disposeHouseMaterials(houseMaterialsRef.current);
+      disposeDracoLoader();   // shuts down the decoder's Web Workers
+      atmosphereRef.current?.dispose();
+      lightingRef.current?.dispose();
+      lightingRef.current = null;
+      productsRef.current = null;
+      houseRef.current = null;
+      houseMaterialsRef.current = null;
+      atmosphereRef.current = null;
+
+      if (rendererRef.current && canvasRef.current) {
+        canvasRef.current.removeChild(rendererRef.current.domElement);
+        rendererRef.current.dispose();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    // The room label, handed down from the catalogue -- which gets it from
+    // the database. It used to come from a lookup table of thirteen room
+    // names in useCatalog, which is one place too many for a fact the
+    // `rooms` table has always held.
+    const el = document.getElementById('canvas-title');
+    if (!el) return;
+    const label = roomLabel ?? currentRoom;
+    el.textContent = advert
+      ? `${advert.name} — ${advert.shopName ?? advert.shop}`
+      : `${label} — click an item to see the advert`;
+  }, [currentRoom, currentIndex, advert, roomLabel]);
+
+  // Selecting in the list takes the visitor to that product.
+  //
+  // IN THE WALK-THROUGH, BY WALKING. The character goes and stands in front
+  // of it and the camera goes with them; nothing flies, and the house does
+  // not zoom about. A guided tour that is WALKING is skipped -- the page asks
+  // first, and holds the tour if the answer is yes -- and a held one, or a
+  // visitor walking themselves, walks there. Outside the tour, in the
+  // overview, the camera still flies: there is nobody standing in the house
+  // to walk.
+  useEffect(() => {
+    const controls = controlsRef.current;
+    const camera = cameraRef.current;
+    const house = houseRef.current;
+    const tour = tourRef.current;
+    if (!focusProduct || !controls || !camera || !house) return;
+    if (tour?.active && tour.touring && !tour.paused) return;
+
+    if (tour?.active) {
+      if (focusProduct.position) {
+        // The piece as it stands in the scene now -- it may have been dragged
+        // since the catalogue was read -- for where its front is.
+        const placed = productsRef.current?.children.find(
+          (child) =>
+            (focusProduct.placementId && child.userData.placementId === focusProduct.placementId) ||
+            child.userData.productId === (focusProduct.productId ?? focusProduct.id)
+        );
+        const spec = placed ? approachOf(placed) : null;
+        const point = spec
+          ? spec.centre.clone().setY(Math.min(spec.centre.y + spec.height * 0.25, 1.1))
+          : new THREE.Vector3(...focusProduct.position).add(house.position).setY(0.8);
+        tour.visit({ point, approach: spec });
+      } else {
+        // A FINISH: paint, tile, hardware. It dresses a room rather than
+        // standing anywhere, so "show me" is the room: walk to where the
+        // tour stops in it and look into it.
+        const stop = routeRef.current?.waypoints?.find(
+          (point) => point.room === focusProduct.room && point.dwell
+        );
+        const room = collisionRoomsRef.current?.find((entry) => entry.room === focusProduct.room);
+        if (stop && room?.rect) {
+          const [x0, z0, x1, z1] = room.rect;
+          tour.visit({
+            point: new THREE.Vector3(
+              (x0 + x1) / 2 + house.position.x, 1.2, (z0 + z1) / 2 + house.position.z
+            ),
+            standAt: new THREE.Vector3(stop.position[0], 0, stop.position[1]),
+          });
+        }
+      }
+      return;
+    }
+
+    // A FINISH HAS NO POSITION, AND USED TO GET NO FOCUS. Paint, tile and
+    // coatings dress a whole surface rather than standing anywhere, so the
+    // old version returned here and the click did nothing at all -- and
+    // thirteen of the nineteen things in the house are finishes. Six rooms
+    // contain nothing else, so in those rooms every click was silently
+    // ignored.
+    //
+    // They do belong somewhere: the ROOM they dress. Flying to the middle of
+    // it and standing back far enough to see the walls and floor is what
+    // "show me this tile" actually means.
+    let target;
+    let distance;
+
+    if (focusProduct.position) {
+      // Placement positions are house-local; the house group carries the
+      // recentring offset, so add it to get world space.
+      target = new THREE.Vector3(...focusProduct.position).add(house.position);
+      distance = 4.5;
+    } else {
+      const room = collisionRoomsRef.current?.find(
+        (entry) => entry.room === focusProduct.room
+      );
+
+      if (room?.rect) {
+        const [x0, z0, x1, z1] = room.rect;
+        target = new THREE.Vector3(
+          (x0 + x1) / 2 + house.position.x,
+          0,
+          (z0 + z1) / 2 + house.position.z
+        );
+        // Far enough back to see the surface being advertised. Scaled to the
+        // room, because 4.5m from the middle of a WC is outside it.
+        distance = Math.max(3.2, Math.hypot(x1 - x0, z1 - z0) * 0.75);
+      } else {
+        // NO ROOM AT ALL, and that is a real case rather than bad data: the
+        // exterior coating dresses the OUTSIDE, and the door hardware is
+        // fitted to every door in the building. Neither is anywhere in
+        // particular, so the honest answer to "show me this" is the whole
+        // house, framed from outside.
+        const box = new THREE.Box3().setFromObject(house);
+        if (box.isEmpty()) return;
+        target = box.getCenter(new THREE.Vector3());
+        target.y = box.min.y;
+        distance = box.getSize(new THREE.Vector3()).length() * 0.62;
+      }
+    }
+
+    // Stand back along the current view direction so the move reads as a
+    // dolly rather than a teleport to a fixed angle.
+    const back = camera.position.clone().sub(controls.target).setY(0);
+    if (back.lengthSq() < 0.01) back.set(0, 0, 1);
+    back.normalize().multiplyScalar(distance);
+    // Eye height for a product, standing height for a room, and well above
+    // the roof when the whole house is being framed.
+    const lift = focusProduct.position ? 2.6 : distance > 12 ? distance * 0.45 : 1.9;
+    const destination = new THREE.Vector3(
+      target.x + back.x,
+      target.y + lift,
+      target.z + back.z
+    );
+
+    // A second click before the first lands finishes the first rather than
+    // blending two flights, which would curve the camera through a wall.
+    flightRef.current?.finish();
+
+    const fromPosition = camera.position.clone();
+    const fromTarget = controls.target.clone();
+    // Long flights get longer, but not proportionally -- crossing the whole
+    // site should not take four seconds.
+    const reach = fromPosition.distanceTo(destination);
+    const seconds = Math.min(1.5, 0.45 + Math.sqrt(reach) * 0.16);
+
+    flightRef.current = createTween({
+      seconds,
+      // Slow away, slow in. The camera is not reacting to a physical push;
+      // it is being shown something, and the arrival is the point.
+      ease: easeInOutCubic,
+      onUpdate: (t) => {
+        camera.position.lerpVectors(fromPosition, destination, t);
+        controls.target.lerpVectors(fromTarget, target, t);
+        controls.update();
+      },
+      onDone: () => { flightRef.current = null; },
+    });
+  }, [focusProduct]);
+
+  // ---- The placement editor ----------------------------------------------
+  // Created only for an admin, and only once there is a scene. Torn down the
+  // moment either stops being true, so a sign-out leaves no gizmo behind and
+  // no listeners on the canvas.
+  useEffect(() => {
+    if (!isAdmin || !sceneReady) return undefined;
+
+    const editor = new PlacementEditor({
+      camera: cameraRef.current,
+      dom: rendererRef.current.domElement,
+      scene: sceneRef.current,
+      orbitControls: controlsRef.current,
+      onChange: setAdminState,
+    });
+    editorRef.current = editor;
+    placementsRef.current = new PlacementService(null, { scene: '3bed' });
+
+    // Blender's own shortcuts, because anyone who has placed furniture in a
+    // 3D tool already has them in their fingers.
+    const onKey = (event) => {
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (event.key === 'g' || event.key === 'G') editor.setMode('translate');
+      else if (event.key === 'r' || event.key === 'R') editor.setMode('rotate');
+      else if (event.key === 's' && !event.ctrlKey) editor.setMode('scale');
+      else if (event.key === 'Escape') editor.detach();
+    };
+    window.addEventListener('keydown', onKey);
+
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      editor.dispose();
+      editorRef.current = null;
+      // OrbitControls is disabled while a handle is held; disposing mid-drag
+      // would otherwise leave the camera permanently frozen.
+      if (controlsRef.current) controlsRef.current.enabled = true;
+    };
+  }, [isAdmin, sceneReady]);
+
+  /**
+   * Re-measure the furniture the walk has to go around.
+   *
+   * The walls never move, so they are measured once; the furniture is exactly
+   * the part an admin can drag anywhere at run time. Without this the visitor
+   * walks straight through a sofa that was moved after the scene loaded --
+   * and, worse, is blocked by empty floor where it used to be.
+   */
+  const remeasureFurniture = useCallback(() => {
+    furnitureRectsRef.current = footprintsOf(productsRef.current);
+    // Something moved, so how far each door can open has changed with it --
+    // dragging a wardrobe in front of a bedroom door shortens that door's
+    // swing, and dragging it away gives the swing back.
+    doorsRef.current?.setObstacles(furnitureRectsRef.current);
+    walkVolumeRef.current?.setDynamic([
+      ...furnitureRectsRef.current,
+      // The doors go back in with them. Rebuilding the dynamic list from the
+      // furniture alone would quietly leave every closed door walk-through
+      // until the next frame put them back.
+      ...(doorsRef.current?.footprints() ?? []),
+    ]);
+  }, []);
+
+  /** Transient toolbar message. Errors stay; confirmations fade. */
+  const say = useCallback((text, tone = 'info') => {
+    setAdminMessage({ text, tone });
+    if (tone !== 'bad') setTimeout(() => setAdminMessage(null), 3500);
+  }, []);
+
+  /**
+   * Freeze the draft as a new published version.
+   *
+   * The database checks the permission -- `publish_scene` is security definer
+   * and asks for `scene.publish` itself -- so this only has to report what
+   * happened. It also refuses to publish an empty house, which surfaces here
+   * as a plain error rather than as a blank house for every visitor.
+   */
+  const [publishing, setPublishing] = useState(false);
+  const handlePublish = useCallback(async () => {
+    setPublishing(true);
+    try {
+      const row = await publishScene('3bed');
+      say(
+        `Published version ${row?.version ?? '?'} — ` +
+        `${row?.placement_count ?? 0} item(s) now live for visitors.`
+      );
+    } catch (error) {
+      say(`Could not publish: ${error.message}`, 'bad');
+    } finally {
+      setPublishing(false);
+    }
+  }, [say]);
+
+
+  const handleSave = useCallback(async () => {
+    const editor = editorRef.current;
+    const node = pickedNodeRef.current;
+    if (!editor?.hasSelection || !node) return;
+
+    const data = node.userData;
+    if (!data.variantId) {
+      // Everything in the static catalogue is in this position: it was
+      // authored in Blender and has no row to update. Saying so is better
+      // than a permission error from PostgREST.
+      say(
+        'This item comes from the static catalogue, not the database, so ' +
+        'there is no row to move. Set the Supabase environment variables to ' +
+        'edit placements.',
+        'bad'
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const placementId = await placementsRef.current.place({
+        variantId: data.variantId,
+        placementId: data.placementId ?? null,
+        transform: editor.toTransform(),
+      });
+
+      // The object is now a saved placement, so a second save updates rather
+      // than inserting a duplicate.
+      node.userData.placementId = placementId;
+      node.userData.pending = false;
+      node.traverse((child) => {
+        if (child.isMesh) child.userData.placementId = placementId;
+      });
+
+      editor.markSaved();
+      remeasureFurniture();
+      say(data.placementId ? 'Moved.' : 'Placed.');
+      // The room lists read the database, so they must re-read or they will
+      // keep describing the layout as it was before this save.
+      onCatalogChanged?.();
+    } catch (error) {
+      say(error.message, 'bad');
+    } finally {
+      setSaving(false);
+    }
+  }, [say, onCatalogChanged, remeasureFurniture]);
+
+  const handleRevert = useCallback(() => {
+    editorRef.current?.revert();
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    const node = pickedNodeRef.current;
+    if (!node) return;
+    const { placementId, pending, name } = node.userData;
+
+    if (!pending && !window.confirm(`Remove "${name}" from the house?`)) return;
+
+    setSaving(true);
+    try {
+      // A pending object has never been written, so there is nothing to
+      // delete -- taking it out of the scene is the whole operation.
+      if (placementId) await placementsRef.current.remove(placementId);
+
+      editorRef.current?.detach();
+      node.parent?.remove(node);
+      node.traverse((child) => { if (child.isMesh) child.geometry?.dispose(); });
+      pickedNodeRef.current = null;
+      setAdvert(null);
+      remeasureFurniture();
+      onSelectRef.current?.(null);
+      say(placementId ? 'Removed.' : 'Discarded.');
+      if (placementId) onCatalogChanged?.();
+    } catch (error) {
+      say(error.message, 'bad');
+    } finally {
+      setSaving(false);
+    }
+  }, [say, onCatalogChanged, remeasureFurniture]);
+
+  /**
+   * Drop a product into the scene from the admin list.
+   *
+   * Nothing is written here. The model is loaded, put where the camera is
+   * looking and handed to the gizmo; it becomes a placement only when the
+   * admin presses Save. So a mis-click costs a download and nothing else.
+   */
+  const handlePlace = useCallback(async ({ product, variant }, { withAi = false } = {}) => {
+    const group = productsRef.current;
+    const controls = controlsRef.current;
+    if (!group || !variant?.model_url) return;
+
+    setSaving(true);
+    try {
+      const instance = await loadOneProduct({
+        modelUrl: variant.model_url,
+        anchor: variant.anchor,
+        dracoLoader: getDracoLoader(),
+        materials: houseMaterialsRef.current,
+        advert: {
+          productId: product.qualified_id,
+          name: product.name,
+          shop: product.shop_slug,
+          shopName: product.shop_name,
+          category: product.category_code,
+          description: product.description,
+          price: product.price_cents != null ? product.price_cents / 100 : null,
+          currency: product.currency,
+          thumbnail: product.thumbnail_url ?? null,
+          dimensions: product.width_mm
+            ? { width: product.width_mm, depth: product.depth_mm, height: product.height_mm }
+            : undefined,
+          roomTypes: product.room_types ?? [],
+          variantId: variant.id,
+          placementId: null,
+          // Marks it as never-saved, so Delete discards instead of asking
+          // the database to remove a row that does not exist.
+          pending: true,
+        },
+      });
+
+      // Put it where the admin is looking, on the floor. `controls.target` is
+      // the point the camera orbits, which is inside whichever room is being
+      // viewed -- far more useful than the world origin.
+      const target = controls?.target?.clone() ?? new THREE.Vector3();
+      target.y = 0;
+      group.worldToLocal(target);
+      instance.position.set(target.x, 0, target.z);
+
+      group.add(instance);
+      pickedNodeRef.current = instance;
+      setAdvert({ ...instance.userData });
+      editorRef.current?.attach(instance);
+      editorRef.current?.setMode('translate');
+      remeasureFurniture();
+      if (withAi) {
+        setShowAi(true);
+        say(`${product.name} dropped in. Describe where it should go, then press Save.`);
+      } else {
+        say(`${product.name} dropped in. Move it, then press Save.`);
+      }
+    } catch (error) {
+      say(`Could not load that model: ${error.message}`, 'bad');
+    } finally {
+      setSaving(false);
+    }
+  }, [say, remeasureFurniture]);
+
+  // The tour only exists once the scene has finished loading, so both of
+  // these no-op until then rather than throwing.
+  const startTour = () => {
+    const tour = tourRef.current;
+    if (!tour) return;
+    // Walking it yourself means seeing yourself: the figure is how you know
+    // where you are standing, and the cinematic opening hides it.
+    setWalkerVisible(true);
+    tour.toggle();
+    setTouring(tour.active);
+    if (!tour.active) { setGuided(false); setStopLabel(null); setShowing(null); }
+  };
+
+  const exitTour = () => {
+    tourRef.current?.exit();
+    setTouring(false);
+    setPaused(false);
+    setGuided(false);
+    setStopLabel(null);
+    setShowing(null);
+  };
+
+  /** Back to the opening shot of the whole property. */
+  const resetView = () => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+    const view = HOUSE_VIEWS.overview;
+    camera.position.set(...view.position);
+    controls.target.set(...view.target);
+    controls.update();
+  };
+
+  /**
+   * Start or stop the guided walk.
+   *
+   * Arriving at a stop moves the panels to that room, so the list on the left
+   * and the advert on the right describe wherever the visitor is standing.
+   */
+  const toggleGuided = useCallback(() => {
+    const tour = tourRef.current;
+    const route = routeRef.current;
+    if (!tour) return;
+
+    if (tour.touring) {
+      tour.stopRoute();
+      setGuided(false);
+      setShowing(null);
+      return;
+    }
+    if (!route?.waypoints?.length) return;
+
+    // ---- Move any stop something is now standing on --------------------
+    // The route was solved in Blender against the catalogue as it stood at
+    // the last export. Products rotate -- a batch goes live, a promotion
+    // ends, a bed appears in the master bedroom -- and none of that rebuilds
+    // the route. A stop inside a bed is one the walk can never arrive at, so
+    // it is re-seated against the scene as it is RIGHT NOW, every time the
+    // tour starts. See settleRoute.
+    walkVolumeRef.current?.setDynamic(footprintsOf(productsRef.current));
+    const { waypoints, moved, stranded } = settleRoute(
+      route.waypoints,
+      walkVolumeRef.current,
+      collisionRoomsRef.current,
+      ARRIVE_RADIUS
+    );
+    if (moved.length) {
+      console.info(
+        '[tour] re-seated %d stop(s) around furniture placed since the route ' +
+        'was solved:', moved.length,
+        moved.map((m) => `${m.label} (+${(m.by * 1000).toFixed(0)}mm)`).join(', ')
+      );
+    }
+    if (stranded.length) {
+      console.warn(
+        '[tour] no standable spot in:',
+        stranded.map((s) => s.label).join(', '),
+        '-- something is placed across the whole room'
+      );
+    }
+
+    tour.followRoute(
+      waypoints,
+      (stop) => {
+        setStopLabel(stop.label ?? null);
+        setProgress(tour.progress);
+        if (stop.room) onSelectRef.current?.({ room: stop.room, roomOnly: true });
+      },
+      {
+        showcase: showcaseRef.current,
+        // THE ADVERT FOLLOWS THE EYES. The character turns to one thing at a
+        // time, so the panel has to change with it -- otherwise the visitor
+        // is looking at the recliner while reading about the rug, which is
+        // worse than showing nothing.
+        onShow: (target, index, total) => {
+          setAdvert(target.advert ?? null);
+          setShowing({ caption: target.caption, at: index + 1, of: total });
+          // Marked as the tour's, not the visitor's: the same call arrives
+          // when somebody taps the sofa, and on a phone a tap opens the
+          // details drawer -- which the tour must not do at every stop.
+          if (target.advert) onSelectRef.current?.(target.advert, { fromTour: true });
+        },
+      }
+    );
+    setTouring(true);
+    setGuided(true);
+    setProgress(tour.progress);
+  }, []);
+
+  // Hand the guided tour up, so the "Auto Tour" button in the bottom bar can
+  // start it. The scene has to own the controller -- it needs the camera, the
+  // character and the geometry -- so the button borrows it rather than the
+  // other way round.
+  /**
+   * Show or hide the walking figure.
+   *
+   * THE LANDING PAGE IS A FILM, NOT A GAME. Somebody arriving has not asked
+   * to control anything yet, and a third-person character standing in shot is
+   * the difference between "here is a house" and "here is a video game about
+   * a house". The camera still follows the same route on the same collision
+   * volume -- nothing about the walk changes, only whether you can see who is
+   * doing the walking.
+   *
+   * The figure comes back the moment they take the controls, because then it
+   * IS them and they need to see where they are standing.
+   */
+  const setWalkerVisible = useCallback((visible) => {
+    // THROUGH THE CONTROLLER, not straight at the mesh. This used to assign
+    // `character.visible` directly, which knew nothing about which view was
+    // current -- so asking for the figure back while in first person put the
+    // camera inside its head. The controller weighs the request against the
+    // view; see `showWalker` in TourController.
+    const tour = tourRef.current;
+
+    if (tour) tour.setWalkerVisible(visible);
+    else if (characterRef.current) characterRef.current.visible = visible;
+  }, []);
+
+  /**
+   * Hold the tour so the camera can go and look at something.
+   *
+   * Returns whether it actually held, so the caller can tell "paused for you"
+   * from "there was nothing playing" and word its own message accordingly.
+   */
+  const holdTour = useCallback(() => {
+    const held = tourRef.current?.pauseRoute() ?? false;
+    if (held) setPaused(true);
+    return held;
+  }, []);
+
+  const resumeTour = useCallback(() => {
+    const resumed = tourRef.current?.resumeRoute() ?? false;
+    if (resumed) setPaused(false);
+    return resumed;
+  }, []);
+
+  /**
+   * Tell the page what the tour is doing.
+   *
+   * The page has to know BEFORE it acts on a click in the product list: while
+   * the tour is walking it must ask rather than fly the camera away. Reading
+   * it through a function on the api object would work once and then go
+   * stale, because nothing re-renders the page when the tour changes.
+   */
+  useEffect(() => {
+    onTourState?.({ touring, guided, paused, ready: routeReady });
+  }, [onTourState, touring, guided, paused, routeReady]);
+
+  useEffect(() => {
+    onTourApi?.({
+      startGuided: toggleGuided,
+      setWalkerVisible,
+      holdTour,
+      resumeTour,
+      isTouring: () => Boolean(tourRef.current?.active),
+      isGuided: () => Boolean(tourRef.current?.active && tourRef.current.progress),
+      isPaused: () => Boolean(tourRef.current?.paused),
+    });
+  }, [onTourApi, toggleGuided, setWalkerVisible, holdTour, resumeTour]);
+
+  const toggleTourView = () => {
+    const tour = tourRef.current;
+    if (!tour) return;
+    tour.toggleView();
+    setTourView(tour.view);
+  };
+
+  // The guided walk stops itself when the visitor touches a control, so the
+  // button has to follow the controller rather than the other way round.
+  useEffect(() => {
+    if (!guided) return undefined;
+    const id = setInterval(() => {
+      if (tourRef.current && !tourRef.current.touring) {
+        setGuided(false);
+        setStopLabel(null);
+        setShowing(null);
+      }
+    }, 400);
+    return () => clearInterval(id);
+  }, [guided]);
+
+  return (
+    <div id="canvas-container" className={isAdmin ? 'admin' : undefined}>
+      {/* Both of these belong to orbiting. While the tour is walking, the
+          room name is already on the tour bar and "360 View Active" is
+          simply untrue -- so they go, along with everything else that was
+          competing with the house for attention. */}
+      {!touring && (
+        <>
+          <div className="canvas-overlay" id="canvas-title">
+            Living Room - Click furniture to explore
+          </div>
+          <div className="rotation-indicator">
+            <span className="rotation-icon">↻</span>
+            <span id="rotation-text">360° View Active</span>
+          </div>
+        </>
+      )}
+      {/* The editing toolbar. Mounted only for someone who can actually
+          change something -- it replaces three buttons that sat here with
+          `display: none`, wired to nothing. */}
+      <AdminGate isAdmin={isAdmin}>
+        <AdminBar
+          state={adminState}
+          saving={saving}
+          message={adminMessage}
+          onMode={(mode) => editorRef.current?.setMode(mode)}
+          onSnap={(on) => editorRef.current?.setSnap(on)}
+          onLockY={(on) => editorRef.current?.setLockY(on)}
+          onDropToFloor={() => editorRef.current?.dropToFloor()}
+          onAiPlace={() => setShowAi(true)}
+          onSave={handleSave}
+          onRevert={handleRevert}
+          onDelete={handleDelete}
+          onUpload={() => setShowUpload(true)}
+          onManage={() => setShowList(true)}
+          onPublish={handlePublish}
+          publishing={publishing}
+        />
+
+        {/* AI placement, for whatever is selected. Its proposals are applied
+            to the object unsaved, so the toolbar's Save and Revert above work
+            on them exactly as they do after a drag. Keyed on the product, not
+            the placement id, so saving does not wipe the conversation. */}
+        {showAi && adminState.hasSelection && (
+          <AiPlacementPanel
+            key={`${adminState.advert?.productId}:${adminState.advert?.variantId}`}
+            advert={adminState.advert}
+            getTransform={() => editorRef.current?.toTransform() ?? null}
+            onApply={(transform) => {
+              editorRef.current?.setTransform(transform);
+              remeasureFurniture();
+            }}
+            onClose={() => setShowAi(false)}
+          />
+        )}
+      </AdminGate>
+
+      {showUpload && (
+        <UploadDialog
+          shops={shops}
+          onClose={() => setShowUpload(false)}
+          onCreated={(created) => {
+            say(`Created ${created.qualifiedId}.`);
+            onCatalogChanged?.();
+          }}
+          onPlace={(chosen, options) => handlePlace(chosen, options)}
+        />
+      )}
+
+      {showList && (
+        <AdminList
+          shops={shops}
+          onClose={() => setShowList(false)}
+          onPlace={handlePlace}
+        />
+      )}
+
+      {/* Two buttons, both of which do something.
+          There were five. Front View, Side View, Top View and Reset View had
+          no click handler at all -- they had never done anything, and four
+          emoji that ignore you are worse than no buttons, because they cost a
+          visitor the moment it takes to find that out. Reset is kept and
+          wired; the other three are gone.
+          Hidden entirely while walking: the tour has its own controls, and
+          these belong to orbiting. */}
+      {!touring && (
+        <div className="camera-controls">
+          <button
+            type="button"
+            className="camera-btn"
+            title="Back to the overview"
+            onClick={resetView}
+          >
+            🔄
+          </button>
+          <button
+            type="button"
+            className="camera-btn"
+            id="tour-mode"
+            title="Walk through the property"
+            onClick={startTour}
+          >
+            🚶
+          </button>
+          {/* THE INVENTORY. Shows the box every product would fill, in the
+              room, at the size it would be -- which is the only way to judge
+              a position that is still empty. */}
+          {slotCount > 0 && (
+            <button
+              type="button"
+              className={`camera-btn${showSlots ? ' active' : ''}`}
+              title={
+                showSlots
+                  ? 'Hide the advertising positions'
+                  : `Show all ${slotCount} advertising positions`
+              }
+              onClick={() => {
+                const on = slotsRef.current?.toggle() ?? false;
+                setShowSlots(on);
+              }}
+            >
+              ▦
+            </button>
+          )}
+        </div>
+      )}
+
+      {touring && (
+        <TourPad
+          onPress={(dir) => tourRef.current?.setButton(dir, true)}
+          onRelease={(dir) => tourRef.current?.setButton(dir, false)}
+          onExit={exitTour}
+          onGuided={toggleGuided}
+          onToggleView={toggleTourView}
+          guided={guided}
+          view={tourView}
+          stopLabel={stopLabel}
+          progress={progress}
+          showing={showing}
+          paused={paused}
+          onResume={resumeTour}
+        />
+      )}
+
+      <div ref={canvasRef} style={{ width: '100%', height: '100%' }}></div>
+    </div>
+  );
+};
+
+// GLTF loading function
+
+export default CanvasContainer;

@@ -88,7 +88,7 @@ anything is sent**, which:
 ### The anchor
 
 The placement contract is *origin at the footprint centre, sitting on the
-floor, facing +Y*. Everything from `blender/houseluxe` obeys it because the
+floor, facing +Y*. Everything from `blender/spacivelle` obeys it because the
 builder makes it obey. An uploaded file obeys nothing — it may be centred on
 its middle, offset by metres, or exported in centimetres.
 
@@ -177,7 +177,7 @@ in a 3D view is 80 mm into a wall.
 - **Variants cannot be added from the UI.** Upload creates one `default`
   variant. A second colourway needs a row.
 - **Finishes cannot be uploaded.** Paint, gamazine and tiles are still
-  authored in `blender/houseluxe/catalog/shops/`. The schema supports
+  authored in `blender/spacivelle/catalog/shops/`. The schema supports
   uploading them; the form only offers `object` categories.
 - **No undo beyond Revert.** Revert restores the transform the object had when
   it was selected; there is no history.
