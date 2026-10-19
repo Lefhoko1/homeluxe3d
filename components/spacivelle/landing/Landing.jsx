@@ -51,15 +51,9 @@ const Landing = () => {
   return (
     <main className="lp">
       <SiteHeader />
-      <Hero
-        counts={counts}
-        featured={featured}
-        showing={showing}
-        setShowing={setShowing}
-      />
-      {/* Proof before the click. The page has just claimed a house full of
-          real furniture at real scale; this is one of those pieces, turning,
-          read from the same published catalogue the showroom reads. */}
+      <Hero counts={counts} featured={featured} />
+      {/* Live products and camera controls stay connected to the same data. */}
+      <LivePreview featured={featured} showing={showing} setShowing={setShowing} />
       <Showcase />
       <HowItWorks />
       <Services />
@@ -75,9 +69,9 @@ const SiteHeader = () => (
   <header className="lp-top">
     <a className="luxe-wordmark" href="/">
       <strong>Spacivelle 3D</strong>
-      <span>Gaborone</span>
+      <span>Spaces, brought to life</span>
     </a>
-    <nav className="lp-nav">
+    <nav className="lp-nav" aria-label="Main navigation">
       <a href="#showcase">Showroom</a>
       <a href="#how">How it works</a>
       <a href="#services">Services</a>
@@ -98,28 +92,30 @@ const SiteHeader = () => (
  * 3D experiences" says nothing and could be about anything. A house you walk
  * through, full of furniture you can actually buy, from shops down the road.
  */
-const Hero = ({ counts, featured, showing, setShowing }) => (
-  <section className="lp-hero">
+const Hero = ({ counts, featured }) => (
+  <section className="lp-hero lp-hero-immersive">
+    <div className="lp-hero-background" aria-hidden="true">
+      <HouseView featured={featured} room="living" background />
+    </div>
     <div className="lp-hero-text">
-      <p className="luxe-eyebrow">A virtual furniture showroom</p>
+      <p className="luxe-eyebrow"><span className="lp-status-dot" aria-hidden="true" /> Your home, a little closer</p>
       <h1 className="lp-h1">
-        Walk through a house furnished by the shops near you.
+        A space to explore.<br /><em>A home to imagine.</em>
       </h1>
       <p className="lp-lede">
-        Every bed, tile, tap and coat of paint in the house is a real product
-        from a real Gaborone shop, standing where you would actually put it.
-        Open a door, walk in, and see the sofa at its own size in a room its
-        own size.
+        Step inside a furnished home in 3D. Discover real furniture and finishes
+        from Gaborone shops, at their true size, in rooms you can walk through.
       </p>
       <div className="lp-hero-actions">
         <a className="luxe-btn primary lp-btn-lg" href="/showroom">
-          Walk through the house
+          Explore the house <span aria-hidden="true">↗</span>
         </a>
         <a className="luxe-btn ghost lp-btn-lg" href="#shops">
-          Put your shop in it
+          For your business <span aria-hidden="true">→</span>
         </a>
       </div>
 
+      <p className="lp-hero-note">Real rooms. Local shops. A different way to discover.</p>
       {counts && (
         <dl className="lp-counts">
           <div><dt>Rooms</dt><dd>{counts.rooms}</dd></div>
@@ -133,27 +129,44 @@ const Hero = ({ counts, featured, showing, setShowing }) => (
       )}
     </div>
 
-    {/* THE HOUSE ITSELF, FROM INSIDE IT.
+    <a className="lp-hero-scene-link" href="/showroom">
+      <span className="lp-status-dot" aria-hidden="true" />
+      Inside the Spacivelle living room <span aria-hidden="true">↗</span>
+    </a>
+  </section>
+);
 
-        This was a line drawing of the floor plan, on the argument that a
-        still of the render would never beat the real thing one click away.
-        True, and it answered the wrong question: a plan says a building was
-        surveyed, and what somebody arriving needs to know is what it is LIKE
-        to stand in it. So they stand in it -- in the room, at eye height,
-        looking at whatever the platform is leading with today.
-
-        The plan is still the fallback, and an honest one: it is drawn from
-        the same manifest, and if nothing has been featured yet there is
-        genuinely nothing to look at. */}
+const LivePreview = ({ featured, showing, setShowing }) => (
+  <section className="lp-section lp-live-section" aria-labelledby="lp-live-title">
+    <div className="lp-section-head">
+      <p className="luxe-eyebrow">Step beyond the photograph</p>
+      <h2 className="lp-h2" id="lp-live-title">Now, make yourself<br /><em>at home in 3D.</em></h2>
+      <p className="lp-sub">
+        This is the Spacivelle house. Explore the rooms, discover what local
+        shops have placed inside, and take a closer look at the pieces you love.
+      </p>
+      <a className="luxe-btn ghost lp-btn-lg" href="/showroom">
+        Step inside <span aria-hidden="true">↗</span>
+      </a>
+    </div>
     <div className="lp-hero-art">
+      <div className="lp-art-heading">
+        <span><span className="lp-status-dot" aria-hidden="true" /> The Spacivelle house</span>
+        <span>Gaborone, Botswana</span>
+      </div>
       {featured.length > 0 ? (
         <HouseView featured={featured} index={showing} onIndexChange={setShowing} />
       ) : (
         <PlanSketch />
       )}
+      <div className="lp-art-footer">
+        <span>A new perspective on home.</span>
+        <a href="/showroom" aria-label="Explore the 3D showroom"><span aria-hidden="true">↗</span></a>
+      </div>
     </div>
   </section>
 );
+
 
 /**
  * The floor plan, drawn from the real room rectangles.
@@ -224,7 +237,7 @@ const HowItWorks = () => (
   <section className="lp-section" id="how">
     <div className="lp-section-head">
       <p className="luxe-eyebrow">How it works</p>
-      <h2 className="lp-h2">Three steps, and none of them are yours.</h2>
+      <h2 className="lp-h2">From your shop.<br />Into their imagination.</h2>
       <p className="lp-sub">
         Most shops have photographs and a price list, not 3D models. That is
         the normal case, and it is the one we built the business around.
@@ -310,7 +323,7 @@ const Services = () => (
   <section className="lp-section lp-section-tint" id="services">
     <div className="lp-section-head">
       <p className="luxe-eyebrow">Services</p>
-      <h2 className="lp-h2">What you get.</h2>
+      <h2 className="lp-h2">Everything your products<br /><em>need to feel at home.</em></h2>
     </div>
     <div className="lp-services">
       {SERVICES.map((service) => (
@@ -354,6 +367,19 @@ const About = () => (
       <div className="lp-section-head">
         <p className="luxe-eyebrow">About us</p>
         <h2 className="lp-h2">Furniture is bought in rooms, not in grids.</h2>
+        <figure className="lp-detail-photo">
+          <img
+            src="/images/landing/chair-detail-1000.webp"
+            srcSet="/images/landing/chair-detail-600.webp 600w, /images/landing/chair-detail-1000.webp 1000w"
+            sizes="(max-width: 680px) calc(100vw - 46px), (max-width: 1250px) 43vw, 530px"
+            width={1000}
+            height={1250}
+            loading="lazy"
+            decoding="async"
+            alt="Walnut and linen lounge chair beside a travertine table in warm natural light."
+          />
+          <figcaption>Texture. Light. A sense of belonging.<span>Interior inspiration</span></figcaption>
+        </figure>
       </div>
       <div className="lp-about-body">
         <p>
@@ -385,7 +411,7 @@ const Contact = () => (
     <div className="lp-contact">
       <div className="lp-section-head">
         <p className="luxe-eyebrow">Contact us</p>
-        <h2 className="lp-h2">Tell us what you sell.</h2>
+        <h2 className="lp-h2">Let’s make<br /><em>room for you.</em></h2>
         <p className="lp-sub">
           Whether you want a position, want us to model something, or just want
           to know what it costs — write and we will answer.
@@ -413,7 +439,7 @@ const SiteFooter = () => (
         <strong>Spacivelle 3D</strong>
         <span>Gaborone</span>
       </a>
-      <nav className="lp-footer-nav">
+      <nav className="lp-footer-nav" aria-label="Footer navigation">
         <a href="/showroom">The house</a>
         <a href="/following">My shops</a>
         <a href="#services">Services</a>

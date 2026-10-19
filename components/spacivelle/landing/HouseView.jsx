@@ -141,7 +141,7 @@ const OPENING = {
   ready: null,
 };
 
-const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
+const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, background = false }) => {
   const holderRef = useRef(null);
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
@@ -151,7 +151,37 @@ const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
   const [ready, setReady] = useState(false);
   const [stage, setStage] = useState('starting');
 
-  const current = featured[index] ?? null;
+  const [roomCard, setRoomCard] = useState(null);
+  const current = room ? roomCard : featured[index] ?? null;
+  const viewCount = room ? 1 : featured.length;
+
+  // A background stays in the requested room; featured adverts keep their
+  // existing framing and controls when no room is supplied.
+  useEffect(() => {
+    if (!room) return undefined;
+    let cancelled = false;
+    setRoomCard(null);
+    fetch('/models/house/collision.json')
+      .then((response) => {
+        if (!response.ok) throw new Error('Room layout unavailable');
+        return response.json();
+      })
+      .then((manifest) => {
+        if (cancelled) return;
+        const found = (manifest.rooms ?? []).find((entry) => entry.room === room);
+        if (!found) throw new Error('Room not found');
+        const [x0, z0, x1, z1] = found.rect;
+        setRoomCard({
+          room: found.label, rect: found.rect,
+          view: {
+            eye: [x0 + (x1 - x0) * .18, 1.48, z0 + (z1 - z0) * .16],
+            target: [x0 + (x1 - x0) * .62, 1.02, z0 + (z1 - z0) * .78],
+          },
+        });
+      })
+      .catch((error) => { if (!cancelled) setFailed(error.message); });
+    return () => { cancelled = true; };
+  }, [room]);
 
   // ---- do not boot a 3D engine nobody has looked at -----------------------
 
@@ -186,12 +216,18 @@ const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
   // not reload eight hundred kilobytes of building.
 
   useEffect(() => {
-    if (!live || !canvasRef.current || !featured.length) return undefined;
+    if (!live || !canvasRef.current || !viewCount) return undefined;
 
     const canvas = canvasRef.current;
     const holder = holderRef.current;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    } catch (error) {
+      setFailed(error.message);
+      return undefined;
+    }
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -422,7 +458,7 @@ const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
     // The house is built once. `featured.length` only gates the very first
     // build -- which advert is being looked at is the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, featured.length]);
+  }, [live, viewCount]);
 
   // ---- move to whichever advert is showing --------------------------------
 
@@ -467,13 +503,18 @@ const HouseView = ({ featured = [], index = 0, onIndexChange }) => {
   }, [current, ready]);
 
   return (
-    <div ref={holderRef} className="lp-house">
+    <div
+      ref={holderRef}
+      className={background ? 'lp-house lp-house-background' : 'lp-house'}
+      data-ready={ready && current && !failed ? 'true' : 'false'}
+      aria-hidden={background ? true : undefined}
+    >
       <canvas ref={canvasRef} className="lp-house-canvas" />
 
-      {failed && <p className="lp-house-note bad">The house could not be loaded: {failed}</p>}
-      {!failed && !ready && <p className="lp-house-note">{OPENING[stage] ?? 'Opening the house…'}</p>}
+      {!background && failed && <p className="lp-house-note bad">The house could not be loaded: {failed}</p>}
+      {!background && !failed && !ready && <p className="lp-house-note">{OPENING[stage] ?? 'Opening the house…'}</p>}
 
-      {ready && current && (
+      {!background && !room && ready && current && (
         <>
           {/* The advert, the way the showroom shows one: what it is, whose
               it is, what it costs. */}

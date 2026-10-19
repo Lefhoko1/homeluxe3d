@@ -1,0 +1,11 @@
+# Spacivelle interior inspiration
+
+Original images created with the built-in image_gen tool. Concept interiors, not catalogue products or photographs of the live showroom. Responsive WebP derivatives compressed with Sharp.
+
+## Living room
+
+Use case: photorealistic-natural. Asset type: original editorial interior photograph for Spacivelle 3D furniture showroom landing page. Create a sophisticated sunlit contemporary southern African living room, no people. Warm ivory textured plaster, large pale limestone floor tiles, generous low curved cream linen sofa in foreground, walnut oval coffee table, one dark olive upholstered accent chair, restrained earthenware vessel and fine branches, full-height window to the right with warm afternoon light and soft sculptural shadows. Understated, attainable residential interior, authentic woven and tactile materials, elegant minimal styling, architectural magazine photography with realistic material grain and soft natural light, warm ivory sage olive and walnut palette. Wide landscape 3:2 composition, camera at human seated height, inviting depth and open doorway beyond, sofa is focal point, room fills entire frame, no borders. No text, logos, watermarks, people, collages or interface. Inspiration scene, do not imitate any furniture brand.
+
+## Chair detail
+
+Use case: photorealistic-natural. Asset type: original editorial furniture detail photograph for Spacivelle 3D landing page. A quiet contemporary southern African interior corner with a sculptural walnut and oatmeal linen lounge chair, round solid travertine side table, simple matte clay vase, textured warm ivory plaster wall, pale stone floor, soft olive curtain at left and one leafy branch. Close composition from slightly above seat height, tactile linen weave and natural wood grain, diagonal late-afternoon sunlight through an unseen window, gently contrasting shadow. Minimal architectural magazine art direction, warm earthy ivory olive sand walnut palette, tasteful and believable rather than extravagant. Portrait 4:5 composition, furniture fills lower two thirds with serene wall breathing room above. No text, logos, watermark, people, borders, collage or interface. Original unbranded furniture design.

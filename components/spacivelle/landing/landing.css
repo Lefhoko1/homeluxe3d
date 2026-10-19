@@ -1,600 +1,417 @@
-/* ===========================================================================
-   The front page
-   ===========================================================================
-
-   Same palette and type as the rest of the site -- the tokens are defined in
-   spacivelle.css and this only spends them. A front page in a different
-   identity from the product behind it is two companies.
-
-   The one thing this page does that the application does not is BREATHE. A
-   tool is dense because somebody is working in it; a page somebody is
-   deciding from wants space, one idea per screen, and a line length you can
-   actually read.
-   ========================================================================== */
-
+/* Landing-page presentation only. Tokens and controls stay scoped to .lp. */
 .lp {
-  background:
-    radial-gradient(1100px 560px at 84% -10%, rgba(192, 138, 46, 0.11), transparent 60%),
-    radial-gradient(880px 480px at -6% 6%, rgba(31, 111, 139, 0.09), transparent 62%),
-    var(--paper);
+  --paper: #f7f5ef;
+  --surface: #fffefa;
+  --surface-2: #eeece3;
+  --border: #deded3;
+  --text: #303930;
+  --primary: #283d32;
+  --muted: #656c61;
+  --secondary: #4f6955;
+  --accent: #d4c4a2;
+  --accent-deep: #716342;
+  --on-accent: #28362b;
+  --lp-ease: cubic-bezier(.22, 1, .36, 1);
   color: var(--text);
+  background: radial-gradient(ellipse at 87% 8%, #e9ecdf80, transparent 30%), var(--paper);
   font-family: 'Archivo', system-ui, sans-serif;
   min-height: 100vh;
+  padding-top: 22px;
+  overflow: clip;
 }
-
-/* -- the bar ------------------------------------------------------------- */
-
-.lp-top {
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+.lp a, .lp button { -webkit-tap-highlight-color: transparent; }
+.lp a:focus-visible, .lp button:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 5px;
+}
+.lp .luxe-eyebrow {
   display: flex;
   align-items: center;
-  gap: 24px;
-  max-width: 74rem;
-  margin: 0 auto;
-  padding: 20px 24px;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .19em;
+  color: var(--accent-deep);
+  margin: 0 0 21px;
 }
-
-.lp-nav {
+.lp .luxe-btn {
+  border-radius: 999px;
+  padding: 13px 22px;
+  font-size: 12px;
+  font-weight: 500;
+  justify-content: center;
+  transition: transform .35s var(--lp-ease), box-shadow .35s, background .25s, border-color .25s;
+}
+.lp .luxe-btn.primary { background: var(--primary); color: #fffefa; }
+.lp .luxe-btn.primary:hover { background: #3d5542; box-shadow: 0 7px 20px #283d3218; }
+.lp .luxe-btn.ghost { background: transparent; border-color: #bfc5b7; color: var(--primary); }
+.lp .luxe-btn.ghost:hover { background: #fffefa; border-color: var(--primary); }
+.lp .luxe-btn span { margin-left: 12px; font-size: 18px; line-height: 1; transition: transform .3s; }
+.lp .luxe-btn:hover span { transform: translate(2px, -2px); }
+.lp .luxe-wordmark { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; flex-shrink: 0; }
+.lp .luxe-wordmark strong { font-size: 23px; letter-spacing: -.05em; font-weight: 500; }
+.lp .luxe-wordmark span { font-size: 8px; letter-spacing: .16em; }
+.lp-top {
+  position: relative;
+  z-index: 5;
   display: flex;
-  gap: 22px;
-  margin-left: 12px;
-  flex: 1;
+  align-items: center;
+  gap: 28px;
+  width: calc(100% - 64px);
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 15px 20px 15px 26px;
+  border: 1px solid #ffffffc9;
+  border-radius: 100px;
+  background: #fffefaba;
+  box-shadow: 0 4px 28px #283d3205;
 }
-.lp-nav a {
-  font-size: 13.5px;
+.lp-nav { display: flex; justify-content: center; gap: clamp(14px, 2vw, 28px); flex: 1; }
+.lp-nav a, .lp-footer-nav a {
+  position: relative;
   color: var(--muted);
   text-decoration: none;
-  padding: 4px 0;
-  border-bottom: 1px solid transparent;
+  font-size: 11px;
+  padding-block: 8px;
 }
-.lp-nav a:hover { color: var(--primary); border-bottom-color: var(--accent); }
-
-.lp-top-actions { display: flex; gap: 8px; flex: none; }
-
-/* -- hero ---------------------------------------------------------------- */
+.lp-nav a::after, .lp-footer-nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 1px; left: 0; right: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .35s var(--lp-ease);
+}
+.lp-nav a:hover { color: var(--primary); }
+.lp-nav a:hover::after, .lp-footer-nav a:hover::after { transform: scaleX(1); }
+.lp-top-actions { display: flex; gap: 7px; flex: none; }
+.lp-top-actions .luxe-btn { padding: 11px 17px; font-size: 11px; }
+.lp-top-actions .ghost { border-color: transparent; }
 
 .lp-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: clamp(28px, 5vw, 64px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
   align-items: center;
-  max-width: 74rem;
-  margin: 0 auto;
-  padding: clamp(28px, 6vh, 72px) 24px clamp(40px, 8vh, 96px);
+  gap: clamp(32px, 5vw, 88px);
+  max-width: 1300px;
+  margin: auto;
+  padding: clamp(60px, 7vw, 110px) 40px 82px;
 }
-
-.lp-h1 {
+.lp-hero-text { min-width: 0; }
+.lp-status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #71825c; flex: none; }
+.lp-h1, .lp-h2 {
   font-family: 'Fraunces', Georgia, serif;
   font-optical-sizing: auto;
-  font-weight: 600;
-  /* The one place on the site that gets a genuinely large size. Fraunces has
-     an optical axis, so at 60px it uses the display cut rather than the text
-     cut scaled up -- which is the whole reason the face is here. */
-  font-size: clamp(34px, 5.4vw, 60px);
-  line-height: 1.04;
-  letter-spacing: -0.026em;
+  font-weight: 400;
+  letter-spacing: -.055em;
+  color: var(--primary);
   text-wrap: balance;
-  color: var(--primary);
-  margin: 6px 0 16px;
 }
-
-.lp-lede {
-  font-size: clamp(15px, 1.5vw, 17.5px);
-  line-height: 1.62;
-  color: var(--muted);
-  /* Near enough 65 characters. Longer and the eye loses the line return. */
-  max-width: 46ch;
-  margin: 0 0 26px;
-}
-
+.lp-h1 { font-size: clamp(44px, 4.8vw, 70px); line-height: 1.08; margin: 0 0 26px; }
+.lp-h1 em, .lp-h2 em { color: #7a826c; font-weight: 400; }
+.lp-lede { font-size: 14px; line-height: 1.9; color: var(--muted); max-width: 43ch; margin: 0 0 30px; }
 .lp-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.lp-btn-lg { padding: 13px 24px; font-size: 14px; }
-
-/* The counts. Real numbers from v_platform_summary -- the free-positions one
-   carries the accent because it is the only one that is an invitation. */
-.lp-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
-  margin: 34px 0 0;
-  padding-top: 22px;
-  border-top: 1px solid var(--border);
-}
-.lp-counts div { display: flex; flex-direction: column-reverse; gap: 2px; }
-.lp-counts dt {
-  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--muted); font-weight: 600;
-}
-.lp-counts dd {
-  margin: 0;
-  font-family: 'Fraunces', Georgia, serif;
-  font-optical-sizing: auto;
-  font-weight: 600; font-size: 27px; line-height: 1;
-  color: var(--primary);
-  font-variant-numeric: tabular-nums;
-}
+.lp .lp-btn-lg { padding: 15px 24px; }
+.lp-hero-note { margin: 21px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; letter-spacing: .02em; }
+.lp-counts { display: flex; flex-wrap: wrap; gap: clamp(20px, 3vw, 38px); padding-top: 25px; margin: 32px 0 0; border-top: 1px solid var(--border); }
+.lp-counts div { display: flex; flex-direction: column-reverse; gap: 7px; }
+.lp-counts dt { font-size: 8px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.lp-counts dd { margin: 0; font: 400 28px/1 'Fraunces', Georgia, serif; color: var(--primary); font-variant-numeric: tabular-nums; }
 .lp-counts .lp-free { color: var(--accent-deep); }
 
-/* -- the plan drawing ----------------------------------------------------- */
-
-.lp-hero-art {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 22px;
-  box-shadow: 0 2px 4px rgba(23, 33, 46, 0.03), 0 22px 50px rgba(23, 33, 46, 0.07);
-}
-.lp-plan { width: 100%; height: auto; display: block; }
-.lp-plan-empty { aspect-ratio: 4 / 3; }
-
-.lp-plan-room {
-  fill: var(--surface-2);
-  stroke: var(--primary);
-  stroke-width: 0.055;
-  vector-effect: non-scaling-stroke;
-}
-.lp-plan-label {
-  fill: var(--muted);
-  text-anchor: middle;
-  dominant-baseline: middle;
-  font-family: 'Archivo', sans-serif;
-  letter-spacing: 0.01em;
-}
-
-/* -- sections ------------------------------------------------------------- */
-
-.lp-section {
-  max-width: 74rem;
-  margin: 0 auto;
-  padding: clamp(44px, 8vh, 88px) 24px;
-}
-.lp-section-tint {
-  max-width: none;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.lp-section-tint > * { max-width: 74rem; margin-inline: auto; }
-
-.lp-section-head { margin-bottom: 32px; }
-.lp-h2 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-optical-sizing: auto;
-  font-weight: 600;
-  font-size: clamp(25px, 3.1vw, 36px);
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-  color: var(--primary);
-  margin: 4px 0 10px;
-  max-width: 22ch;
-}
-.lp-sub {
-  font-size: 15px; line-height: 1.62; color: var(--muted);
-  max-width: 58ch; margin: 0;
-}
-
-/* -- how it works --------------------------------------------------------- */
-
-.lp-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 22px;
-  counter-reset: none;
-}
-.lp-steps li {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px 22px;
-}
-.lp-step-n {
-  display: inline-grid;
-  place-items: center;
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--on-dark);
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 600; font-size: 15px;
-  margin-bottom: 12px;
-}
-.lp-steps h3 {
-  margin: 0 0 7px;
-  font-size: 17px; font-weight: 600; color: var(--primary);
-}
-.lp-steps p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--muted); }
-
-/* -- services ------------------------------------------------------------- */
-
-.lp-services {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: 20px;
-}
-.lp-service {
-  padding: 20px 20px 22px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--paper);
-}
-.lp-service h3 {
-  margin: 0 0 8px;
-  font-size: 16px; font-weight: 600; color: var(--primary);
-  /* A hairline in the accent, the width of the text above it. One flourish,
-     spent in one place. */
-  padding-bottom: 9px;
-  border-bottom: 2px solid var(--accent);
-  display: inline-block;
-}
-.lp-service p { margin: 0; font-size: 14px; line-height: 1.62; color: var(--muted); }
-
-/* -- the band for shops --------------------------------------------------- */
-
-.lp-band {
-  max-width: none;
-  background: var(--primary);
-  color: var(--on-dark);
-}
-.lp-band-inner { max-width: 74rem; margin-inline: auto; }
-.lp-band .luxe-eyebrow { color: var(--accent); }
-.lp-band .lp-h2 { color: var(--on-dark); max-width: 26ch; }
-.lp-band .lp-sub { color: rgba(255, 255, 255, 0.74); margin-bottom: 24px; }
-.lp-band .luxe-btn.primary { background: var(--accent); color: var(--on-accent); }
-.lp-band .luxe-btn.primary:hover { background: #CE9740; }
-
-/* -- about ---------------------------------------------------------------- */
-
-.lp-about {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: clamp(24px, 5vw, 56px);
-  align-items: start;
-}
-.lp-about .lp-section-head { margin-bottom: 0; }
-.lp-about-body p {
-  margin: 0 0 16px;
-  font-size: 15px; line-height: 1.7; color: var(--text);
-  max-width: 62ch;
-}
-.lp-about-body p:last-child { margin-bottom: 0; }
-
-/* -- contact -------------------------------------------------------------- */
-
-.lp-contact {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: clamp(24px, 5vw, 56px);
-  align-items: start;
-}
-.lp-contact .lp-section-head { margin-bottom: 0; }
-
-.lp-contact-details {
-  list-style: none; margin: 26px 0 0; padding: 0;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.lp-contact-details li { display: flex; flex-direction: column; gap: 2px; }
-.lp-contact-details span:first-child {
-  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--muted); font-weight: 600;
-}
-.lp-contact-details a { color: var(--secondary); text-decoration: none; font-size: 15px; }
-.lp-contact-details a:hover { text-decoration: underline; }
-
-.lp-form {
-  display: flex; flex-direction: column; gap: 14px;
-  background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-}
-.lp-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.lp-form select,
-.lp-form input,
-.lp-form textarea {
-  font: inherit; font-size: 14px;
-  padding: 11px 13px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  width: 100%;
-}
-.lp-form textarea { resize: vertical; line-height: 1.55; }
-.lp-form select:focus,
-.lp-form input:focus,
-.lp-form textarea:focus {
-  outline: none;
-  border-color: var(--secondary);
-  box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.16);
-}
-.lp-form .luxe-btn { align-self: flex-start; }
-.lp-form-sent { align-items: flex-start; gap: 12px; }
-
-/* -- footer --------------------------------------------------------------- */
-
-.lp-footer {
-  background: var(--primary);
-  color: rgba(255, 255, 255, 0.72);
-  padding: 34px 24px;
-}
-.lp-footer-inner {
-  max-width: 74rem; margin: 0 auto;
-  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
-}
-.lp-footer .luxe-wordmark { color: var(--on-dark); }
-.lp-footer .luxe-wordmark span { color: rgba(255, 255, 255, 0.5); }
-.lp-footer-nav { display: flex; gap: 18px; flex: 1; flex-wrap: wrap; }
-.lp-footer-nav a {
-  color: rgba(255, 255, 255, 0.78); text-decoration: none; font-size: 13.5px;
-}
-.lp-footer-nav a:hover { color: var(--accent); }
-.lp-footer-note { margin: 0; font-size: 12px; color: rgba(255, 255, 255, 0.5); }
-
-/* -- narrow --------------------------------------------------------------- */
-
-@media (max-width: 900px) {
-  .lp-hero,
-  .lp-about,
-  .lp-contact { grid-template-columns: 1fr; }
-  .lp-hero-art { order: -1; }
-  .lp-nav { display: none; }
-  .lp-form-row { grid-template-columns: 1fr; }
-  .lp-counts { gap: 18px; }
-}
-
-/* -- the house, in the hero ----------------------------------------------
-   The hero's right-hand box used to hold a line drawing of the floor plan.
-   It holds the building now, seen from inside one of its rooms, so the box
-   itself has to stop looking like a card with a picture in it and start
-   looking like a window.
-   ------------------------------------------------------------------------ */
-
-.lp-house {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--surface-2);
-  display: grid;
-  place-items: center;
-  /* So a drag turns the view instead of selecting the page or, on a phone,
-     fighting the vertical scroll. */
-  touch-action: pan-y;
-  cursor: grab;
-}
+.lp-hero-art { position: relative; min-width: 0; padding: 18px; background: #eeede5; border: 1px solid #e4e4d7; border-radius: 120px 24px 24px 24px; box-shadow: 0 30px 60px -40px #283d3255; }
+.lp-art-heading { min-height: 36px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 10px 18px 48px; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lp-art-heading > span:first-child { display: inline-flex; gap: 7px; align-items: center; color: var(--primary); }
+.lp-art-heading > span:last-child { font-size: 7px; }
+.lp-art-footer { display: flex; justify-content: space-between; align-items: center; padding: 18px 9px 1px; gap: 12px; }
+.lp-art-footer > span { font: italic 400 17px 'Fraunces', Georgia, serif; color: var(--muted); }
+.lp-art-footer a { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #c7cbbd; border-radius: 50%; text-decoration: none; color: var(--primary); transition: background .25s, transform .3s; }
+.lp-art-footer a:hover { background: var(--surface); transform: rotate(8deg); }
+.lp-house { position: relative; width: 100%; aspect-ratio: 1 / 1.03; border-radius: 90px 14px 14px 14px; overflow: hidden; background: #e4e7dc; display: grid; place-items: center; touch-action: pan-y; cursor: grab; }
 .lp-house:active { cursor: grabbing; }
-
-.lp-house-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.lp-house-note {
-  position: relative;
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-.lp-house-note.bad { color: var(--stop); max-width: 32ch; text-align: center; }
-
-/* The advert, over the room it is standing in.
-   SMALL, AND ONLY AS WIDE AS ITS WORDS. The first version stretched the full
-   width of the box and stood four lines tall, which in a 4:3 window is over a
-   third of the picture -- and the third it covered was the bottom, where a
-   bed or a sofa sits. It hid the exact thing it was captioning. */
-.lp-house-card {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  max-width: min(62%, 20rem);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 9px 12px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(9px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 8px 24px rgba(23, 33, 46, 0.13);
-}
-
-.lp-house-shop {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
-  color: var(--accent-deep);
-}
+.lp-house-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.lp-house-note { position: relative; max-width: 30ch; padding: 16px; font-size: 12px; color: var(--muted); text-align: center; }
+.lp-house-note.bad { color: var(--stop); }
+.lp-house-card { position: absolute; left: 14px; bottom: 14px; max-width: min(70%, 20rem); display: flex; flex-direction: column; gap: 3px; padding: 12px 16px; border-radius: 14px; background: #fffefaeb; backdrop-filter: blur(12px); border: 1px solid #ffffffa8; box-shadow: 0 8px 24px #283d3212; }
+.lp-house-shop { color: var(--accent-deep); font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .lp-house-shop span { color: var(--muted); }
-
-.lp-house-name {
-  font-family: 'Fraunces', Georgia, serif;
-  font-optical-sizing: auto;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.2;
-  color: var(--primary);
-  /* A product name can be sixty characters ("Slumberland Maharani Queen
-     152cm Pillow-Top Medium Bed Set"). One line, then ellipsis -- the card
-     must not grow until it covers the room behind it. */
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.lp-house-price {
-  margin-top: 2px;
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.lp-house-link {
-  margin-top: 4px;
-  align-self: flex-start;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--secondary);
-  text-decoration: none;
-}
+.lp-house-name { font: 500 15px/1.3 'Fraunces', Georgia, serif; color: var(--primary); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.lp-house-price { font-size: 12px; font-weight: 600; color: var(--primary); font-variant-numeric: tabular-nums; }
+.lp-house-link { align-self: flex-start; color: var(--secondary); text-decoration: none; font-size: 11px; margin-top: 4px; }
 .lp-house-link:hover { text-decoration: underline; }
+.lp-house-dots { position: absolute; top: 18px; right: 16px; display: flex; gap: 6px; padding: 7px; border-radius: 20px; background: #fffefaab; backdrop-filter: blur(8px); }
+.lp-house-dot { width: 12px; height: 12px; padding: 0; border-radius: 50%; border: 1px solid #fffefacc; background: #73807180; cursor: pointer; transition: background .25s, transform .25s; }
+.lp-house-dot.on { background: var(--primary); border-color: var(--primary); }
+.lp-house-dot:hover { transform: scale(1.15); }
+.lp-plan { display: block; width: 100%; height: auto; border-radius: 90px 14px 14px 14px; background: #e4e7dc; padding: 25px; }
+.lp-plan-empty { aspect-ratio: 1 / 1.03; }
+.lp-plan-room { fill: #f4f3eb; stroke: #70826c; stroke-width: .055; vector-effect: non-scaling-stroke; }
+.lp-plan-label { fill: var(--muted); text-anchor: middle; dominant-baseline: middle; font-family: 'Archivo', sans-serif; letter-spacing: .01em; }
 
-/* The only control on the thing, and only when an admin has ranked more than
-   one advert. Anything more would ask somebody to operate a page they are
-   still deciding whether to read. */
-.lp-house-dots {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: flex;
-  gap: 6px;
+.lp-section { max-width: 1250px; margin: 0 auto; padding: clamp(64px, 8vw, 112px) 40px; }
+.lp-section[id] { scroll-margin-top: 30px; }
+.lp-section-head { margin-bottom: 40px; }
+.lp-h2 { font-size: clamp(32px, 3.4vw, 48px); line-height: 1.14; max-width: 24ch; margin: 0 0 18px; }
+.lp-sub { font-size: 14px; line-height: 1.85; color: var(--muted); max-width: 55ch; margin: 0; }
+.lp-section-tint { max-width: none; background: #eeeee550; border-block: 1px solid #deded37a; }
+.lp-section-tint > * { max-width: 1170px; margin-inline: auto; }
+.lp-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; gap: 38px; }
+.lp-steps li { position: relative; min-width: 0; padding: 27px 0 0; border-top: 1px solid #bfc6b7; }
+.lp-step-n { display: block; font: italic 400 43px/1 'Fraunces', Georgia, serif; color: #8a947e; margin-bottom: 28px; }
+.lp-steps h3 { font-weight: 500; font-size: 16px; color: var(--primary); margin: 0 0 12px; }
+.lp-steps p { font-size: 13px; line-height: 1.85; color: var(--muted); margin: 0; max-width: 36ch; }
+.lp-services { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; counter-reset: service; }
+.lp-service { position: relative; padding: 30px 26px 32px; border: 1px solid #deded3a8; border-radius: 6px 26px 6px 6px; background: #fffefa7a; counter-increment: service; transition: background .35s, transform .35s var(--lp-ease), box-shadow .35s; }
+.lp-service::before { content: '0' counter(service); display: block; font-size: 9px; letter-spacing: .12em; color: #7a826c; margin-bottom: 28px; }
+.lp-service h3 { font: 400 23px/1.25 'Fraunces', Georgia, serif; letter-spacing: -.025em; color: var(--primary); margin: 0 0 14px; max-width: 20ch; }
+.lp-service p { font-size: 12px; line-height: 1.85; color: var(--muted); margin: 0; }
+.lp-band { position: relative; max-width: none; background: #2d4034; color: #fffefa; overflow: hidden; }
+.lp-band::after { content: ''; position: absolute; width: min(55vw, 650px); aspect-ratio: 1; right: -8%; top: -20%; border: 1px solid #e5e4c71c; border-radius: 50% 50% 0 0; transform: rotate(-25deg); pointer-events: none; box-shadow: 0 0 0 55px #e5e4c707, 0 0 0 110px #e5e4c705; }
+.lp-band-inner { position: relative; z-index: 1; max-width: 1170px; margin-inline: auto; }
+.lp-band .luxe-eyebrow { color: #d4c4a2; }
+.lp-band .lp-h2 { color: #fffefa; font-size: clamp(38px, 4.5vw, 62px); max-width: 22ch; }
+.lp-band .lp-sub { color: #e0e5d7; margin-bottom: 28px; max-width: 57ch; }
+.lp-band .luxe-btn.primary { background: #ece9dc; color: #283d32; }
+.lp-band .luxe-btn.primary:hover { background: #fffefa; }
+
+.lp-about, .lp-contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(35px, 7vw, 100px); align-items: start; }
+.lp-about .lp-section-head, .lp-contact .lp-section-head { margin-bottom: 0; }
+.lp-about-body { padding-top: 8px; }
+.lp-about-body p { font-size: 14px; line-height: 1.95; color: var(--muted); margin: 0 0 20px; max-width: 59ch; }
+.lp-about-body p:first-child { font-size: 17px; color: var(--text); line-height: 1.8; }
+.lp-about-body p:last-child { margin-bottom: 0; }
+.lp-contact-details { list-style: none; padding: 26px 0 0; margin: 32px 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 22px; }
+.lp-contact-details li { display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
+.lp-contact-details span:first-child { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+.lp-contact-details a { color: var(--primary); text-decoration: none; overflow-wrap: anywhere; }
+.lp-contact-details a:hover { text-decoration: underline; }
+.lp-form { display: flex; flex-direction: column; min-width: 0; gap: 19px; padding: clamp(22px, 3vw, 36px); background: #fffefa; border: 1px solid #deded399; border-radius: 6px 30px 6px 6px; box-shadow: 0 20px 50px -40px #283d3240; }
+.lp-form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.lp-form .luxe-field { min-width: 0; }
+.lp-form .luxe-field > span { font-size: 11px; font-weight: 500; color: var(--muted); }
+.lp-form :is(select, input, textarea) { width: 100%; min-width: 0; font: inherit; font-size: 13px; padding: 12px 13px; color: var(--text); background: #f8f8f2; border: 1px solid #e3e5d9; border-radius: 8px; transition: border-color .25s, box-shadow .25s, background .25s; }
+.lp-form textarea { resize: vertical; line-height: 1.7; }
+.lp-form :is(select, input, textarea):focus { outline: none; background: #fffefa; border-color: #7c8a70; box-shadow: 0 0 0 3px #7c8a701a; }
+.lp-form textarea::placeholder { color: #71776c; }
+.lp-form .luxe-btn { align-self: flex-start; }
+.lp-form-sent { align-items: flex-start; }
+
+.lp-shop-rail { margin-top: 40px; padding-top: 25px; border-top: 1px solid var(--border); }
+.lp-rail-title { margin: 0 0 18px; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+.lp-shop-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+.lp-shop-card { min-width: 0; padding: 26px; border: 1px solid #daddcf; border-radius: 18px; background: #fffefaad; transition: transform .35s var(--lp-ease), border-color .25s, box-shadow .35s; }
+.lp-shop-head { display: flex; gap: 13px; align-items: center; margin-bottom: 22px; }
+.lp-shop-head strong { display: block; font-size: 15px; font-weight: 500; color: var(--primary); }
+.lp-shop-count { display: block; font-size: 10px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
+.lp-shop-logo, .lp-shop-initial { flex: none; width: 42px; height: 42px; border-radius: 50%; }
+.lp-shop-logo { object-fit: cover; border: 1px solid var(--border); }
+.lp-shop-initial { display: grid; place-items: center; background: #e7eadd; color: var(--primary); font: 400 23px 'Fraunces', Georgia, serif; }
+.lp-shop-chips { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; padding: 0; margin: 0; }
+.lp-chip { display: inline-block; max-width: 100%; font: inherit; font-size: 11px; line-height: 1.6; color: var(--text); background: transparent; border: 1px solid #dbdfd2; border-radius: 20px; padding: 7px 12px; text-decoration: none; cursor: pointer; transition: background .25s, border-color .25s; overflow-wrap: anywhere; }
+.lp-chip:hover { background: #e7eadd; border-color: #b3bfa5; }
+.lp-chip.on { color: #fffefa; background: var(--primary); border-color: var(--primary); }
+.lp-shop-note { font-size: 12px; line-height: 1.85; color: var(--muted); margin: 0; }
+.lp-footer { padding: 45px 40px; background: #25372d; color: #e5e9df; }
+.lp-footer-inner { max-width: 1170px; display: flex; align-items: center; gap: 35px; flex-wrap: wrap; margin: auto; }
+.lp-footer .luxe-wordmark { color: #fffefa; }
+.lp-footer .luxe-wordmark span { color: #c0c9b6; }
+.lp-footer-nav { display: flex; justify-content: center; gap: 24px; flex: 1; flex-wrap: wrap; }
+.lp-footer-nav a { color: #e0e5d7; }
+.lp-footer-note { max-width: 27ch; font-size: 10px; line-height: 1.8; color: #bec8b6; margin: 0; }
+
+/* Short, one-time arrivals. Scroll motion is progressive; content is visible without it. */
+@keyframes lp-arrive {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.lp) { scroll-behavior: smooth; }
+  .lp-top { animation: lp-arrive .7s var(--lp-ease) both; }
+  .lp-hero-text > * { animation: lp-arrive .9s var(--lp-ease) both; }
+  .lp-hero-text > :nth-child(2) { animation-delay: .08s; }
+  .lp-hero-text > :nth-child(3) { animation-delay: .16s; }
+  .lp-hero-text > :nth-child(4) { animation-delay: .24s; }
+  .lp-editorial-hero { animation: lp-arrive 1.1s .15s var(--lp-ease) both; }
+  @supports (animation-timeline: view()) {
+    .lp-section-head, .lp-steps, .lp-service, .lp-about-body, .lp-form, .lp-detail-photo {
+      animation: lp-arrive 1s var(--lp-ease) both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 18%;
+    }
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .lp .luxe-btn:hover { transform: translateY(-2px); }
+  .lp-service:hover { transform: translateY(-4px); background: #fffefa; box-shadow: 0 16px 30px -22px #283d3240; }
+  .lp-shop-card:hover { transform: translateY(-3px); border-color: #b3bfa5; box-shadow: 0 16px 30px -24px #283d3240; }
+}
+@media (max-width: 1100px) {
+  .lp-top { gap: 15px; }
+  .lp-nav { gap: 16px; }
+  .lp-nav a { font-size: 10px; }
+  .lp-top-actions .ghost { display: none; }
+  .lp-art-heading { margin-left: 30px; }
+}
+@media (max-width: 900px) {
+  .lp-nav { display: none; }
+  .lp-top { justify-content: space-between; }
+  .lp-top-actions .ghost { display: inline-flex; }
+  .lp-hero { gap: 34px; padding-inline: 32px; }
+  .lp-h1 { font-size: clamp(40px, 5.4vw, 56px); }
+  .lp-art-heading > span:last-child { display: none; }
+  .lp-services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-section { padding-inline: 32px; }
+  .lp-steps { gap: 24px; }
+  .lp-about, .lp-contact { gap: 35px; }
+}
+@media (max-width: 680px) {
+  .lp { padding-top: 14px; }
+  .lp-top { width: calc(100% - 28px); padding: 12px 14px 12px 20px; gap: 10px; }
+  .lp .luxe-wordmark strong { font-size: 21px; }
+  .lp .luxe-wordmark span { font-size: 7px; letter-spacing: .1em; }
+  .lp-top-actions .ghost { display: none; }
+  .lp-top-actions .luxe-btn { font-size: 10px; padding: 11px 14px; }
+  .lp-hero { grid-template-columns: minmax(0, 1fr); padding: 54px 23px 55px; gap: 36px; }
+  .lp-h1 { font-size: clamp(40px, 9vw, 60px); }
+  .lp-lede { font-size: 14px; max-width: 47ch; }
+  .lp .luxe-eyebrow { font-size: 9px; margin-bottom: 18px; }
+  .lp .lp-btn-lg { padding: 14px 19px; font-size: 11px; }
+  .lp-counts { justify-content: space-between; gap: 15px; }
+  .lp-counts dd { font-size: 26px; }
+  .lp-counts dt { font-size: 7px; }
+  .lp-hero-art { border-top-left-radius: 90px; padding: 14px; }
+  .lp-house { aspect-ratio: 1.16 / 1; border-top-left-radius: 64px; }
+  .lp-plan { border-top-left-radius: 64px; }
+  .lp-art-heading { margin: 7px 8px 14px 32px; }
+  .lp-art-heading > span:last-child { display: inline; }
+  .lp-art-footer > span { font-size: 16px; }
+  .lp-section { padding: 62px 23px; }
+  .lp-h2 { font-size: 36px; }
+  .lp-section-head { margin-bottom: 30px; }
+  .lp-steps, .lp-about, .lp-contact { grid-template-columns: minmax(0, 1fr); }
+  .lp-steps { gap: 30px; }
+  .lp-steps li { padding-top: 21px; }
+  .lp-step-n { margin-bottom: 16px; font-size: 34px; }
+  .lp-steps p { max-width: none; }
+  .lp-services { gap: 10px; }
+  .lp-service { padding: 22px 18px; }
+  .lp-service h3 { font-size: 21px; }
+  .lp-service p { font-size: 12px; }
+  .lp-service::before { margin-bottom: 20px; }
+  .lp-about, .lp-contact { gap: 28px; }
+  .lp-band .lp-h2 { font-size: 40px; }
+  .lp-footer { padding: 35px 23px; }
+  .lp-footer-inner { align-items: flex-start; gap: 25px; }
+  .lp-footer-nav { justify-content: flex-start; gap: 14px; flex-basis: 100%; order: 1; }
+  .lp-footer-note { margin-left: auto; max-width: 22ch; }
+}
+@media (max-width: 380px) {
+  .lp-services, .lp-form-row { grid-template-columns: minmax(0, 1fr); }
+  .lp-art-heading > span:last-child { display: none; }
+  .lp-footer-note { margin-left: 0; max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.lp) { scroll-behavior: auto; }
+  .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; }
 }
 
-.lp-house-dot {
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  background: rgba(23, 33, 46, 0.35);
-  cursor: pointer;
-  transition: background 0.18s ease, transform 0.18s ease;
+/* Original editorial imagery; the live showroom remains a separate view. */
+.lp-editorial-hero {
+  position: relative; isolation: isolate; align-self: stretch; margin: 0;
+  min-height: 520px; border-radius: 120px 22px 22px 22px; overflow: hidden;
+  background: #d8cdb9; box-shadow: 0 28px 55px -38px #3a3f3155;
 }
-.lp-house-dot:hover { transform: scale(1.25); }
-.lp-house-dot.on { background: var(--accent); border-color: var(--accent); }
-.lp-house-dot:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
-
-/* -- the shops ------------------------------------------------------------ */
-
-.lp-shop-rail {
-  margin-top: clamp(32px, 5vh, 56px);
-  padding-top: 28px;
-  border-top: 1px solid var(--border);
+.lp-editorial-image { position: absolute; width: 100%; height: 100%; inset: 0; object-fit: cover; object-position: 49% center; }
+.lp-editorial-hero::after { content: ''; position: absolute; inset: 45% 0 0; background: linear-gradient(transparent, #1e291b9c); pointer-events: none; }
+.lp-photo-label {
+  position: absolute; top: 30px; right: 22px; padding: 9px 13px;
+  color: #fffefa; background: #29372bc2; border: 1px solid #ffffff35;
+  backdrop-filter: blur(10px); border-radius: 30px; font-size: 8px;
+  letter-spacing: .11em; text-transform: uppercase;
 }
-
-.lp-rail-title {
-  margin: 0 0 18px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: var(--muted);
+.lp-photo-caption { position: absolute; z-index: 1; bottom: 27px; left: 28px; right: 25px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #fffefa; }
+.lp-photo-caption > span { font: italic 400 clamp(24px, 2.3vw, 32px)/1.2 'Fraunces', Georgia, serif; }
+.lp-photo-caption small { display: block; margin-top: 10px; font: 400 9px 'Archivo', sans-serif; letter-spacing: .15em; text-transform: uppercase; color: #f3f1e6; }
+.lp-photo-caption a { display: grid; place-items: center; flex: none; width: 43px; height: 43px; color: #fffefa; border: 1px solid #fffefa90; border-radius: 50%; text-decoration: none; transition: background .3s, transform .3s; }
+.lp-photo-caption a:hover { background: #fffefa22; transform: rotate(8deg); }
+.lp-live-section { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(35px, 7vw, 90px); align-items: center; padding-top: 25px; }
+.lp-live-section .lp-section-head { margin: 0; }
+.lp-live-section .lp-sub { margin-bottom: 26px; }
+.lp-live-section .lp-house { aspect-ratio: 4 / 3; }
+.lp-live-section .lp-plan { max-height: 400px; }
+.lp-detail-photo { margin: 30px 0 0; }
+.lp-detail-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 67%; border-radius: 8px 65px 8px 8px; }
+.lp-detail-photo figcaption { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 12px; font: italic 400 14px 'Fraunces', Georgia, serif; color: var(--muted); }
+.lp-detail-photo figcaption span { font: 400 8px 'Archivo', sans-serif; letter-spacing: .08em; text-transform: uppercase; align-self: center; }
+@media (max-width: 900px) {
+  .lp-editorial-hero { min-height: 470px; border-top-left-radius: 95px; }
+  .lp-photo-caption { left: 20px; right: 18px; }
+  .lp-live-section { gap: 32px; }
 }
-
-.lp-shop-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: 18px;
-}
-
-.lp-shop-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px 18px 20px;
+@media (max-width: 680px) {
+  .lp-editorial-hero { min-height: 0; aspect-ratio: 1 / 1.08; border-top-left-radius: 90px; }
+  .lp-photo-label { top: 22px; right: 16px; font-size: 7px; }
+  .lp-photo-caption { bottom: 22px; left: 22px; right: 20px; }
+  .lp-photo-caption > span { font-size: 27px; }
+  .lp-live-section { grid-template-columns: minmax(0, 1fr); padding-top: 10px; }
+  .lp-live-section .lp-house { aspect-ratio: 1.16 / 1; }
 }
 
-.lp-shop-head {
+/* The existing animated house fills the hero, behind its content. */
+.lp-hero-immersive {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  max-width: none;
+  min-height: clamp(590px, 76vh, 820px);
+  margin-top: 22px;
+  padding: 80px max(40px, calc((100vw - 1220px) / 2));
+  overflow: hidden;
+  background: #ebece5;
 }
-.lp-shop-head strong {
-  display: block;
-  font-size: 15px;
-  color: var(--primary);
+.lp-hero-background { position: absolute; inset: 0; z-index: -2; pointer-events: none; }
+.lp-hero-background .lp-house {
+  width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0;
+  background: transparent; cursor: default; touch-action: auto;
 }
-.lp-shop-count {
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--muted);
+.lp-hero-background .lp-house-canvas {
+  opacity: 0; transition: opacity 1.2s ease;
 }
-
-.lp-shop-logo,
-.lp-shop-initial {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  flex: none;
+.lp-hero-background .lp-house[data-ready="true"] .lp-house-canvas { opacity: 1; }
+.lp-hero-immersive::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, #f7f5eff7 0%, #f7f5efec 28%, #f7f5efaf 48%, #f7f5ef18 76%, transparent),
+              linear-gradient(0deg, #f7f5ef8c, transparent 22%, transparent 80%, #f7f5ef30);
 }
-.lp-shop-logo { object-fit: cover; border: 1px solid var(--border); }
-
-/* Every shop has an initial; not every shop has uploaded a mark. */
-.lp-shop-initial {
-  display: grid;
-  place-items: center;
-  background: var(--primary);
-  color: var(--on-dark);
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 600;
-  font-size: 17px;
+.lp-hero-immersive .lp-hero-text { width: min(100%, 610px); }
+.lp-hero-immersive .lp-counts { max-width: 430px; border-color: #919a8170; }
+.lp-hero-scene-link {
+  position: absolute; right: 36px; bottom: 28px;
+  display: inline-flex; align-items: center; gap: 10px;
+  max-width: calc(100% - 46px); padding: 13px 19px; border-radius: 30px;
+  color: var(--primary); background: #fffefaeb; backdrop-filter: blur(12px);
+  border: 1px solid #ffffffc0; font-size: 10px; text-decoration: none;
+  box-shadow: 0 6px 24px #283d3212;
 }
-
-.lp-shop-chips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.lp-chip {
-  display: inline-block;
-  text-decoration: none;
-  font: inherit;
-  font-size: 12.5px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--paper);
-  color: var(--text);
-  cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
-}
-.lp-chip:hover { border-color: var(--accent); }
-.lp-chip.on {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--on-dark);
-}
-
-.lp-shop-note {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-
+.lp-hero-scene-link > span:last-child { margin-left: 9px; font-size: 17px; }
+.lp-hero-immersive + .lp-live-section { padding-top: 80px; }
 @media (max-width: 900px) {
-  /* Squarer, because on a phone the hero is stacked and a 4:3 window eats
-     the headline above it. */
-  .lp-house { aspect-ratio: 1 / 1; }
+  .lp-hero-immersive { padding-inline: 32px; }
+  .lp-hero-immersive .lp-hero-text { width: min(100%, 540px); }
 }
-
-/* -- landing where you meant to ------------------------------------------- */
-
-/* The bar's links are anchors into this page, and while the body could not
-   scroll they were decoration: clicking "Contact" set the hash and moved
-   nothing. Now that the page scrolls they work, so give them the two things
-   a working in-page link needs -- a little air above the heading it lands
-   on, and an eased jump for anybody who has not asked for less motion. */
-html { scroll-behavior: smooth; }
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
+@media (max-width: 680px) {
+  .lp-hero-immersive {
+    min-height: 740px; align-items: flex-start; margin-top: 14px;
+    padding: 55px 23px 145px;
+  }
+  .lp-hero-immersive::before {
+    background: linear-gradient(180deg, #f7f5eff5, #f7f5efe8 34%, #f7f5ef91 61%, #f7f5ef18 85%),
+                linear-gradient(90deg, #f7f5ef55, transparent);
+  }
+  .lp-hero-scene-link { left: 23px; right: auto; bottom: 25px; font-size: 9px; }
+  .lp-hero-immersive + .lp-live-section { padding-top: 55px; }
 }
-
-.lp-section[id] { scroll-margin-top: 20px; }
