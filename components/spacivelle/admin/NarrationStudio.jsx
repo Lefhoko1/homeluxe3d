@@ -113,6 +113,13 @@ const ElevationViewer = ({ model, elevation }) => {
       elevationOf(elevation),
       { fov: kit.camera.fov, aspect: kit.camera.aspect }
     );
+    // THE LENS FOLLOWS THE MODEL'S SIZE. Uploaded models are often in
+    // centimetres -- a 2m sofa arrives 200 units long -- and with fixed
+    // near/far planes the camera ended up seeing a slice of the inside of it.
+    const size = box.getSize(new THREE.Vector3()).length();
+    kit.camera.near = Math.max(0.001, view.distance / 500);
+    kit.camera.far = (view.distance + size) * 4;
+    kit.camera.updateProjectionMatrix();
     if (!kit.wantEye) {
       kit.eye.copy(view.eye);
       kit.aim.copy(view.target);
@@ -228,12 +235,14 @@ const NarrationStudio = ({ productId, onClose }) => {
     if (!take || !data) return;
     setBusy('Saving the clip…');
     try {
-      if (redoing) {
-        await service.replaceAudio(data.product, redoing, { audio: take.blob, durationMs: take.durationMs });
+      // Only replace a clip that is still there; otherwise keep it as new.
+      const target = redoing && clips.find((c) => c.id === redoing.id);
+      if (target) {
+        await service.replaceAudio(data.product, target, { audio: take.blob, durationMs: take.durationMs });
       } else {
         await service.addClip(
           data.product,
-          { audio: take.blob, durationMs: take.durationMs, elevation, imageUrl: photo || null },
+          { audio: take.blob, durationMs: take.durationMs, elevation: redoing?.elevation ?? elevation, imageUrl: photo || null },
           clips.length
         );
       }
@@ -275,6 +284,9 @@ const NarrationStudio = ({ productId, onClose }) => {
 
   const remove = (clip) => {
     if (!window.confirm(`Delete the ${elevationOf(clip.elevation).label.toLowerCase()} clip? It cannot be undone.`)) return;
+    // Deleting the clip that is being recorded again: the next take becomes a
+    // new clip, not a replacement for one that no longer exists.
+    if (redoing?.id === clip.id) setRedoing(null);
     act('Deleting…', () => service.deleteClip(data.product, clip, clips.filter((c) => c.id !== clip.id)));
   };
 
