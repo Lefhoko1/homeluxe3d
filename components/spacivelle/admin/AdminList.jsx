@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { ProductService } from '../../../lib/admin/ProductService';
 import './admin.css';
+import NarrationStudio from './NarrationStudio';
 
 /**
  * Everything the signed-in user may manage, live or not.
@@ -30,6 +31,8 @@ const AdminList = ({ shops = [], onClose, onPlace, inline = false }) => {
   const [error, setError] = useState(null);
   const [shopId, setShopId] = useState('');
   const [busyId, setBusyId] = useState(null);
+  // The product whose narration studio is open, if any.
+  const [narrating, setNarrating] = useState(null);
 
   const service = React.useMemo(() => new ProductService(), []);
 
@@ -167,6 +170,15 @@ const AdminList = ({ shops = [], onClose, onPlace, inline = false }) => {
                   type="button"
                   className="admin-btn"
                   disabled={busyId === row.product_id}
+                  onClick={() => setNarrating(row.product_id)}
+                  title="Record the shop talking visitors through this product"
+                >
+                  🎙 Narration
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn"
+                  disabled={busyId === row.product_id}
                   onClick={() =>
                     setStatus(row, row.status === 'published' ? 'draft' : 'published')
                   }
@@ -185,6 +197,10 @@ const AdminList = ({ shops = [], onClose, onPlace, inline = false }) => {
             </div>
         ))}
       </div>
+
+      {narrating && (
+        <NarrationStudio productId={narrating} onClose={() => setNarrating(null)} />
+      )}
     </>
   );
 
