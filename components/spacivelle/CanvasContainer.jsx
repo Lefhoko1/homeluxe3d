@@ -42,6 +42,7 @@ import {
 } from './tour';
 import { createTween, easeInOutCubic } from './tour/easing';
 import { createFocusMarker, markerAimFor } from './tour/marker';
+import ShowcaseCard from './tour/ShowcaseCard';
 import {
   AdminBar,
   AdminGate,
@@ -55,6 +56,7 @@ import { PlacementService } from '../../lib/admin/PlacementService';
 const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
                           shops = [], focusProduct = null, onSelect,
                           onCatalogChanged, onTourApi, onTourState,
+                          onShowDetails = null,
                           roomLabel = null }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
@@ -1431,7 +1433,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // worse than showing nothing.
         onShow: (target, index, total) => {
           setAdvert(target.advert ?? null);
-          setShowing({ caption: target.caption, at: index + 1, of: total });
+          setShowing({ caption: target.caption, kind: target.kind, at: index + 1, of: total });
           // Marked as the tour's, not the visitor's: the same call arrives
           // when somebody taps the sofa, and on a phone a tap opens the
           // details drawer -- which the tour must not do at every stop.
@@ -1661,6 +1663,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
             </button>
           )}
         </div>
+      )}
+
+      {/* What she is looking at, on the house: follows the pin. */}
+      {touring && (
+        <ShowcaseCard advert={advert} showing={showing} onMore={onShowDetails} />
       )}
 
       {touring && (

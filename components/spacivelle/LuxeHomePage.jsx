@@ -502,6 +502,9 @@ const LuxeHomePage = () => {
         onCatalogChanged={refresh}
         onTourApi={handleTourApi}
         onTourState={handleTourState}
+        // The tour's product card opens the full details -- with Enquire --
+        // only when the visitor asks for it.
+        onShowDetails={() => setDrawer('details')}
           roomLabel={rooms.find((r) => r.code === currentRoom)?.label ?? null}
         />
 
