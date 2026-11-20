@@ -39,10 +39,18 @@ const ElevationViewer = ({ model, elevation }) => {
   const holderRef = useRef(null);
   const kitRef = useRef(null);
   const [state, setState] = useState(model ? 'loading' : 'none');
+  // Rebuild only when the MODEL changes. The studio reloads its data after
+  // every save, which hands this a new `model` object for the same file; keyed
+  // on the object, the viewer was torn down and rebuilt each time.
+  const anchorKey = JSON.stringify(model?.anchor ?? null);
 
   useEffect(() => {
     const holder = holderRef.current;
     if (!holder || !model?.url) return undefined;
+    // A rebuilt viewer must be AIMED again. It used to inherit 'ready' from
+    // the last one, so the aiming effect below never re-ran and the camera
+    // sat at the origin -- inside the product -- after every save.
+    setState('loading');
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -101,12 +109,14 @@ const ElevationViewer = ({ model, elevation }) => {
       renderer.domElement.remove();
       kitRef.current = null;
     };
-  }, [model?.url, model?.anchor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model?.url, anchorKey]);
 
   // Aim at the elevation. Products face -Z at rotation 0, as in the house.
   useEffect(() => {
     const kit = kitRef.current;
     if (!kit?.piece || state !== 'ready') return;
+    // `kit` may be a new viewer: aim it straight at the view, no glide.
     const box = new THREE.Box3().setFromObject(kit.piece);
     const view = elevationView(
       { box, front: new THREE.Vector3(0, 0, -1) },
