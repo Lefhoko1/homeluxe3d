@@ -29,13 +29,15 @@
 import * as THREE from "three";
 
 /**
- * Seconds spent on one advertised object.
+ * Seconds spent on one advertised object, ONCE THE VIEW HAS SETTLED on it --
+ * the controller does not count the camera's swing round to it. See
+ * VIEW_SETTLED_ANGLE in TourController.js.
  *
- * Long enough to read the panel that appears with it. Under about three
+ * Long enough to take the piece in and read the panel that appears with it. Under about three
  * seconds the camera is moving again before the eye has settled, which is the
  * complaint the old six-second whole-room sweep attracted.
  */
-const PRODUCT_DWELL = 3.6;
+const PRODUCT_DWELL = 4.5;
 
 /** Seconds spent on a surface -- floor, wall, ceiling. */
 const SURFACE_DWELL = 2.6;
@@ -405,12 +407,21 @@ export function createShowcase({
         ...free,
       ];
 
-      // Trim rather than rush. See MAX_STOP_SECONDS.
-      let budget = MAX_STOP_SECONDS;
+      // Trim rather than rush -- but NEVER WHAT IS PAID FOR. Anything with an
+      // advert (the furniture, the tile, the paint, the hinges) is always
+      // shown; MAX_STOP_SECONDS limits only what is not being sold -- empty
+      // positions, an unbranded ceiling light. A room with more to sell takes
+      // longer to sell it.
+      const paidSeconds = targets
+        .filter((target) => target.advert)
+        .reduce((sum, target) => sum + target.dwell, 0);
+      let budget = Math.max(0, MAX_STOP_SECONDS - paidSeconds);
       const kept = [];
       targets.forEach((target) => {
-        if (budget - target.dwell < 0) return;
-        budget -= target.dwell;
+        if (!target.advert) {
+          if (budget - target.dwell < 0) return;
+          budget -= target.dwell;
+        }
         kept.push(target);
       });
 

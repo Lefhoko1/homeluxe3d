@@ -265,8 +265,10 @@ stops.forEach((stop) => {
     if (seconds < MIN_STOP_SECONDS) {
       wrong.push(`${room} stops for only ${seconds.toFixed(1)}s`);
     }
-    if (seconds > MAX_STOP_SECONDS) {
-      wrong.push(`${room} stands for ${seconds.toFixed(1)}s`);
+    // Over the budget only on paid adverts: those are never dropped, and
+    // anything unpaid that pushes a stop past it should have been.
+    if (seconds > MAX_STOP_SECONDS && targets.some((target) => !target.advert)) {
+      wrong.push(`${room} stands for ${seconds.toFixed(1)}s, not all of it paid for`);
     }
     if (!targets.length) wrong.push(`${room} has nothing to look at`);
   });
@@ -275,6 +277,35 @@ stops.forEach((stop) => {
   console.log(
     `  stops: ${shown.size} room(s), ${totalSeconds.toFixed(0)}s of looking in total`
   );
+}
+
+// ---- 3b. A crowded room still shows everything that is paid for ----------
+// Ten pieces in the living room is over the stop budget on products alone.
+// The budget must come out of what nobody paid for -- empty positions, an
+// unbranded light -- and never out of a product or a finish.
+{
+  const crowded = new THREE.Group();
+  const living = rooms.find((r) => r.room === "living");
+  for (let i = 0; i < 10; i += 1) {
+    const piece = new THREE.Group();
+    piece.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8)));
+    piece.children[0].position.y = 0.4;
+    piece.position.set(living.x0 + 0.6 + (i % 5) * 0.9, 0, living.z0 + 0.8 + Math.floor(i / 5) * 1.4);
+    piece.userData = { productId: `test.piece-${i}`, room: "living", name: `Piece ${i}` };
+    crowded.add(piece);
+  }
+  const busy = createShowcase({
+    products: crowded, finishes, fittings, rooms,
+    ceiling: collision.ceiling_m, doors: doorPoints, slots: slotsManifest.slots,
+  });
+  const targets = busy.forRoom("living", living.centre);
+  const productsShown = targets.filter((t) => t.kind === "product").length;
+  const finishesHere = finishes.filter((f) => f.room === "living" && (f.kind === "floor" || f.kind === "wall")).length;
+  const finishesShown = targets.filter((t) => (t.kind === "floor" || t.kind === "wall") && t.advert).length;
+  assert.equal(productsShown, 10, `only ${productsShown} of 10 products shown in a crowded room`);
+  assert.equal(finishesShown, finishesHere, "a paid finish was dropped from a crowded room");
+  assert.ok(!targets.some((t) => t.kind === "slot"), "empty positions shown in a room already over budget");
+  console.log(`  crowded: 10 products and ${finishesShown} finish(es) all kept; unpaid filler dropped`);
 }
 
 // ---- 4. Nothing is aimed through the floor or the roof -------------------

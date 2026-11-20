@@ -239,6 +239,28 @@ const SETTLE_DISTANCE = 0.9;
 const VISIT_PACE = 1.2;
 
 /**
+ * THE LOOK STARTS WHEN THE PICTURE STOPS MOVING.
+ *
+ * A product's dwell used to count from the moment the character's BODY
+ * finished turning. But the camera is deliberately slower than she is -- it
+ * drifts onto the piece over three or four seconds (AIM_SMOOTH_LOOK,
+ * CAM_POSE_SMOOTH) so that turning reads as looking round, not as a cut -- and
+ * so most of a 3.6s dwell was spent with the view still swinging. The visitor
+ * got about a second of a still picture before it swung on to the next thing.
+ *
+ * So the dwell now counts only while the view has SETTLED: the camera aimed
+ * within this angle of the thing, and no longer travelling.
+ */
+const VIEW_SETTLED_ANGLE = 0.08;      // radians, about 4.5 degrees
+const VIEW_SETTLED_SPEED = 0.12;      // metres per second, camera and aim
+/**
+ * And a guarantee the tour never stalls: if the view has not settled this
+ * many seconds after she has turned to the thing -- a wall pulling the camera
+ * in can keep it moving -- the dwell starts counting anyway.
+ */
+const SETTLE_GIVE_UP = 4.5;
+
+/**
  * Heights at which the forward ray is fired.
  *
  * One ray at chest height walks straight through a coffee table and a sofa
@@ -558,6 +580,11 @@ export function createTourController(options = {}) {
   let showTargets = [];
   let showIndex = 0;
   let showLeft = 0;
+  // Seconds since she finished turning to the current thing, and whether the
+  // camera has come to rest on it -- measured at the end of every update and
+  // read by the next. See VIEW_SETTLED_ANGLE.
+  let settleWait = 0;
+  let viewSettled = false;
 
   // -- The stall guard ----------------------------------------------------
   // How long the walk has been failing to get closer to the waypoint it is
@@ -1073,6 +1100,8 @@ export function createTourController(options = {}) {
     const current = showTargets[showIndex];
     current.begun = true;
     showLeft = current.dwell;
+    settleWait = 0;
+    viewSettled = false;
     onShow?.(current, showIndex, showTargets.length);
 
     if (current.kind === "product") {
@@ -1117,10 +1146,14 @@ export function createTourController(options = {}) {
     }
 
     faceTowards(current.point, step);
-    // The looking starts once the turn has finished. With the turns slowed
-    // down, counting from the moment the turn began would spend the time on
-    // the turn and cut the look short.
-    if (!bodyTurning) showLeft -= step;
+    // The looking starts once the turn has finished AND the camera has come
+    // to rest on the thing. Counting from the moment the turn began spent the
+    // time on the turn; counting from when her body stopped still spent most
+    // of it on the camera catching up. See VIEW_SETTLED_ANGLE.
+    if (!bodyTurning) {
+      settleWait += step;
+      if (viewSettled || settleWait >= SETTLE_GIVE_UP) showLeft -= step;
+    }
 
     if (showLeft <= 0) {
       showIndex += 1;
@@ -1961,6 +1994,20 @@ export function createTourController(options = {}) {
       aim.x = smoothDamp(aim.x, lookPoint.x, aimVelocity.x, aimSmooth, step);
       aim.y = smoothDamp(aim.y, lookPoint.y, aimVelocity.y, aimSmooth, step);
       aim.z = smoothDamp(aim.z, lookPoint.z, aimVelocity.z, aimSmooth, step);
+
+      // Has the picture stopped moving? Read by `runShowcase` next frame.
+      if (looking) {
+        camDir.subVectors(aim, camera.position);
+        const toThing = lookPoint.clone().sub(camera.position);
+        const off = camDir.lengthSq() > 1e-6 && toThing.lengthSq() > 1e-6
+          ? camDir.angleTo(toThing) : 0;
+        const speed = (v) => Math.hypot(v.x.value, v.y.value, v.z.value);
+        viewSettled = off < VIEW_SETTLED_ANGLE &&
+          speed(camVelocity) < VIEW_SETTLED_SPEED &&
+          speed(aimVelocity) < VIEW_SETTLED_SPEED;
+      } else {
+        viewSettled = false;
+      }
 
       // A glance, not a crane shot: the tilt is limited to what a head does.
       aimTarget.copy(aim);
