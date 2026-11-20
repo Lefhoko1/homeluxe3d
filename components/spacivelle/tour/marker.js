@@ -4,16 +4,22 @@
  * WHY A PIN AND NOT A GLOW. Products are placed by the admin and come in any
  * shape -- a sofa, a floor lamp, a television on a console -- so an outline
  * or a ring traced round the piece would have to understand its geometry, and
- * on a complex model it reads as noise. A marker above it needs to know only
- * one thing: where the top of the piece is. That is measured LIVE, every
- * frame, from the object's bounding box as it stands in the scene, so it is
- * right wherever the admin put the product and follows it if it is moved.
+ * on a complex model it reads as noise.
+ *
+ * IT LANDS ON THE PIECE, WHERE YOU ARE LOOKING. Not above the top of its box:
+ * that left the pin hovering over a rug, and over a tall or long piece seen
+ * from close up it was off the top of the screen. Instead a line is traced
+ * from the camera to the point being looked at -- the tour's aim point, or
+ * where the visitor clicked -- and the tip goes where that line first meets
+ * the product. That spot is kept in the product's own frame, so it follows
+ * the piece if the admin moves it.
  *
  * Drawn over everything (no depth test), so a chair back or a wall corner can
  * never hide it, and unlit, so it is the same colour in every room.
  *
- * Usage: `aim()` it at an Object3D, at a spot `{x, y, z}` (the top of the
- * thing), or at null to hide it; call `update(dt)` once per frame.
+ * Usage: `aim(object, at)` -- an Object3D and, optionally, the world point
+ * being looked at on it -- or `aim({x, y, z})` for a spot with no object, or
+ * `aim(null)` to hide it; call `update(dt, camera)` once per frame.
  */
 
 import * as THREE from "three";
@@ -21,12 +27,20 @@ import * as THREE from "three";
 /** Brand accent -- the same gold as the showroom's --accent. */
 const COLOUR = 0xc08a2e;
 
-/** How far above the top of the piece the tip of the pin floats, metres. */
-const LIFT = 0.16;
-/** How far the pin bobs up and down, metres. */
-const BOB = 0.05;
+/** How far the pin bobs, metres -- UPWARDS only, so the tip never sinks in. */
+const BOB = 0.04;
 /** Seconds to grow in and shrink away. */
 const FADE_SECONDS = 0.25;
+/**
+ * The pin is drawn at full size at this distance from the camera, and scaled
+ * with distance either side of it, so it is the SAME SIZE ON SCREEN wherever
+ * the camera is. A fixed-size pin ballooned as the camera walked up to it.
+ */
+const SIZE_AT = 3.2;
+const MIN_SCALE = 0.18;
+const MAX_SCALE = 2.2;
+/** Seconds between re-measuring where the pin lands, as the camera moves. */
+const RELAND_SECONDS = 0.5;
 
 /** A soft round glow, drawn once into a canvas. Null without a DOM. */
 function glowTexture() {
@@ -100,24 +114,69 @@ export function createFocusMarker() {
   group.add(pin);
 
   let aimed = null;          // Object3D or {x, y, z}
+  let aimedAt = null;        // world point being looked at on it, or null
+  let aimedAtGiven = null;   // the caller's own vector, to tell repeats apart
+  let localTip = null;       // where the tip lands, in the object's frame
+  let relandIn = 0;
   let shown = 0;             // 0 hidden .. 1 fully grown
   let clock = 0;
   const box = new THREE.Box3();
-  const spot = new THREE.Vector3();
-  let haveSpot = false;
+  const tipAt = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster();
+  const toward = new THREE.Vector3();
 
-  /** Where the tip goes: centred on the piece, just above its top. */
-  function measure() {
+  const sameSpot = (a, b) =>
+    a && b && !a.isObject3D && !b.isObject3D &&
+    a.x === b.x && a.y === b.y && a.z === b.z;
+
+  /**
+   * Where on the object the tip goes: the first point of its surface on the
+   * line from the camera to the point being looked at. Without a camera, or
+   * if the line misses (looking through the gap under a chair), the top of
+   * the piece, centred -- which is always at least ON it.
+   */
+  function land(camera) {
+    box.setFromObject(aimed);
+    if (box.isEmpty()) return false;
+
+    const look = aimedAt ?? box.getCenter(new THREE.Vector3());
+    let hit = null;
+    if (camera) {
+      toward.subVectors(look, camera.position);
+      const distance = toward.length();
+      if (distance > 1e-3) {
+        raycaster.set(camera.position, toward.multiplyScalar(1 / distance));
+        raycaster.far = distance + 3;
+        hit = raycaster
+          .intersectObject(aimed, true)
+          .find((h) => h.object.visible !== false)?.point ?? null;
+      }
+    }
+    if (!hit) {
+      hit = new THREE.Vector3(
+        (box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2
+      );
+    }
+    localTip = aimed.worldToLocal(hit.clone());
+    return true;
+  }
+
+  /** Where the tip is this frame, in world metres. False if nowhere. */
+  function measure(camera, dt) {
     if (!aimed) return false;
     if (aimed.isObject3D) {
       if (!aimed.parent || aimed.visible === false) return false;
       aimed.updateWorldMatrix(true, true);
-      box.setFromObject(aimed);
-      if (box.isEmpty()) return false;
-      spot.set((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2);
+      relandIn -= dt;
+      if (!localTip || relandIn <= 0) {
+        relandIn = RELAND_SECONDS;
+        if (!land(camera)) return false;
+      }
+      tipAt.copy(localTip);
+      aimed.localToWorld(tipAt);
       return true;
     }
-    spot.set(aimed.x, aimed.y, aimed.z);
+    tipAt.set(aimed.x, aimed.y, aimed.z);
     return true;
   }
 
@@ -125,31 +184,50 @@ export function createFocusMarker() {
     group,
 
     /**
-     * Point at something, or at nothing.
+     * Point at something, or at nothing. Cheap to call every frame with the
+     * same arguments: it only starts over when the target changes.
+     *
      * @param {THREE.Object3D|{x:number,y:number,z:number}|null} what
+     * @param {THREE.Vector3|null} [at]  the world point being looked at on
+     *        `what`: the tour's aim point, or where the visitor clicked
      */
-    aim(what) {
-      aimed = what ?? null;
+    aim(what, at = null) {
+      const next = what ?? null;
+      if (next === aimed && at === aimedAtGiven) return;
+      if (sameSpot(next, aimed)) return;
+      aimed = next;
+      aimedAtGiven = at;
+      aimedAt = at ? at.clone() : null;
+      localTip = null;
+      relandIn = 0;
     },
 
-    /** Call once per frame. */
-    update(dt) {
+    /** Call once per frame. `camera` keeps the pin landing and sized right. */
+    update(dt, camera = null) {
       clock += dt;
-      // No fallback to the last spot: a product withdrawn or hidden while it
-      // is being looked at must take its pin with it.
-      haveSpot = measure();
+      const haveSpot = measure(camera, dt);
 
-      const want = aimed && haveSpot ? 1 : 0;
+      // No lingering at the last spot: a product withdrawn or hidden while it
+      // is being looked at must take its pin with it.
+      const want = haveSpot ? 1 : 0;
       const step = dt / FADE_SECONDS;
       shown = want > shown ? Math.min(1, shown + step) : Math.max(0, shown - step);
 
-      group.visible = shown > 0.001;
+      group.visible = shown > 0.001 && haveSpot;
       if (!group.visible) return;
 
-      group.position.set(spot.x, spot.y + LIFT + Math.sin(clock * 2.6) * BOB, spot.z);
+      // Same size on screen at any distance; see SIZE_AT.
+      const size = camera
+        ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, camera.position.distanceTo(tipAt) / SIZE_AT))
+        : 1;
+
+      // Bobs UP from the surface and back down to touch it, never into it.
+      const bob = (0.5 - 0.5 * Math.cos(clock * 2.6)) * BOB * size;
+      group.position.set(tipAt.x, tipAt.y + bob, tipAt.z);
+
       // Grows in with a slight overshoot, so its arrival is noticed.
       const grow = shown < 1 ? Math.sin(shown * Math.PI * 0.5) * (1 + 0.15 * Math.sin(shown * Math.PI)) : 1;
-      pin.scale.setScalar(grow);
+      pin.scale.setScalar(grow * size);
       pin.rotation.y = clock * 1.4;
       const glow = pin.userData.glow;
       if (glow) glow.material.opacity = 0.65 + 0.35 * Math.sin(clock * 3.2);
@@ -166,23 +244,25 @@ export function createFocusMarker() {
 }
 
 /**
- * What the marker should stand over for one showcase target, or null.
+ * What the marker should land on for one showcase target: `{what, at}`, or
+ * null for no pin.
  *
- * A product is marked over its live bounding box. An empty position for sale
- * and a door fitting have no object of their own, so they get a spot: the
- * top of the slot's box, or just above the hinge. Floors, walls, ceilings and
- * the opening look round a room are surfaces, not things -- a pin hanging in
- * the middle of the room would point at nothing -- so they get no marker.
+ * A product lands where the tour is aiming the camera at it (`target.point`).
+ * An empty position for sale and a door fitting have no object of their own,
+ * so they get a spot: the top of the slot's box, or the hinge. Floors, walls,
+ * ceilings and the opening look round a room are surfaces, not things -- a
+ * pin hanging in the middle of the room would point at nothing -- so they get
+ * no marker.
  */
 export function markerAimFor(target) {
   if (!target) return null;
-  if (target.object) return target.object;
+  if (target.object) return { what: target.object, at: target.point ?? null };
   if (target.kind === "slot" && target.slot) {
     const [x, y, z] = target.slot.position;
-    return { x, y: y + (target.slot.size?.[1] ?? 0), z };
+    return { what: { x, y: y + (target.slot.size?.[1] ?? 0), z }, at: null };
   }
   if (target.kind === "fitting" && target.point) {
-    return { x: target.point.x, y: target.point.y + 0.1, z: target.point.z };
+    return { what: { x: target.point.x, y: target.point.y, z: target.point.z }, at: null };
   }
   return null;
 }

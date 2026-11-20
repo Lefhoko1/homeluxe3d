@@ -138,6 +138,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // scene; `adminState` is the small amount that has to cross between them.
   const editorRef = useRef(null);
   const pickedNodeRef = useRef(null);
+  // Where on it the visitor clicked, so the focus marker lands there.
+  const pickedPointRef = useRef(null);
   const placementsRef = useRef(null);
   const [sceneReady, setSceneReady] = useState(false);
   const [adminState, setAdminState] = useState({
@@ -438,6 +440,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
             if (node?.userData?.productId) {
               picked = { ...node.userData };
               pickedNode = node;
+              pickedPointRef.current = hits[0].point.clone();
             }
           } else if (surfaces.length) {
             // Then surfaces. The mesh is named floors.<room>, so the hit
@@ -829,11 +832,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       // WHAT IS BEING LOOKED AT GETS THE PIN. On the guided tour that is
       // whatever she has turned to (nothing while she walks between rooms);
       // otherwise it is whatever the visitor last clicked.
-      const touring = tourRef.current?.touring;
-      focusMarker.aim(touring
-        ? markerAimFor(tourRef.current.showing)
-        : pickedNodeRef.current);
-      focusMarker.update(delta);
+      // It lands ON the piece, where it is being looked at: the tour's aim
+      // point, or the spot that was clicked.
+      if (tourRef.current?.touring) {
+        const aimAt = markerAimFor(tourRef.current.showing);
+        focusMarker.aim(aimAt?.what ?? null, aimAt?.at ?? null);
+      } else {
+        focusMarker.aim(pickedNodeRef.current, pickedPointRef.current);
+      }
+      focusMarker.update(delta, camera);
 
       // Keep the sky centred on the viewer so it can never be reached.
       atmosphere.group.position.set(camera.position.x, 0, camera.position.z);
@@ -1246,6 +1253,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       node.parent?.remove(node);
       node.traverse((child) => { if (child.isMesh) child.geometry?.dispose(); });
       pickedNodeRef.current = null;
+      pickedPointRef.current = null;
       setAdvert(null);
       remeasureFurniture();
       onSelectRef.current?.(null);
@@ -1309,6 +1317,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
       group.add(instance);
       pickedNodeRef.current = instance;
+      pickedPointRef.current = null;
       setAdvert({ ...instance.userData });
       editorRef.current?.attach(instance);
       editorRef.current?.setMode('translate');
