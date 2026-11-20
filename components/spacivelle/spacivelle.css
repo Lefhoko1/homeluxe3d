@@ -1917,6 +1917,29 @@ body {
 .showcase-card-more:hover { background: #d29b3d; }
 .showcase-card-more:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
+/* A shop talking: whose voice, which view, and the mute button. */
+.showcase-card-voice {
+  display: flex; align-items: center; gap: 10px;
+  margin: -2px -2px 12px; padding: 9px 10px; border-radius: 11px;
+  background: rgba(192, 138, 46, 0.18); border: 1px solid rgba(192, 138, 46, 0.45);
+}
+.showcase-card.collapsed .showcase-card-voice { margin-bottom: 8px; }
+.showcase-card-voice.muted { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.16); }
+.showcase-card-voice-icon { font-size: 18px; flex: none; }
+.showcase-card-voice-text { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; }
+.showcase-card-voice-view { display: block; font-size: 12px; color: #e8c98f; letter-spacing: .04em; }
+.showcase-card-voice.muted .showcase-card-voice-view { color: #9fb4c8; }
+.showcase-card-voice-btn {
+  flex: none; padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.1); color: #f2f5f8;
+}
+.showcase-card-voice-btn.play { background: #c08a2e; border-color: #c08a2e; color: #17212e; }
+.showcase-card-voice-btn:focus-visible { outline: 2px solid #ffce7a; outline-offset: 2px; }
+.showcase-card-photo {
+  display: block; width: 100%; max-height: 170px; object-fit: contain; margin-bottom: 12px;
+  border-radius: 10px; background: rgba(255, 255, 255, 0.06);
+}
+
 @media (max-width: 1180px) {
   /* The tour bar grows along the bottom here; stand above it. */
   .showcase-card { bottom: 88px; }

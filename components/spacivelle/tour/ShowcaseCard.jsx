@@ -17,6 +17,11 @@ import React, { useEffect, useState } from 'react';
  *
  * Empty positions get a card too: a visitor being sold space needs to know
  * the space is for sale.
+ *
+ * WHEN A SHOP IS TALKING (lib/narration), the card says so -- whose voice,
+ * which view of the product -- shows that view's photograph beside the 3D
+ * shot, and carries the mute button. Muting is remembered; it silences every
+ * shop, not just this one.
  */
 
 const COLLAPSED_KEY = 'spacivelle.showcaseCard.collapsed';
@@ -54,8 +59,11 @@ const words = (text) => (text ? String(text).replace(/[_-]+/g, ' ') : '');
  * @param {object}   [props.advert]  the advert on the thing being looked at
  * @param {object}   [props.showing] `{caption, kind, at, of}` from the tour
  * @param {Function} [props.onMore]  open the full details drawer
+ * @param {object}   [props.narration]  while a shop is talking:
+ *        `{shopName, elevation, index, count, imageUrl, muted, blocked,
+ *          onToggleMute, onPlay}`
  */
-const ShowcaseCard = ({ advert = null, showing = null, onMore = null }) => {
+const ShowcaseCard = ({ advert = null, showing = null, onMore = null, narration = null }) => {
   const [collapsed, setCollapsed] = useState(false);
 
   // Read after mount, not during render: the server has no localStorage, and
@@ -92,6 +100,39 @@ const ShowcaseCard = ({ advert = null, showing = null, onMore = null }) => {
       aria-live="polite"
       aria-label={`Now viewing: ${name}`}
     >
+      {narration && (
+        <div className={`showcase-card-voice${narration.muted ? ' muted' : ''}`}>
+          <span className="showcase-card-voice-icon" aria-hidden>{narration.muted ? '🔇' : '🔊'}</span>
+          <span className="showcase-card-voice-text">
+            <strong>{narration.shopName}</strong>
+            {collapsed ? '' : ' is talking you through it'}
+            <span className="showcase-card-voice-view">
+              {narration.elevation}{narration.count > 1 ? ` · ${narration.index + 1} of ${narration.count}` : ''}
+            </span>
+          </span>
+          {narration.blocked && !narration.muted ? (
+            <button type="button" className="showcase-card-voice-btn play" onClick={narration.onPlay}>
+              ▶ Listen
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="showcase-card-voice-btn"
+              onClick={narration.onToggleMute}
+              aria-pressed={narration.muted}
+              aria-label={narration.muted ? 'Turn shop narration on' : 'Mute shop narration'}
+              title={narration.muted ? 'Turn shop narration on' : 'Mute shop narration'}
+            >
+              {narration.muted ? 'Unmute' : 'Mute'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {narration?.imageUrl && !collapsed && (
+        <img className="showcase-card-photo" src={narration.imageUrl} alt={`${name}: ${narration.elevation}`} />
+      )}
+
       <div className="showcase-card-head">
         <div className="showcase-card-title">
           {!collapsed && (

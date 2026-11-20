@@ -36,6 +36,19 @@ const Shops = ({ data, canManage }) => {
     }
   };
 
+  const setAddon = async (shop, on) => {
+    setBusy(shop.id);
+    setProblem(null);
+    try {
+      await data.setAddon(shop.id, 'audio_narration', on);
+      shops.refresh();
+    } catch (e) {
+      setProblem(e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const columns = [
     {
       key: 'name',
@@ -70,6 +83,38 @@ const Shops = ({ data, canManage }) => {
       ),
     },
     { key: 'currency', header: 'Currency' },
+    {
+      // AUDIO NARRATION is sold two ways: in the Premier plan, or as an
+      // add-on. This says which (if either), and lets the platform switch the
+      // add-on on when a shop pays for it. See migration 0028.
+      key: 'narration',
+      header: 'Audio narration',
+      render: (s) => {
+        const live = (s.shop_subscriptions ?? []).find((sub) => ['trialing', 'active'].includes(sub.status));
+        const inPlan = Boolean(live?.plans?.audio_narration);
+        const addon = (s.shop_addons ?? []).find((a) => a.feature === 'audio_narration');
+        const addonOn = Boolean(addon) && (!addon.active_until || new Date(addon.active_until) > new Date());
+        return (
+          <div className="ad-narration">
+            {inPlan && <Pill tone="good">in {live.plans.name}</Pill>}
+            {addonOn && <Pill tone="good">add-on</Pill>}
+            {!inPlan && !addonOn && <span className="ad-dim">—</span>}
+            {canManage && !inPlan && (
+              <Button
+                tone={addonOn ? '' : 'primary'}
+                disabled={busy === s.id}
+                onClick={() => setAddon(s, !addonOn)}
+                title={addonOn
+                  ? 'Stop playing this shop\'s narration on the tour. Its recordings are kept.'
+                  : 'The shop has paid for audio narration: let it publish clips to the tour.'}
+              >
+                {addonOn ? 'Switch off' : 'Switch on'}
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
     { key: 'created_at', header: 'Joined', render: (s) => when(s.created_at) },
     {
       key: 'actions',

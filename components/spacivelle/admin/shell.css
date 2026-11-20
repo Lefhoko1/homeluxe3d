@@ -481,3 +481,6 @@
   outline: none; border-color: #1f6feb;
   box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.15);
 }
+
+/* Shops > Audio narration: what the shop has, and the switch for the add-on. */
+.ad-narration { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

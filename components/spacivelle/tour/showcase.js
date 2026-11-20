@@ -270,6 +270,9 @@ function surfaceTargets(room, from, finishes, fittings, ceiling, doors) {
  *        metres -- where a door-hardware advert is aimed
  * @param {Array} options.slots     the advertising inventory, WORLD metres --
  *        empty positions the tour offers to whoever is being shown round
+ * @param {Map}   options.narrations shop narrations by product id, from
+ *        lib/narration (fetchLiveNarrations). Read at every arrival, so it may
+ *        be filled after the showcase is made.
  */
 export function createShowcase({
   products = null,
@@ -279,6 +282,7 @@ export function createShowcase({
   ceiling = 2.4,
   doors = [],
   slots = [],
+  narrations = null,
 } = {}) {
   const roomsByName = new Map(rooms.map((room) => [room.room, room]));
 
@@ -332,10 +336,23 @@ export function createShowcase({
           // shot becomes a picture of the floor.
           point.y = Math.max(point.y, Math.min(box.max.y - 0.15, 1.1));
 
+          // A SHOP THAT HAS RECORDED A NARRATION sets its own pace: the stop
+          // lasts as long as it talks, which is what the budget is told. The
+          // tour itself waits for the clips to end -- see TourController.
+          const narration = narrations?.get(data.productId) ?? null;
+          const spoken = narration
+            ? narration.clips.reduce((sum, clip) => sum + (clip.durationMs ?? 0), 0) / 1000
+            : 0;
+
           objects.push({
             kind: "product",
             point,
-            dwell: PRODUCT_DWELL,
+            dwell: narration ? Math.max(PRODUCT_DWELL, spoken) : PRODUCT_DWELL,
+            narration,
+            // The room's floor plan, so a narration's camera stays in it. A
+            // camera that only avoids walls slips through the doorway into
+            // the next room and shows the visitor the wall between them.
+            roomRect: room ? [room.x0, room.z0, room.x1, room.z1] : null,
             advert: { ...data },
             caption: data.name ?? "Product",
             // The placement itself, so the focus marker can stand over it

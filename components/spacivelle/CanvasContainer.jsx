@@ -43,6 +43,8 @@ import {
 import { createTween, easeInOutCubic } from './tour/easing';
 import { createFocusMarker, markerAimFor } from './tour/marker';
 import ShowcaseCard from './tour/ShowcaseCard';
+import { fetchLiveNarrations } from '../../lib/narration/NarrationService.js';
+import { elevationOf } from '../../lib/narration/elevationView.js';
 import {
   AdminBar,
   AdminGate,
@@ -142,6 +144,28 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const pickedNodeRef = useRef(null);
   // Where on it the visitor clicked, so the focus marker lands there.
   const pickedPointRef = useRef(null);
+
+  // ---- Shop narration ------------------------------------------------------
+  // Published narrations by product id. Filled after the house loads; the
+  // showcase reads it at every arrival, so it need not be ready in time for
+  // the first room.
+  const narrationsRef = useRef(new Map());
+  // One player for the clips, one to fetch the next clip ahead of time.
+  const narrationAudioRef = useRef(null);
+  const narrationNextRef = useRef(null);
+  const narrationShownRef = useRef(false);
+  // What the card says while a shop is talking. Null otherwise.
+  const [narrationNow, setNarrationNow] = useState(null);
+  // MUTE IS REMEMBERED. Read after mount -- the server has no storage.
+  const mutedRef = useRef(false);
+  const [narrationMuted, setNarrationMuted] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('spacivelle.narration.muted') === '1';
+      mutedRef.current = saved;
+      setNarrationMuted(saved);
+    } catch { /* storage blocked: start unmuted */ }
+  }, []);
   const placementsRef = useRef(null);
   const [sceneReady, setSceneReady] = useState(false);
   const [adminState, setAdminState] = useState({
@@ -693,6 +717,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           // Empty positions are worth showing too: a visitor being sold
           // space needs to see the space.
           slots: slots?.worldEntries() ?? [],
+          // What shops have recorded about their products. See tour/narration.
+          narrations: narrationsRef.current,
+        });
+
+        // Not awaited: a tour can start before it arrives, and simply has no
+        // voices in the rooms it has already walked through.
+        fetchLiveNarrations().then((live) => {
+          live.forEach((value, key) => narrationsRef.current.set(key, value));
+          if (live.size) console.info(`[narration] ${live.size} product(s) narrated by their shops`);
         });
 
         // The solved route through the house. House-local in the manifest,
@@ -831,6 +864,19 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
       atmosphere.update(delta);
 
+      // THE AUDIO FOLLOWS THE TOUR. Paused, stopped, or moved on from the
+      // product: the shop stops talking. (Resuming replays the clip -- the
+      // tour announces it again -- see `onNarrate`.)
+      {
+        const nar = tourRef.current?.narrating ?? null;
+        const audio = narrationAudioRef.current;
+        if (audio && !audio.paused && !nar?.playing) audio.pause();
+        if (!nar && narrationShownRef.current) {
+          narrationShownRef.current = false;
+          setNarrationNow(null);
+        }
+      }
+
       // WHAT IS BEING LOOKED AT GETS THE PIN. On the guided tour that is
       // whatever she has turned to (nothing while she walks between rooms);
       // otherwise it is whatever the visitor last clicked.
@@ -908,6 +954,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       cleanupPointer?.();
 
       focusMarker.dispose();
+      narrationAudioRef.current?.pause();
       tourRef.current?.detach(window);
       tourRef.current = null;
       walkVolumeRef.current = null;
@@ -1439,6 +1486,42 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           // details drawer -- which the tour must not do at every stop.
           if (target.advert) onSelectRef.current?.(target.advert, { fromTour: true });
         },
+        // A SHOP IS TALKING. The tour has turned the camera to the elevation
+        // this clip is about; play it, and tell the tour when it ends -- the
+        // audio sets the pace. If it cannot play, the tour moves on by
+        // itself after the clip's length (see NARRATION_GRACE).
+        onNarrate: (target, index, clip) => {
+          if (!narrationAudioRef.current) narrationAudioRef.current = new Audio();
+          const audio = narrationAudioRef.current;
+          audio.pause();
+          audio.onended = () => tourRef.current?.narrationClipEnded();
+          audio.onerror = () => tourRef.current?.narrationClipEnded();
+          audio.src = clip.audioUrl;
+          audio.muted = mutedRef.current;
+          const clips = target.narration.clips;
+          narrationShownRef.current = true;
+          setNarrationNow({
+            shopName: target.narration.shopName,
+            elevation: elevationOf(clip.elevation).label,
+            index,
+            count: clips.length,
+            imageUrl: clip.imageUrl ?? null,
+            blocked: false,
+          });
+          audio.play()?.catch(() => {
+            // Autoplay refused (no tap on this page yet). The card offers a
+            // button; the tour keeps its own time meanwhile.
+            setNarrationNow((now) => (now ? { ...now, blocked: true } : now));
+          });
+          // Fetch the next clip now, so there is no pause while it downloads.
+          const next = clips[index + 1];
+          if (next) {
+            const ahead = new Audio();
+            ahead.preload = 'auto';
+            ahead.src = next.audioUrl;
+            narrationNextRef.current = ahead;
+          }
+        },
       }
     );
     setTouring(true);
@@ -1667,7 +1750,27 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
       {/* What she is looking at, on the house: follows the pin. */}
       {touring && (
-        <ShowcaseCard advert={advert} showing={showing} onMore={onShowDetails} />
+        <ShowcaseCard
+          advert={advert}
+          showing={showing}
+          onMore={onShowDetails}
+          narration={narrationNow && {
+            ...narrationNow,
+            muted: narrationMuted,
+            onToggleMute: () => {
+              const next = !mutedRef.current;
+              mutedRef.current = next;
+              setNarrationMuted(next);
+              if (narrationAudioRef.current) narrationAudioRef.current.muted = next;
+              try { window.localStorage.setItem('spacivelle.narration.muted', next ? '1' : '0'); } catch { /* ignore */ }
+            },
+            onPlay: () => {
+              narrationAudioRef.current?.play()
+                .then(() => setNarrationNow((now) => (now ? { ...now, blocked: false } : now)))
+                .catch(() => {});
+            },
+          }}
+        />
       )}
 
       {touring && (

@@ -66,6 +66,8 @@ import {
   smoothstep,
 } from "./easing.js";
 import { createGait, rigCharacter } from "./gait.js";
+import { approachOf } from "./showcase.js";
+import { elevationOf, elevationView } from "../../../lib/narration/elevationView.js";
 
 /**
  * Metres per second when the visitor steers. A brisk walk. This was 2.4,
@@ -259,6 +261,36 @@ const VIEW_SETTLED_SPEED = 0.12;      // metres per second, camera and aim
  * in can keep it moving -- the dwell starts counting anyway.
  */
 const SETTLE_GIVE_UP = 4.5;
+
+/**
+ * A SHOP'S NARRATION SETS THE PACE.
+ *
+ * A product with narration (see lib/narration) is not given a dwell. The
+ * camera goes to the elevation the shop's first clip talks about, the clip
+ * plays, and only when the PLAYER says it has ended does the camera move on
+ * to the next. These are the safety nets around that:
+ *
+ *   NARRATION_MOVE_MAX  seconds the camera gets to arrive at an elevation
+ *                       before the clip starts anyway
+ *   NARRATION_GRACE     seconds past a clip's recorded length before the tour
+ *                       moves on without hearing from the player -- blocked
+ *                       autoplay, a failed download, a muted tab -- so a
+ *                       narration can never hold the tour forever
+ *   NARRATION_GAP       a breath between one clip and the next
+ *   NARRATION_SMOOTH    the camera's spring between elevations: quicker than
+ *                       the companion camera, because the visitor is waiting
+ *                       for the next thing the shop says
+ */
+const NARRATION_MOVE_MAX = 3.5;
+const NARRATION_GRACE = 2.5;
+const NARRATION_GAP = 0.45;
+const NARRATION_SMOOTH = 0.55;
+/** Yaws to try, in order, when an elevation's camera would be in a wall. */
+const NARRATION_YAW_TRIES = [0, 20, -20, 40, -40, 60, -60, 90, -90, 135, -135];
+/** How much of the wanted distance must be clear for an angle to be used as is. */
+const NARRATION_CLEAR_SHARE = 0.85;
+/** Never closer than this to what is being shown, whatever the walls say. */
+const NARRATION_MIN_DISTANCE = 0.8;
 
 /**
  * Heights at which the forward ray is fired.
@@ -537,7 +569,9 @@ export function createTourController(options = {}) {
    * which is better than tuning the lag until it usually misses.
    */
   const showWalker = () => {
-    character.visible = active && wantCharacter && view.showCharacter && !crowded;
+    // Hidden while a shop's narration has the camera: the shot is of the
+    // product from an elevation, and she would be standing in front of it.
+    character.visible = active && wantCharacter && view.showCharacter && !crowded && !narrationView;
   };
   /** The camera has been pushed in against the head. See HIDE_WITHIN. */
   let crowded = false;
@@ -585,6 +619,14 @@ export function createTourController(options = {}) {
   // read by the next. See VIEW_SETTLED_ANGLE.
   let settleWait = 0;
   let viewSettled = false;
+
+  // -- Narration ------------------------------------------------------------
+  // A shop talking the visitor through a product, clip by clip. `narr` is
+  // where in it the tour is; `narrationView` is where the camera stands for
+  // the current clip (null: the camera is the companion, as usual).
+  let narr = null;
+  let narrationView = null;
+  let onNarrate = null;
 
   // -- The stall guard ----------------------------------------------------
   // How long the walk has been failing to get closer to the waypoint it is
@@ -1146,6 +1188,19 @@ export function createTourController(options = {}) {
     }
 
     faceTowards(current.point, step);
+
+    // A NARRATED PRODUCT: the shop's clips set the pace, not a dwell. It
+    // starts once she has turned to the piece, as a look would.
+    if (current.narration?.clips?.length && !bodyTurning) {
+      if (!narr || narr.target !== current) startNarration(current);
+      if (runNarration(step)) {
+        showIndex += 1;
+        if (showIndex >= showTargets.length) finishStop();
+        else beginTarget();
+      }
+      return 0;
+    }
+
     // The looking starts once the turn has finished AND the camera has come
     // to rest on the thing. Counting from the moment the turn began spent the
     // time on the turn; counting from when her body stopped still spent most
@@ -1297,6 +1352,126 @@ export function createTourController(options = {}) {
     showTargets = [];
     showIndex = 0;
     showLeft = 0;
+    endNarration();
+  }
+
+  // ---- Narration ---------------------------------------------------------
+
+  /**
+   * Where the camera stands for one clip, in the house.
+   *
+   * The angle is the one the shop recorded from (lib/narration/elevationView,
+   * the same maths as the recording screen). But a sofa against a wall has no
+   * room for a camera behind it, and a "from above" shot meets the ceiling --
+   * so the line from the piece to the camera is checked against the walls and
+   * ceiling, and if it is blocked the nearest clear angle is used instead, or
+   * failing that the camera comes in closer.
+   */
+  function narrationViewFor(target, clip) {
+    const object = target.object;
+    if (!object) return null;
+    const approach = approachOf(object);
+    if (!approach) return null;
+    const box = new THREE.Box3().setFromObject(object);
+    const spec = elevationOf(clip.elevation);
+    const lens = { fov: camera?.fov ?? 55, aspect: camera?.aspect ?? 1.6 };
+
+    let best = null;
+    for (const turn of NARRATION_YAW_TRIES) {
+      const view = elevationView(
+        { box, front: approach.front },
+        { ...spec, yaw: spec.yaw + turn },
+        lens
+      );
+      const clear = Math.min(
+        clearDistance(view.target, view.eye),
+        insideRoom(target.roomRect, view.target, view.eye)
+      );
+      const share = clear / view.distance;
+      if (!best || share > best.share) best = { view, clear, share };
+      if (share >= NARRATION_CLEAR_SHARE) break;
+    }
+
+    const { view, clear } = best;
+    const reach = Math.max(Math.min(view.distance, clear), Math.min(NARRATION_MIN_DISTANCE, view.distance));
+    const dir = view.eye.clone().sub(view.target).normalize();
+    return {
+      eye: view.target.clone().addScaledVector(dir, reach),
+      target: view.target.clone(),
+    };
+  }
+
+  /**
+   * How far from `from` towards `to` before leaving the room's floor plan,
+   * less a margin. Walls alone are not enough: a doorway is a gap in them.
+   */
+  function insideRoom(rect, from, to) {
+    const length = from.distanceTo(to);
+    if (!rect) return length;
+    const margin = 0.3;
+    const [x0, z0, x1, z1] = [rect[0] + margin, rect[1] + margin, rect[2] - margin, rect[3] - margin];
+    const dx = (to.x - from.x) / length;
+    const dz = (to.z - from.z) / length;
+    let reach = length;
+    // Leaving through each side of the rectangle, along the ray.
+    if (dx > 1e-6) reach = Math.min(reach, (x1 - from.x) / dx);
+    if (dx < -1e-6) reach = Math.min(reach, (x0 - from.x) / dx);
+    if (dz > 1e-6) reach = Math.min(reach, (z1 - from.z) / dz);
+    if (dz < -1e-6) reach = Math.min(reach, (z0 - from.z) / dz);
+    return Math.max(0, reach);
+  }
+
+  /** How far from `from` towards `to` before a wall or the ceiling, less a margin. */
+  function clearDistance(from, to) {
+    const dir = to.clone().sub(from);
+    const length = dir.length();
+    if (!cameraObstacles.length || length < 1e-4) return length;
+    dir.divideScalar(length);
+    camRay.set(from, dir);
+    camRay.far = length;
+    const hits = camRay.intersectObjects(cameraObstacles, true);
+    return hits.length ? Math.max(0, hits[0].distance - 0.25) : length;
+  }
+
+  function startNarration(target) {
+    narr = { target, index: 0, phase: "moving", wait: 0, left: 0 };
+    narrationView = narrationViewFor(target, target.narration.clips[0]);
+    showWalker();
+  }
+
+  /** One frame of narration. True once the last clip is done. */
+  function runNarration(step) {
+    const clips = narr.target.narration.clips;
+    if (narr.phase === "moving") {
+      narr.wait += step;
+      // Talk once the camera has arrived -- or soon anyway.
+      if ((narr.wait > 0.3 && viewSettled) || narr.wait >= NARRATION_MOVE_MAX) {
+        narr.phase = "playing";
+        const clip = clips[narr.index];
+        narr.left = (clip.durationMs ?? 0) / 1000 + NARRATION_GRACE;
+        onNarrate?.(narr.target, narr.index, clip);
+      }
+      return false;
+    }
+    narr.left -= step;
+    if (narr.left > 0) return false;
+
+    narr.index += 1;
+    if (narr.index >= clips.length) {
+      endNarration();
+      return true;
+    }
+    narr.phase = "moving";
+    narr.wait = 0;
+    narrationView = narrationViewFor(narr.target, clips[narr.index]);
+    return false;
+  }
+
+  function endNarration() {
+    if (!narr && !narrationView) return;
+    narr = null;
+    narrationView = null;
+    showWalker();
   }
 
   /**
@@ -1435,6 +1610,12 @@ export function createTourController(options = {}) {
     pauseRoute() {
       if (!active || routeHeld) return false;
       routeHeld = true;
+      // A paused narration is replayed from the start of the clip on resume:
+      // half a sentence with no beginning is worse than hearing it twice.
+      if (narr) {
+        narr.phase = "moving";
+        narr.wait = 0;
+      }
       keys.clear();
       input.forward = 0;
       input.turn = 0;
@@ -1449,6 +1630,10 @@ export function createTourController(options = {}) {
       if (!active || !routeHeld) return false;
       routeHeld = false;
       focus = null;
+      if (narr && !narrationView) {
+        narrationView = narrationViewFor(narr.target, narr.target.narration.clips[narr.index]);
+        showWalker();
+      }
       if (visitFrom && Math.hypot(position.x - visitFrom.x, position.z - visitFrom.z) > 0.3) {
         task = goTo(planPath(position, visitFrom) ?? [visitFrom.clone()]);
       } else if (task?.owner === "visit") {
@@ -1476,6 +1661,11 @@ export function createTourController(options = {}) {
      * @returns {boolean} whether there is a walk to take
      */
     visit({ point, approach: spec = null, standAt = null } = {}) {
+      // The visitor has asked to see something else: the camera is theirs.
+      if (narrationView) {
+        narrationView = null;
+        showWalker();
+      }
       if (!active || !point) return false;
       if (route && !routeHeld) routeHeld = true;
       if (route && !visitFrom) visitFrom = position.clone();
@@ -1635,6 +1825,31 @@ export function createTourController(options = {}) {
       return route && stopState === "show" ? showTargets[showIndex] ?? null : null;
     },
 
+    /**
+     * The shop narration in progress: which product, which clip, and whether
+     * it is playing or the camera is still on its way. Null when none.
+     */
+    get narrating() {
+      if (!narr) return null;
+      return {
+        target: narr.target,
+        index: narr.index,
+        count: narr.target.narration.clips.length,
+        clip: narr.target.narration.clips[narr.index],
+        playing: narr.phase === "playing" && !routeHeld,
+      };
+    },
+
+    /**
+     * The player says the current clip has finished: move on after a breath,
+     * rather than waiting out the safety margin. Ignored unless a clip is
+     * actually playing, so a late event from a clip already skipped cannot
+     * cut the next one short.
+     */
+    narrationClipEnded() {
+      if (narr?.phase === "playing") narr.left = Math.min(narr.left, NARRATION_GAP);
+    },
+
     /** Which stop the tour is at, for the UI. */
     get stop() {
       return route ? route[Math.min(routeIndex, route.length - 1)] : null;
@@ -1656,7 +1871,7 @@ export function createTourController(options = {}) {
      *        called as each advertised thing is turned to, so the advert on
      *        screen is the one being looked at.
      */
-    followRoute(waypoints, arrived = null, { showcase: showing = null, onShow: shown = null } = {}) {
+    followRoute(waypoints, arrived = null, { showcase: showing = null, onShow: shown = null, onNarrate: narrate = null } = {}) {
       if (!waypoints?.length) return;
       if (!active) this.enter();
 
@@ -1673,6 +1888,7 @@ export function createTourController(options = {}) {
       onArrive = arrived;
       showcase = showing;
       onShow = shown;
+      onNarrate = narrate;
 
       // START FROM WHERE SHE IS, AND HEAD FOR THE HOUSE. Not simply the
       // nearest waypoint -- that is often on the far side of a wall -- but
@@ -1690,6 +1906,7 @@ export function createTourController(options = {}) {
       route = null;
       onArrive = null;
       onShow = null;
+      onNarrate = null;
       showcase = null;
       stopState = null;
       trail = [];
@@ -1976,13 +2193,24 @@ export function createTourController(options = {}) {
         pulledIn = true;
       }
 
+      // A SHOP'S NARRATION HAS THE CAMERA: it stands at the elevation the
+      // current clip talks about, already checked against the walls (see
+      // `narrationViewFor`), and looks at the piece.
+      if (narrationView && !firstPerson) {
+        camTarget.copy(narrationView.eye);
+        lookPoint.copy(narrationView.target);
+        pulledIn = false;
+      }
+
       // SPRINGS, NOT LERPS. A lerp moves a fixed share of the distance each
       // frame, so it leaves at full speed and crawls in; a critically damped
       // spring gathers speed and settles, which is how a person carrying a
       // camera moves. A wall pulling the camera in gets a much quicker one,
       // or the camera would drift through the wall on its way.
       const closing = pulledIn && camTarget.distanceTo(head) < camera.position.distanceTo(head);
-      const settle = firstPerson ? 0.06 : closing ? 0.06 : CAM_POSITION_SMOOTH;
+      const settle = firstPerson ? 0.06
+        : narrationView ? NARRATION_SMOOTH
+        : closing ? 0.06 : CAM_POSITION_SMOOTH;
       camera.position.x = smoothDamp(camera.position.x, camTarget.x, camVelocity.x, settle, step);
       camera.position.y = smoothDamp(camera.position.y, camTarget.y, camVelocity.y, settle, step);
       camera.position.z = smoothDamp(camera.position.z, camTarget.z, camVelocity.z, settle, step);
@@ -1990,7 +2218,7 @@ export function createTourController(options = {}) {
       // WHERE THE CAMERA IS POINTED: ahead while walking -- the room, not
       // the back of someone's head -- and at the thing itself while looking
       // at something, drifting onto it rather than snapping.
-      const aimSmooth = looking ? AIM_SMOOTH_LOOK : AIM_SMOOTH_WALK;
+      const aimSmooth = narrationView ? NARRATION_SMOOTH : looking ? AIM_SMOOTH_LOOK : AIM_SMOOTH_WALK;
       aim.x = smoothDamp(aim.x, lookPoint.x, aimVelocity.x, aimSmooth, step);
       aim.y = smoothDamp(aim.y, lookPoint.y, aimVelocity.y, aimSmooth, step);
       aim.z = smoothDamp(aim.z, lookPoint.z, aimVelocity.z, aimSmooth, step);
