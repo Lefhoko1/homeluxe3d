@@ -200,14 +200,11 @@ SHRUBS = (
 PLANTS = TREES + SHRUBS
 
 # --------------------------------------------------------------------------
-# Boundary treatment: hedge inside the fence line on three sides.
-# The street frontage is left open apart from the fence.
+# Boundary treatment: the fence alone. The clipped hedges that used to run
+# inside it on three sides are gone -- the boundary is the fence, and the
+# hedges hid it. `HedgeRun` stays in site.py if one is ever wanted back.
 # --------------------------------------------------------------------------
-HEDGES = [
-    HedgeRun("hedge.north", (-9200.0, 25200.0), (23200.0, 25200.0), 800.0, 1600.0),
-    HedgeRun("hedge.east", (23200.0, -13200.0), (23200.0, 25200.0), 800.0, 1600.0),
-    HedgeRun("hedge.west", (-9200.0, -13200.0), (-9200.0, 25200.0), 800.0, 1600.0),
-]
+HEDGES: list[HedgeRun] = []
 
 FENCES = [
     FenceRun("fence.north", (-9900.0, 25900.0), (23900.0, 25900.0)),

@@ -73,7 +73,6 @@ export const SITE_PARTS = [
   { id: "pool",          file: "pool.glb",          label: "Pool",           visible: true, castShadow: false, receiveShadow: true },
   { id: "pool_fence",    file: "pool_fence.glb",    label: "Pool barrier",   visible: true, castShadow: true,  receiveShadow: false },
   { id: "yard_planting", file: "yard_planting.glb", label: "Planting",       visible: true, castShadow: true,  receiveShadow: true },
-  { id: "yard_hedges",   file: "yard_hedges.glb",   label: "Hedges",         visible: true, castShadow: true,  receiveShadow: true },
   { id: "yard_fence",    file: "yard_fence.glb",    label: "Boundary fence", visible: true, castShadow: true,  receiveShadow: true },
 ];
 

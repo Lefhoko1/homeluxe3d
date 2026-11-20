@@ -574,7 +574,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // the manifest and stays a raycast. Planting is included for its tree
         // trunks; the canopies sit above 2m so the walk rays never reach them.
         const obstacles = [
-          ...['porch', 'pool_fence', 'yard_fence', 'yard_hedges',
+          ...['porch', 'pool_fence', 'yard_fence',
               'yard_planting', 'yard_trees'].map(part).filter(Boolean),
         ];
 
@@ -692,6 +692,17 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // The ways through the house, so "show me" can walk to another room
         // before any guided tour has run. See `visit` in TourController.
         tourRef.current?.setNetwork(routeRef.current?.waypoints);
+
+        // SHE STARTS AT THE GATE. TOUR_START was a hand-measured guess at the
+        // driveway; the route's first point is where the solver says the walk
+        // begins -- the street end of the drive -- so standing her there means
+        // the first step of every tour is towards the house, never away.
+        const wps = routeRef.current?.waypoints;
+        if (wps?.length > 1) {
+          const ahead = wps.find((w, i) => i > 0 &&
+            Math.hypot(w.position[0] - wps[0].position[0], w.position[1] - wps[0].position[1]) > 0.5);
+          tour.placeAt(wps[0].position, ahead?.position ?? null);
+        }
 
         // Deep link: /#tour drops the visitor straight onto the driveway.
         // Handy for "take the tour" links in an advert.

@@ -92,17 +92,32 @@ const BONE_NAMES = {
 /** Hip to sole, model metres. What the body dips by is worked out from it. */
 const LEG_LENGTH = 0.88;
 
-/** Radians each leg swings either side of straight, at a normal walk. */
-const LEG_SWING = 0.36;
-/** And each arm, against the leg on its own side. */
-const ARM_SWING = 0.3;
+/**
+ * Radians each leg swings either side of straight, at a normal walk.
+ *
+ * Sized to the cycle below: a 1.55m figure's leg is about 0.8m from hip to
+ * heel, and two legs at +/-0.34 rad put the feet ~0.53m apart -- half a
+ * 1.07m cycle, so the planted foot does not skate.
+ */
+const LEG_SWING = 0.34;
+/**
+ * And each arm, against the leg on its own side. Kept small: big, slow arm
+ * swings are what made the walk read as lumbering -- a giant's walk.
+ */
+const ARM_SWING = 0.2;
 
 /**
  * Metres covered by one full cycle -- left step and right step -- as a
  * function of speed. People lengthen their stride as they speed up as well
- * as stepping faster: about 1.25m per cycle at a stroll, 1.6m at a brisk walk.
+ * as stepping faster.
+ *
+ * SIZED FOR HER, NOT FOR A 1.85m MODEL. The figure stands 1.55m in the house,
+ * and a woman that height strolling at 1 m/s takes about 115-120 steps a
+ * minute -- a cycle of ~1.07m. This used to be 1.28m at the tour's pace,
+ * which is 98 steps a minute: long, slow, heavy strides, which on screen is
+ * exactly how a giant walks.
  */
-const cycleLength = (speed) => 1.05 + 0.22 * Math.min(speed, 2.5);
+const cycleLength = (speed) => 0.78 + 0.28 * Math.min(speed, 2.5);
 
 /** The speed a "normal" stride is sized for, m/s. */
 const STRIDE_SPEED = 1.05;
@@ -112,7 +127,7 @@ const STRIDE_SPEED = 1.05;
  * drop the hips 5cm at full stride; knees absorb most of it, and 2-3cm is
  * what reads as a walk rather than a bounce.
  */
-const DIP_SHARE = 0.55;
+const DIP_SHARE = 0.35;
 
 /** Radians the head may turn from the body, and tilt up and down. */
 const HEAD_YAW = 1.05;

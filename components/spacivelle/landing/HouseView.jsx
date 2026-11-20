@@ -229,12 +229,23 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
       return undefined;
     }
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 1.5, not 2. There are TWO of these on the front page, and at 2x a
+    // retina laptop draws four times the pixels of 1x on every frame -- for a
+    // backdrop that sits under text and a gradient. 1.5 is indistinguishable
+    // there and a little over half the fill.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.18;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // SHADOWS ARE DRAWN ONCE, NOT EVERY FRAME. Nothing here moves but the
+    // camera: the sun is fixed, the house and the furniture stand still, and
+    // a shadow map does not depend on where you look from. Re-rendering the
+    // whole house into a 4096px depth map sixty times a second, in two
+    // canvases at once, was most of what made the page stutter on scroll.
+    // `kit.shadowsDirty` asks for one fresh pass when something is added.
+    renderer.shadowMap.autoUpdate = false;
 
     const scene = new THREE.Scene();
 
@@ -265,6 +276,11 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
       dragging: false,
       lastX: 0,
       velocity: 0,
+      // Rendering only happens while the canvas is on screen and the tab is
+      // showing. See `wake` and `sleep`.
+      onScreen: true,
+      shadowsDirty: true,
+      lastFrame: 0,
     };
 
     sceneRef.current = { camera, kit };
@@ -302,6 +318,7 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
 
         scene.add(house);
         kit.house = house;
+        kit.shadowsDirty = true;
 
         setStage('products');
         const { group, placed } = await loadProducts({
@@ -318,6 +335,7 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
 
         house.add(group);
         kit.products = group;
+        kit.shadowsDirty = true;
 
         // THE PAINT AND THE TILE, exactly as the showroom applies them. Skip
         // this and the front page shows white plaster in rooms the showroom
@@ -402,8 +420,20 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
 
     const swung = new THREE.Vector3();
 
-    const tick = () => {
+    // Below this the camera is only drifting, and 30 frames a second of a
+    // drift this slow is indistinguishable from 60 -- at half the cost.
+    const IDLE_FRAME_MS = 1000 / 30;
+
+    const tick = (now = performance.now()) => {
       kit.raf = requestAnimationFrame(tick);
+
+      const flinging = kit.dragging || Math.abs(kit.velocity) > 0.0002;
+
+      if (!flinging && !kit.shadowsDirty && now - kit.lastFrame < IDLE_FRAME_MS) return;
+      // In 60ths of a second, so the drift is the same speed at any rate.
+      const frames = kit.lastFrame ? Math.min((now - kit.lastFrame) / (1000 / 60), 4) : 1;
+
+      kit.lastFrame = now;
 
       if (!kit.dragging) {
         if (Math.abs(kit.velocity) > 0.0002) {
@@ -412,8 +442,13 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
         } else if (!still) {
           // A drift, not an orbit. Slow enough that it reads as the room
           // breathing rather than as a carousel.
-          kit.swing += 0.00045;
+          kit.swing += 0.00045 * frames;
         }
+      }
+
+      if (kit.shadowsDirty) {
+        renderer.shadowMap.needsUpdate = true;
+        kit.shadowsDirty = false;
       }
 
       // The eye, swung a little round whatever it is looking at.
@@ -435,12 +470,41 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
       renderer.render(scene, camera);
     };
 
-    tick();
+    // ONLY DRAW WHAT CAN BE SEEN. The loop used to run from the moment the
+    // house loaded until the page closed -- including the whole time this
+    // canvas was scrolled out of view, and in a background tab. Both canvases
+    // were rendering while the visitor scrolled the text between them.
+    const sleep = () => {
+      cancelAnimationFrame(kit.raf);
+      kit.raf = 0;
+    };
+    const wake = () => {
+      if (kit.raf || kit.disposed || !kit.onScreen || document.hidden) return;
+      kit.lastFrame = 0;
+      tick();
+    };
+    const onVisibility = () => (document.hidden ? sleep() : wake());
+
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const screenWatch = typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver((entries) => {
+        kit.onScreen = entries.some((e) => e.isIntersecting);
+        if (kit.onScreen) wake();
+        else sleep();
+      });
+
+    screenWatch?.observe(holder);
+
+    wake();
 
     return () => {
       cancelled = true;
       kit.disposed = true;
-      cancelAnimationFrame(kit.raf);
+      sleep();
+      screenWatch?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
       sizeWatch.disconnect();
 
       canvas.removeEventListener('pointerdown', down);

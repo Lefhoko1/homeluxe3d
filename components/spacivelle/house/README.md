@@ -138,7 +138,7 @@ Everything is raycasts, no physics engine:
 - **Obstacles** — rays along the direction of travel at **three heights**
   (shin, waist, chest). One chest-height ray walks straight through a coffee
   table, because there is nothing at chest height to hit. Walls, fences,
-  hedges, tree trunks and all furniture are included.
+  tree trunks and all furniture are included.
 - **Because walls were built as piers, sills and lintels** rather than solid
   panels with holes cut in them, **doorways are real gaps in the geometry** —
   walking through a door needs no door logic at all.

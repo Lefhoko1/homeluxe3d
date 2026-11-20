@@ -67,8 +67,12 @@ import {
 } from "./easing.js";
 import { createGait, rigCharacter } from "./gait.js";
 
-/** Metres per second. A relaxed walking pace, not a sprint. */
-export const WALK_SPEED = 2.4;
+/**
+ * Metres per second when the visitor steers. A brisk walk. This was 2.4,
+ * which is a jog, and the legs -- capped at a full stride -- could only keep
+ * up by swinging slowly through huge arcs: a giant's walk.
+ */
+export const WALK_SPEED = 1.5;
 
 /** Radians per second when turning on the spot. */
 export const TURN_SPEED = 2.2;
@@ -76,8 +80,8 @@ export const TURN_SPEED = 2.2;
 /**
  * The GUIDED tour moves slower than a person driving themselves.
  *
- * 2.4 m/s is a brisk walk -- right when you are steering, because you already
- * know where you are going. Being driven at it is useless: the whole house
+ * WALK_SPEED is a brisk walk -- right when you are steering, because you
+ * already know where you are going. Being driven at it is useless: the whole house
  * goes by in about a minute and you cannot take in a single room. An estate
  * agent walks a client through at closer to 1 m/s and stops talking in each
  * room, which is what these two numbers are for.
@@ -87,7 +91,7 @@ export const GUIDED_TURN_SPEED = 0.8;
 
 /**
  * How far ahead to check for the things that are NOT in the collision
- * manifest: the yard's fences, hedges and tree trunks.
+ * manifest: the yard's fences and tree trunks.
  *
  * The building is a volume test now, so this no longer has anything to do
  * with walls or with the route's clearance. It is only ever used while the
@@ -431,7 +435,7 @@ export function createTourController(options = {}) {
      */
     walkVolume = null,
     /**
-     * The yard: fences, hedges, tree trunks, the porch. Geometry the plan
+     * The yard: fences, tree trunks, the porch. Geometry the plan
      * knows nothing about, so it cannot be in the manifest -- these stay a
      * raycast. Only tested while the visitor is steering, since the guided
      * route never leaves the paved approach.
@@ -781,7 +785,7 @@ export function createTourController(options = {}) {
     // rectangles, which cannot be stepped over in a long frame and cannot
     // stick. See tour/collision.js for why a ray could never do that job.
     //
-    // What is left is the yard: fences, hedges, tree trunks. That geometry is
+    // What is left is the yard: fences, tree trunks. That geometry is
     // not in the plan, so it cannot be in the manifest, and it is only ever
     // in the way when the visitor is steering -- the guided route walks up
     // the drive and goes indoors.
@@ -1279,10 +1283,56 @@ export function createTourController(options = {}) {
     clearShowcase();
 
     if (routeIndex >= route.length) {
-      // Loop: the route ends where it began.
-      routeIndex = 0;
+      // Loop -- but from the first ROOM, not from the street. The route's
+      // opening waypoints are the walk up the drive, and going round again
+      // from index 0 sent her out of the front door, down to the gate and
+      // back in again: a walk away from the house, which a tour never does.
+      routeIndex = firstRoomIndex(route);
       route.forEach((point) => { point.done = false; });
     }
+  }
+
+  /** Index of the first stop that is a room, i.e. the first one indoors. */
+  function firstRoomIndex(points) {
+    const index = points.findIndex((point) => point.room);
+    return index > 0 ? index : 0;
+  }
+
+  /**
+   * Where along the route to start, from where she is standing now.
+   *
+   * NEVER BACKWARDS. The route opens with the walk up the drive, and starting
+   * at index 0 regardless of where she stood made her turn round and walk to
+   * the street before walking to the house. So:
+   *
+   *  - Outside (on the approach): the furthest lead-in point she can walk to
+   *    in a straight line. On the drive that is the front door itself, so
+   *    the tour sets off towards the house from wherever she is.
+   *  - Anywhere else (she has walked indoors herself): the nearest point of
+   *    the route she can reach directly, so the tour carries on from the
+   *    room she is in rather than sending her outside to begin again.
+   *
+   * `lineClear` is what keeps this safe: the nearest point by distance is
+   * often on the far side of a wall, and is never chosen unless she can
+   * actually walk to it.
+   */
+  function startIndexFrom(points, from) {
+    const firstStop = points.findIndex((point) => point.dwell);
+    const leadIn = firstStop >= 0 ? firstStop : 0;
+    for (let i = leadIn; i >= 0; i -= 1) {
+      if (lineClear(from, points[i].position[0], points[i].position[1])) return i;
+    }
+
+    let best = -1;
+    let bestDistance = Infinity;
+    points.forEach((point, index) => {
+      const d = Math.hypot(point.position[0] - from.x, point.position[1] - from.z);
+      if (d < bestDistance && lineClear(from, point.position[0], point.position[1])) {
+        best = index;
+        bestDistance = d;
+      }
+    });
+    return best >= 0 ? best : 0;
   }
 
   /**
@@ -1416,6 +1466,23 @@ export function createTourController(options = {}) {
 
     get position() {
       return position.clone();
+    },
+
+    /**
+     * Stand her somewhere before the tour begins -- the gate, as loaded from
+     * the route -- facing the way she will walk. Ignored once walking, so it
+     * can never yank her across the site mid-tour.
+     *
+     * @param {number[]} at      [x, z] world metres
+     * @param {number[]} [toward] [x, z] she should face
+     */
+    placeAt(at, toward = null) {
+      if (active || !at) return;
+      position.set(at[0], position.y, at[1]);
+      if (toward) {
+        heading = Math.atan2(toward[0] - at[0], -(toward[1] - at[1]));
+        camYaw = heading;
+      }
     },
 
     /** Enter walk mode: park the character, take over the camera. */
@@ -1565,15 +1632,15 @@ export function createTourController(options = {}) {
       showcase = showing;
       onShow = shown;
 
-      // ALWAYS START AT THE BEGINNING. Snapping to the nearest waypoint looks
-      // like a saving and is a trap: every waypoint is indoors, the visitor
-      // starts on the driveway, and the nearest one is on the far side of the
-      // front wall -- so the tour would set off diagonally and press itself
-      // against the outside of the house forever.
-      //
-      // The route's first point is in front of the front door precisely so
-      // that walking to it is a clear run across the drive.
-      routeIndex = 0;
+      // START FROM WHERE SHE IS, AND HEAD FOR THE HOUSE. Not simply the
+      // nearest waypoint -- that is often on the far side of a wall -- but
+      // the furthest one along the approach she can walk straight to. See
+      // `startIndexFrom`.
+      routeIndex = startIndexFrom(route, position);
+      // Anything before where she joins has been walked past already.
+      for (let i = 0; i < routeIndex; i += 1) {
+        if (!route[i].dwell) route[i].done = true;
+      }
     },
 
     /** Stop following, but stay in walk mode so the visitor can take over. */
