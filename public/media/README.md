@@ -24,3 +24,14 @@ The screen will play any ordinary video file. To change what is on it, drop
 an `.mp4`, `.webm` or `.m3u8` here and point the product's `texture` at it
 (`blender/spacivelle/catalog/shops/bradlows/__init__.py`), or set the
 variant's `texture_url` from the admin Products screen.
+
+## music/calm-piano.mp3
+
+The showroom's background music: "Calm Piano" by AtlasAudio (file
+`atlasaudio-calm-piano-625686.mp3`), supplied by the site owner. It loops
+under the visit and ducks while a shop's narration plays -- see
+lib/audio/ambientMusic.js. Visitors can switch it off from the ♫ button.
+
+**Licence:** check before launch. The file name matches Pixabay's
+(`artist-title-id.mp3`), whose Content License allows commercial use without
+attribution; if it came from elsewhere, record the licence here.

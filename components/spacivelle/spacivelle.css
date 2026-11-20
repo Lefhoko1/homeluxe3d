@@ -2226,3 +2226,5 @@ body {
   /* Above the bar, and clear of the Browse handle on the left edge. */
   .tour-pad { left: 36px; bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
+/* The music switch, off: dimmed so "off" reads at a glance. */
+.camera-btn.off { opacity: .6; }

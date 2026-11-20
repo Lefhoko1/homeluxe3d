@@ -45,6 +45,10 @@ import { createFocusMarker, markerAimFor } from './tour/marker';
 import ShowcaseCard from './tour/ShowcaseCard';
 import { fetchLiveNarrations } from '../../lib/narration/NarrationService.js';
 import { elevationOf } from '../../lib/narration/elevationView.js';
+import { createAmbientMusic } from '../../lib/audio/ambientMusic.js';
+
+/** The showroom's background music. See public/media/music/README.md. */
+const MUSIC_URL = '/media/music/calm-piano.mp3';
 import {
   AdminBar,
   AdminGate,
@@ -156,6 +160,47 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const narrationShownRef = useRef(false);
   // What the card says while a shop is talking. Null otherwise.
   const [narrationNow, setNarrationNow] = useState(null);
+  // ---- Background music ----------------------------------------------------
+  // A calm loop under the whole visit, ducked whenever a shop is talking.
+  // Starts on the visitor's first tap or key press -- browsers allow no sound
+  // before one -- and the on/off switch is remembered.
+  const musicRef = useRef(null);
+  const [musicOn, setMusicOn] = useState(true);
+  useEffect(() => {
+    const music = createAmbientMusic(MUSIC_URL);
+    musicRef.current = music;
+    let on = true;
+    try { on = window.localStorage.getItem('spacivelle.music.on') !== '0'; } catch { /* default on */ }
+    setMusicOn(on);
+    music.setEnabled(on);
+
+    const begin = () => {
+      music.start();
+      window.removeEventListener('pointerdown', begin);
+      window.removeEventListener('keydown', begin);
+    };
+    window.addEventListener('pointerdown', begin);
+    window.addEventListener('keydown', begin);
+    const onVisibility = () => music.suspend(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('pointerdown', begin);
+      window.removeEventListener('keydown', begin);
+      document.removeEventListener('visibilitychange', onVisibility);
+      music.dispose();
+      musicRef.current = null;
+    };
+  }, []);
+
+  const toggleMusic = () => {
+    const next = !musicOn;
+    setMusicOn(next);
+    musicRef.current?.start();
+    musicRef.current?.setEnabled(next);
+    try { window.localStorage.setItem('spacivelle.music.on', next ? '1' : '0'); } catch { /* ignore */ }
+  };
+
   // MUTE IS REMEMBERED. Read after mount -- the server has no storage.
   const mutedRef = useRef(false);
   const [narrationMuted, setNarrationMuted] = useState(false);
@@ -1491,7 +1536,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // audio sets the pace. If it cannot play, the tour moves on by
         // itself after the clip's length (see NARRATION_GRACE).
         onNarrate: (target, index, clip) => {
-          if (!narrationAudioRef.current) narrationAudioRef.current = new Audio();
+          if (!narrationAudioRef.current) {
+            const player = new Audio();
+            // THE MUSIC STEPS ASIDE FOR THE SHOP. Down while a clip is
+            // audibly playing, back up when it stops, ends or fails.
+            const duck = () => musicRef.current?.duck(!player.paused && !player.muted);
+            ['play', 'playing', 'pause', 'ended', 'error', 'volumechange'].forEach((type) =>
+              player.addEventListener(type, duck));
+            narrationAudioRef.current = player;
+          }
           const audio = narrationAudioRef.current;
           audio.pause();
           audio.onended = () => tourRef.current?.narrationClipEnded();
@@ -1621,6 +1674,22 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     return () => clearInterval(id);
   }, [guided]);
 
+  // The music switch: in the corner with the view buttons, and alone there
+  // during a tour (when the view buttons give way to the tour's own).
+  const musicButton = (
+    <button
+      type="button"
+      className={`camera-btn${musicOn ? '' : ' off'}`}
+      onClick={toggleMusic}
+      aria-pressed={musicOn}
+      aria-label={musicOn ? 'Turn the music off' : 'Turn the music on'}
+      title={musicOn ? 'Turn the music off' : 'Turn the music on'}
+    >
+      {musicOn ? '♫' : '🔇'}
+    </button>
+  );
+
+
   return (
     <div id="canvas-container" className={isAdmin ? 'admin' : undefined}>
       {/* Both of these belong to orbiting. While the tour is walking, the
@@ -1706,8 +1775,13 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           wired; the other three are gone.
           Hidden entirely while walking: the tour has its own controls, and
           these belong to orbiting. */}
+      {touring && (
+        <div className="camera-controls">{musicButton}</div>
+      )}
+
       {!touring && (
         <div className="camera-controls">
+          {musicButton}
           <button
             type="button"
             className="camera-btn"
