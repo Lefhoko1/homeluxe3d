@@ -149,6 +149,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const pickedNodeRef = useRef(null);
   // Where on it the visitor clicked, so the focus marker lands there.
   const pickedPointRef = useRef(null);
+  // A clicked floor or wall: {mesh, point}. Kept apart from pickedNodeRef,
+  // which the admin's move gizmo attaches to -- a floor is not for moving.
+  const pickedSurfaceRef = useRef(null);
 
   // ---- Shop narration ------------------------------------------------------
   // Published narrations by product id. Filled after the house loads; the
@@ -526,6 +529,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
             const mesh = surfaceHits[0]?.object;
             const product = mesh && finishByMaterial.get(mesh.material?.name);
             if (product) {
+              pickedSurfaceRef.current = { mesh, point: surfaceHits[0].point.clone() };
               // floors.living -> living ; wall.master -> master
               const room = mesh.name?.split('.')[1] ?? null;
               // A finish has no placement of its own in the scene graph, so
@@ -534,6 +538,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
             }
           }
 
+          if (!picked || pickedNode) pickedSurfaceRef.current = null;
           if (!picked) {
             setAdvert(null);
             pickedNodeRef.current = null;
@@ -725,11 +730,19 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           return /^wall/i.test(spec.surface ?? '') ? 'wall' : 'floor';
         };
 
+        // The surface itself, so the tour can light the line round the room's
+        // floor or its painted walls while it shows the tile or the paint.
+        // One mesh per room: floors.<room>, wall.<room>.
+        const surfaceMesh = (kind, room) =>
+          kind === 'floor' ? house.getObjectByName(`floors.${room}`)
+            : kind === 'wall' ? house.getObjectByName(`wall.${room}`)
+              : null;
         const finishAdverts = finishSpecs
           .filter((spec) => spec.product && spec.room && spec.room !== 'exterior')
           .map((spec) => ({
             room: spec.room,
             kind: finishKind(spec),
+            object: surfaceMesh(finishKind(spec), spec.room) ?? null,
             advert: {
               ...advertFor(spec.product, { room: spec.room }),
               isFinish: true,
@@ -941,16 +954,26 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       // has no shape of its own: an empty position for sale, a door hinge.
       if (tourRef.current?.touring) {
         const target = tourRef.current.showing;
+        const flat = target?.kind === 'floor' || target?.kind === 'wall';
         if (target?.object) {
-          focusOutline.aim(target.object);
+          // A tile or a paint: the line runs round that room's floor, or its
+          // painted walls, centred on the patch she is looking at.
+          focusOutline.aim(target.object, flat ? { surface: true, center: target.point } : {});
           focusMarker.aim(null);
         } else {
           const aimAt = markerAimFor(target);
           focusOutline.aim(null);
           focusMarker.aim(aimAt?.what ?? null, aimAt?.at ?? null);
         }
-      } else {
+      } else if (pickedNodeRef.current) {
         focusOutline.aim(pickedNodeRef.current);
+        focusMarker.aim(null);
+      } else if (pickedSurfaceRef.current) {
+        const { mesh, point } = pickedSurfaceRef.current;
+        focusOutline.aim(mesh, { surface: true, center: point });
+        focusMarker.aim(null);
+      } else {
+        focusOutline.aim(null);
         focusMarker.aim(null);
       }
       focusMarker.update(delta, camera);
@@ -1370,6 +1393,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       node.traverse((child) => { if (child.isMesh) child.geometry?.dispose(); });
       pickedNodeRef.current = null;
       pickedPointRef.current = null;
+      pickedSurfaceRef.current = null;
       setAdvert(null);
       remeasureFurniture();
       onSelectRef.current?.(null);
@@ -1434,6 +1458,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       group.add(instance);
       pickedNodeRef.current = instance;
       pickedPointRef.current = null;
+      pickedSurfaceRef.current = null;
       setAdvert({ ...instance.userData });
       editorRef.current?.attach(instance);
       editorRef.current?.setMode('translate');

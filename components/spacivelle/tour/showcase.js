@@ -196,6 +196,8 @@ function surfaceTargets(room, from, finishes, fittings, ceiling, doors) {
       dwell: SURFACE_DWELL,
       advert: floorFinish.advert,
       caption: floorFinish.advert?.name ?? "Floor",
+      // The room's floor mesh, for the line of light round it.
+      object: floorFinish.object ?? null,
     });
   }
 
@@ -225,6 +227,8 @@ function surfaceTargets(room, from, finishes, fittings, ceiling, doors) {
       dwell: SURFACE_DWELL,
       advert: wallFinish.advert,
       caption: wallFinish.advert?.name ?? "Walls",
+      // The room's painted walls, for the line of light along them.
+      object: wallFinish.object ?? null,
     });
   }
 

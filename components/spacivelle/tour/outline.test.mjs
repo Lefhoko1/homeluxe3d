@@ -134,4 +134,41 @@ import { createFocusOutline, outlineGeometryFor } from "./outline.js";
   console.log(`  ok  a light runs round the piece, a lap every ~3s, lighting ${Math.round(u.arc.value / Math.PI * 180)} degrees of it at a time, centred on the piece as the camera moves`);
 }
 
+// 5. A FLAT SURFACE -- a room's floor -- seen from standing height. Its line
+// is pushed away from the point being looked at, not along its normal (which
+// points at the camera and would open no ring), and the light goes round
+// that point.
+{
+  const scene = new THREE.Scene();
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4), new THREE.MeshStandardMaterial());
+  floor.rotation.x = -Math.PI / 2;
+  floor.name = "floors.living";
+  scene.add(floor);
+  scene.updateMatrixWorld(true);
+  const camera = new THREE.PerspectiveCamera(55, 1.6, 0.1, 100);
+  camera.position.set(0, 1.6, 1.8);
+  const look = new THREE.Vector3(0, 0.02, 0.1);
+  camera.lookAt(look);
+  camera.updateMatrixWorld(true);
+
+  const outline = createFocusOutline();
+  outline.aim(floor, { surface: true, center: look });
+  let ring;
+  floor.traverse((o) => { if (o.userData.outlineHelper && o.material.uniforms) ring = o; });
+  ring.material.uniforms.resolution.value.set(1600, 1000);
+  outline.update(0.016, camera);
+  const u = ring.material.uniforms;
+  assert.equal(u.radial.value, 1, "a surface is pushed away from the centre, not along its normal");
+  assert.equal(ring.geometry, floor.geometry, "and needs no welded copy");
+  const p = look.clone().project(camera);
+  assert.ok(Math.abs(u.centerNdc.value.x - p.x) < 1e-6 && Math.abs(u.centerNdc.value.y - p.y) < 1e-6, "centred on the patch being looked at");
+
+  // Same floor, aimed as furniture: the normal push, on the welded copy.
+  outline.aim(floor);
+  floor.traverse((o) => { if (o.userData.outlineHelper && o.material.uniforms) ring = o; });
+  assert.equal(ring.material.uniforms.radial.value, 0, "furniture still pushes along its normals");
+  outline.dispose();
+  console.log("  ok  a floor or a wall's paint gets the light too: pushed out from the patch being looked at, which it runs round");
+}
+
 console.log("outline: ok");

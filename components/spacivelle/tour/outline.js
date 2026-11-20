@@ -31,6 +31,13 @@
  * Where the light is, is decided by the ANGLE round the piece's centre on
  * screen -- so it runs round any shape, following it exactly.
  *
+ * SURFACES TOO -- a floor tile, a wall's paint. Those meshes are FLAT
+ * sheets, and a flat sheet's normal points at the camera, not sideways, so
+ * pushing along it opens no ring. For a surface the line is pushed instead
+ * AWAY FROM THE POINT BEING LOOKED AT, on screen: the floor's far edges move
+ * up onto the walls, a wall's top edge onto the ceiling. The light then runs
+ * round the room's floor, or along the painted walls' edges.
+ *
  * The renderer must be created with `stencil: true` (three.js turned the
  * stencil buffer off by default); without one, the line is drawn round the
  * whole piece, over it -- still a highlight, just not a crisp one.
@@ -111,6 +118,11 @@ function lineMaterial(uniforms) {
     transparent: true,
     depthWrite: false,
     depthTest: true,
+    // Pulled a hair towards the camera: where a floor meets a wall, the line
+    // lies at the same depth as the wall it is drawn over and would flicker.
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -4,
     side: THREE.DoubleSide,
     stencilWrite: true,
     stencilRef: STENCIL_REF,
@@ -121,12 +133,20 @@ function lineMaterial(uniforms) {
     vertexShader: /* glsl */ `
       uniform vec2 resolution;
       uniform float width;
+      uniform float radial;      // 1: a flat surface, pushed away from the centre
+      uniform vec2 centerNdc;    // that centre, on screen (-1..1)
       void main() {
         vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        // The normal's direction ON SCREEN, so the push is in pixels.
-        vec3 n = normalize(normalMatrix * normal);
-        vec4 tip = projectionMatrix * vec4((modelViewMatrix * vec4(position, 1.0)).xyz + n * 0.01, 1.0);
-        vec2 dir = tip.xy / tip.w - clip.xy / clip.w;
+        vec2 dir;
+        if (radial > 0.5) {
+          // Away from the point being looked at, on screen.
+          dir = clip.xy / clip.w - centerNdc;
+        } else {
+          // The normal's direction ON SCREEN, so the push is in pixels.
+          vec3 n = normalize(normalMatrix * normal);
+          vec4 tip = projectionMatrix * vec4((modelViewMatrix * vec4(position, 1.0)).xyz + n * 0.01, 1.0);
+          dir = tip.xy / tip.w - clip.xy / clip.w;
+        }
         float len = length(dir);
         dir = len > 1e-6 ? dir / len : vec2(0.0);
         clip.xy += dir * width * 2.0 / resolution * clip.w;
@@ -172,8 +192,12 @@ export function createFocusOutline(renderer = null) {
     center: { value: new THREE.Vector2() },
     head: { value: 0 },
     arc: { value: ARC },
+    radial: { value: 0 },
+    centerNdc: { value: new THREE.Vector2() },
   };
   const line = lineMaterial(uniforms);
+  // The same line for a flat surface: shares every uniform but `radial`.
+  const flatLine = lineMaterial({ ...uniforms, radial: { value: 1 } });
   const masks = new Map();       // side -> material
   const maskFor = (side) => {
     if (!masks.has(side)) masks.set(side, maskMaterial(side));
@@ -181,6 +205,8 @@ export function createFocusOutline(renderer = null) {
   };
 
   let aimed = null;
+  let surface = false;           // a flat surface (floor, wall paint)?
+  let around = null;             // world point the light goes round, if given
   let helpers = [];              // the meshes added to the outlined piece
   let clock = 0;
   const size = new THREE.Vector2();
@@ -204,7 +230,10 @@ export function createFocusOutline(renderer = null) {
     sources.forEach((mesh) => {
       const side = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material)?.side ?? THREE.FrontSide;
       const mask = new THREE.Mesh(mesh.geometry, maskFor(side));
-      const ring = new THREE.Mesh(outlineGeometryFor(mesh.geometry), line);
+      const ring = new THREE.Mesh(
+        surface ? mesh.geometry : outlineGeometryFor(mesh.geometry),
+        surface ? flatLine : line
+      );
       // Children of the mesh, so they move with it -- an admin dragging the
       // piece drags its outline -- and never in the way of anything else:
       // not clickable, not in a shadow, not in the bounds of the piece.
@@ -222,12 +251,23 @@ export function createFocusOutline(renderer = null) {
   }
 
   return {
-    /** Outline this piece, or nothing. Cheap to call every frame. */
-    aim(object) {
+    /**
+     * Outline this piece, or nothing. Cheap to call every frame.
+     *
+     * @param {THREE.Object3D|null} object
+     * @param {object} [options]
+     * @param {boolean} [options.surface]  a flat surface -- a floor, a wall's
+     *        paint -- rather than a piece of furniture
+     * @param {THREE.Vector3} [options.center]  the world point the light runs
+     *        round: for a surface, the patch being looked at
+     */
+    aim(object, { surface: flat = false, center = null } = {}) {
       const next = object && object.isObject3D ? object : null;
-      if (next === aimed) return;
+      around = center;
+      if (next === aimed && flat === surface) return;
       detach();
       aimed = next;
+      surface = flat;
       uniforms.opacity.value = 0;
       if (aimed) attach(aimed);
     },
@@ -257,11 +297,20 @@ export function createFocusOutline(renderer = null) {
       }
       // The middle of the piece on screen, in the same pixels as
       // gl_FragCoord. Measured every frame: the camera moves round it.
+      // A surface goes round the point being looked at: the middle of a
+      // room's walls can be behind the camera.
       if (aimed && camera) {
-        box.setFromObject(aimed);
-        if (!box.isEmpty()) {
-          box.getCenter(middle).project(camera);
+        let ok = true;
+        if (around) {
+          middle.copy(around).project(camera);
+        } else {
+          box.setFromObject(aimed);
+          ok = !box.isEmpty();
+          if (ok) box.getCenter(middle).project(camera);
+        }
+        if (ok) {
           uniforms.center.value.set((middle.x * 0.5 + 0.5) * size.x, (middle.y * 0.5 + 0.5) * size.y);
+          uniforms.centerNdc.value.set(middle.x, middle.y);
         }
       } else {
         uniforms.center.value.set(size.x / 2, size.y / 2);
@@ -273,6 +322,7 @@ export function createFocusOutline(renderer = null) {
     dispose() {
       detach();
       line.dispose();
+      flatLine.dispose();
       masks.forEach((m) => m.dispose());
     },
   };
