@@ -24,6 +24,13 @@
  * line is drawn from a copy of the geometry with coincident vertices welded
  * and normals averaged, made once per geometry and cached.
  *
+ * A LIGHT THAT TRAVELS, NOT A RING. A solid line all the way round framed
+ * the piece like a sticker and changed how it looked. So the line is lit
+ * one stretch at a time: a bright head with a fading tail runs round the
+ * silhouette, a lap every few seconds, and the rest of the outline is clear.
+ * Where the light is, is decided by the ANGLE round the piece's centre on
+ * screen -- so it runs round any shape, following it exactly.
+ *
  * The renderer must be created with `stencil: true` (three.js turned the
  * stencil buffer off by default); without one, the line is drawn round the
  * whole piece, over it -- still a highlight, just not a crisp one.
@@ -33,8 +40,12 @@ import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 /** Line width in CSS pixels, and how much it breathes. */
-const WIDTH = 3.2;
-const PULSE = 0.9;
+const WIDTH = 3.4;
+const PULSE = 0.6;
+/** Seconds for the light to go once round the piece. */
+const LAP_SECONDS = 3.2;
+/** How much of the way round the lit stretch reaches, head to end of tail. */
+const ARC = Math.PI * 0.7;
 /** Gold, and the white of the shine that runs along it. */
 const GOLD = new THREE.Color(0xe0a63a);
 const SHINE = new THREE.Color(0xfff6dc);
@@ -125,14 +136,21 @@ function lineMaterial(uniforms) {
     fragmentShader: /* glsl */ `
       uniform vec3 gold;
       uniform vec3 shine;
-      uniform float time;
       uniform float opacity;
+      uniform vec2 center;   // the piece's middle, in drawing-buffer pixels
+      uniform float head;    // radians: where the light is now
+      uniform float arc;     // radians: head to the end of the tail
       void main() {
-        // A band of light sweeping along the line: what makes it read as
-        // glossy rather than painted.
-        float s = sin((gl_FragCoord.x + gl_FragCoord.y) * 0.012 - time * 3.2);
-        float gloss = smoothstep(0.82, 1.0, s);
-        gl_FragColor = vec4(mix(gold, shine, gloss), opacity);
+        // How far behind the head this bit of the outline is, going round
+        // the piece's centre. Past the tail, the outline is not drawn.
+        vec2 p = gl_FragCoord.xy - center;
+        float behind = mod(head - atan(p.y, p.x), 6.2831853);
+        float tail = 1.0 - behind / arc;
+        if (tail <= 0.0) discard;
+        // Bright, nearly white at the head; gold and fading along the tail.
+        float glow = pow(tail, 1.7);
+        vec3 colour = mix(gold, shine, smoothstep(0.72, 1.0, tail));
+        gl_FragColor = vec4(colour, opacity * glow);
         // three.js keeps colours linear; back to the screen's colour space,
         // or the gold comes out dull.
         #include <colorspace_fragment>
@@ -150,8 +168,10 @@ export function createFocusOutline(renderer = null) {
     width: { value: WIDTH },
     gold: { value: GOLD.clone() },
     shine: { value: SHINE.clone() },
-    time: { value: 0 },
     opacity: { value: 0 },
+    center: { value: new THREE.Vector2() },
+    head: { value: 0 },
+    arc: { value: ARC },
   };
   const line = lineMaterial(uniforms);
   const masks = new Map();       // side -> material
@@ -164,6 +184,8 @@ export function createFocusOutline(renderer = null) {
   let helpers = [];              // the meshes added to the outlined piece
   let clock = 0;
   const size = new THREE.Vector2();
+  const box = new THREE.Box3();
+  const middle = new THREE.Vector3();
 
   const noRaycast = () => {};
 
@@ -210,10 +232,13 @@ export function createFocusOutline(renderer = null) {
       if (aimed) attach(aimed);
     },
 
-    /** Call once per frame, before rendering. */
-    update(dt) {
+    /**
+     * Call once per frame, before rendering. `camera` places the centre the
+     * light runs round; without one it runs round the middle of the screen.
+     */
+    update(dt, camera = null) {
       clock += dt;
-      uniforms.time.value = clock;
+      uniforms.head.value = (uniforms.head.value + (dt * Math.PI * 2) / LAP_SECONDS) % (Math.PI * 2);
       if (aimed && (!aimed.parent || aimed.visible === false)) {
         // Withdrawn or hidden while outlined: the line goes with it.
         detach();
@@ -227,6 +252,19 @@ export function createFocusOutline(renderer = null) {
         renderer.getDrawingBufferSize(size);
         const ratio = renderer.getPixelRatio?.() ?? 1;
         uniforms.resolution.value.set(size.x / ratio, size.y / ratio);
+      } else {
+        size.copy(uniforms.resolution.value);
+      }
+      // The middle of the piece on screen, in the same pixels as
+      // gl_FragCoord. Measured every frame: the camera moves round it.
+      if (aimed && camera) {
+        box.setFromObject(aimed);
+        if (!box.isEmpty()) {
+          box.getCenter(middle).project(camera);
+          uniforms.center.value.set((middle.x * 0.5 + 0.5) * size.x, (middle.y * 0.5 + 0.5) * size.y);
+        }
+      } else {
+        uniforms.center.value.set(size.x / 2, size.y / 2);
       }
     },
 

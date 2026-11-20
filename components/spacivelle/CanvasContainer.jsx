@@ -954,7 +954,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         focusMarker.aim(null);
       }
       focusMarker.update(delta, camera);
-      focusOutline.update(delta);
+      focusOutline.update(delta, camera);
 
       // Keep the sky centred on the viewer so it can never be reached.
       atmosphere.group.position.set(camera.position.x, 0, camera.position.z);

@@ -93,4 +93,45 @@ import { createFocusOutline, outlineGeometryFor } from "./outline.js";
   console.log("  ok  moves on cleanly, and a withdrawn piece leaves nothing behind");
 }
 
+// 4. A light that travels round the piece, not a fixed ring: the head goes
+// once round per lap, and the centre it goes round is the piece's middle on
+// screen, following the camera.
+{
+  const scene = new THREE.Scene();
+  const piece = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 0.9), new THREE.MeshStandardMaterial());
+  piece.position.set(1.5, 0.4, -3);
+  scene.add(piece);
+  scene.updateMatrixWorld(true);
+  const camera = new THREE.PerspectiveCamera(55, 1.6, 0.1, 100);
+  camera.position.set(0, 1.5, 2);
+  camera.lookAt(0, 0.5, -3);
+  camera.updateMatrixWorld(true);
+
+  const outline = createFocusOutline();
+  outline.aim(piece);
+  let ring;
+  piece.traverse((o) => { if (o.userData.outlineHelper && o.material.uniforms) ring = o; });
+  const u = ring.material.uniforms;
+  u.resolution.value.set(1600, 1000);
+
+  const heads = [];
+  for (let t = 0; t < 3.2; t += 0.1) { outline.update(0.1, camera); heads.push(u.head.value); }
+  const travelled = heads.slice(1).reduce((sum, h, i) => sum + ((h - heads[i] + Math.PI * 2) % (Math.PI * 2)), 0);
+  assert.ok(Math.abs(travelled - Math.PI * 2) < 0.3, `about one lap in 3.2s, went ${(travelled / Math.PI / 2).toFixed(2)} laps`);
+  assert.ok(u.arc.value > 1 && u.arc.value < Math.PI * 2 - 1, "only part of the outline is lit at once");
+  assert.match(ring.material.fragmentShader, /discard/, "the unlit part of the outline is not drawn at all");
+
+  const mid = new THREE.Box3().setFromObject(piece).getCenter(new THREE.Vector3()).project(camera);
+  assert.ok(Math.abs(u.center.value.x - (mid.x * 0.5 + 0.5) * 1600) < 0.5, "centre follows the piece on screen (x)");
+  assert.ok(Math.abs(u.center.value.y - (mid.y * 0.5 + 0.5) * 1000) < 0.5, "centre follows the piece on screen (y)");
+  camera.position.set(3, 1.5, 0);
+  camera.lookAt(1.5, 0.4, -3);
+  camera.updateMatrixWorld(true);
+  const was = u.center.value.clone();
+  outline.update(0.016, camera);
+  assert.ok(u.center.value.distanceTo(was) > 1, "and moves when the camera does");
+  outline.dispose();
+  console.log(`  ok  a light runs round the piece, a lap every ~3s, lighting ${Math.round(u.arc.value / Math.PI * 180)} degrees of it at a time, centred on the piece as the camera moves`);
+}
+
 console.log("outline: ok");
