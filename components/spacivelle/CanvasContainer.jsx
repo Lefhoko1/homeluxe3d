@@ -42,6 +42,7 @@ import {
 } from './tour';
 import { createTween, easeInOutCubic } from './tour/easing';
 import { createFocusMarker, markerAimFor } from './tour/marker';
+import { createFocusOutline } from './tour/outline';
 import ShowcaseCard from './tour/ShowcaseCard';
 import { fetchLiveNarrations } from '../../lib/narration/NarrationService.js';
 import { elevationOf } from '../../lib/narration/elevationView.js';
@@ -242,7 +243,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       1000
     );
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // STENCIL ON: the glossy line round the piece being shown is cut out of
+    // a stencil mask (tour/outline.js), and three.js no longer creates a
+    // stencil buffer unless asked.
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, stencil: true });
     renderer.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -267,6 +271,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     // The pin over whatever is being looked at. See tour/marker.js.
     const focusMarker = createFocusMarker();
     scene.add(focusMarker.group);
+    // And the glossy line round it, which says WHICH piece from any angle.
+    const focusOutline = createFocusOutline(renderer);
 
     // Store references
     sceneRef.current = scene;
@@ -927,13 +933,28 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       // otherwise it is whatever the visitor last clicked.
       // It lands ON the piece, where it is being looked at: the tour's aim
       // point, or the spot that was clicked.
+      //
+      // A PIECE WITH A SHAPE GETS THE LINE ROUND IT INSTEAD. A pin marks a
+      // point, and as the camera turns round a piece -- a shop's narration
+      // turns it a lot -- a point stops saying which thing it means; a line
+      // round the silhouette says it from every angle. The pin stays for what
+      // has no shape of its own: an empty position for sale, a door hinge.
       if (tourRef.current?.touring) {
-        const aimAt = markerAimFor(tourRef.current.showing);
-        focusMarker.aim(aimAt?.what ?? null, aimAt?.at ?? null);
+        const target = tourRef.current.showing;
+        if (target?.object) {
+          focusOutline.aim(target.object);
+          focusMarker.aim(null);
+        } else {
+          const aimAt = markerAimFor(target);
+          focusOutline.aim(null);
+          focusMarker.aim(aimAt?.what ?? null, aimAt?.at ?? null);
+        }
       } else {
-        focusMarker.aim(pickedNodeRef.current, pickedPointRef.current);
+        focusOutline.aim(pickedNodeRef.current);
+        focusMarker.aim(null);
       }
       focusMarker.update(delta, camera);
+      focusOutline.update(delta);
 
       // Keep the sky centred on the viewer so it can never be reached.
       atmosphere.group.position.set(camera.position.x, 0, camera.position.z);
@@ -999,6 +1020,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       cleanupPointer?.();
 
       focusMarker.dispose();
+      focusOutline.dispose();
       narrationAudioRef.current?.pause();
       tourRef.current?.detach(window);
       tourRef.current = null;
