@@ -20,6 +20,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three-stdlib";
 import { createGltfLoader } from "../../../lib/gltf/decoders";
+import { solidify } from "../../../lib/gltf/solidify";
 
 import { fetchSceneCatalog } from "../../../lib/catalog/repository";
 
@@ -47,9 +48,27 @@ export function indexProducts(catalog) {
   return byId;
 }
 
+/**
+ * Textures whose alpha is real shape -- a plant's leaves, a rug's fringe --
+ * kept as hard cut-outs when the rest of the model is made solid.
+ */
+const PRODUCT_CUTOUT = /leaf|leaves|foliage|plant|grass|fringe|tassel/i;
+
 function loadGltf(loader, url) {
   return new Promise((resolve, reject) => {
-    loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
+    loader.load(
+      url,
+      (gltf) => {
+        // NO SEEING THROUGH FURNITURE. Uploaded models often mark opaque
+        // upholstery as transparent, or ship one-sided faces; either way the
+        // visitor sees through the sofa. Fixed once here, on the source, so
+        // every clone of it is solid too. See lib/gltf/solidify.js.
+        solidify(gltf.scene, { cutout: PRODUCT_CUTOUT, doubleSided: true });
+        resolve(gltf.scene);
+      },
+      undefined,
+      reject,
+    );
   });
 }
 
