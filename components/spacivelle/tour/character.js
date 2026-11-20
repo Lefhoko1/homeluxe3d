@@ -84,9 +84,47 @@ export async function loadCharacter({ materials = null, dracoLoader = null } = {
     if (child.isSkinnedMesh) child.frustumCulled = false;
     const override = materials?.get(child.material?.name);
     if (override) child.material = override;
+    else solidify(child.material);
   });
 
   return scene;
+}
+
+/**
+ * Hair, brows and lashes: drawn where their texture has strands and nowhere
+ * else -- a cut-out, not a see-through.
+ */
+const CUTOUT = /hair|braid|cornrow|eyebrow|eyelash/i;
+
+/**
+ * Make a skin read as solid.
+ *
+ * SEEING THROUGH HER HEAD. MakeHuman/MPFB exports every part of the figure --
+ * skin, eyes, teeth, tongue, hair -- with alphaMode BLEND, and three.js's
+ * glTF loader turns a BLEND material into `transparent: true, depthWrite:
+ * false`. A surface that writes no depth hides nothing behind it, so from
+ * behind, the jaw, teeth and eyes inside the head were drawn over the back of
+ * the scalp, and an arm in front of her body could show through her back,
+ * depending only on which mesh the GPU happened to draw last.
+ *
+ * Skin is not translucent. Everything is made opaque and depth-writing; the
+ * parts that genuinely need their texture's alpha -- hair strands, brows,
+ * lashes -- keep it as a hard cut-out (`alphaTest`), which still writes depth.
+ */
+function solidify(material) {
+  const list = Array.isArray(material) ? material : [material];
+  for (const m of list) {
+    if (!m || !m.transparent) continue;
+    m.transparent = false;
+    m.depthWrite = true;
+    if (CUTOUT.test(m.name ?? "")) {
+      m.alphaTest = 0.5;
+    } else {
+      m.alphaTest = 0;
+      m.opacity = 1;
+    }
+    m.needsUpdate = true;
+  }
 }
 
 /** Free the character's geometry. */
