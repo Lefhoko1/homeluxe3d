@@ -336,6 +336,9 @@ export function createShowcase({
             dwell: PRODUCT_DWELL,
             advert: { ...data },
             caption: data.name ?? "Product",
+            // The placement itself, so the focus marker can stand over it
+            // wherever it is now -- measured live, not from this snapshot.
+            object: child,
             distance: (point.x - here.x) ** 2 + (point.z - here.z) ** 2,
             // Where to stand to look at it. See `approachOf`.
             approach: approachOf(child),

@@ -1593,6 +1593,15 @@ export function createTourController(options = {}) {
       return Boolean(route);
     },
 
+    /**
+     * What she is looking at right now -- a showcase target, see
+     * tour/showcase.js -- or null while walking between rooms. Read every
+     * frame by the focus marker.
+     */
+    get showing() {
+      return route && stopState === "show" ? showTargets[showIndex] ?? null : null;
+    },
+
     /** Which stop the tour is at, for the UI. */
     get stop() {
       return route ? route[Math.min(routeIndex, route.length - 1)] : null;

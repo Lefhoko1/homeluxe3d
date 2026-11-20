@@ -41,6 +41,7 @@ import {
   TOUR_START,
 } from './tour';
 import { createTween, easeInOutCubic } from './tour/easing';
+import { createFocusMarker, markerAimFor } from './tour/marker';
 import {
   AdminBar,
   AdminGate,
@@ -189,6 +190,10 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     orbitControls.maxDistance = 75;   // far enough to see the whole 30x40 yard
     orbitControls.maxPolarAngle = Math.PI / 2;
     orbitControls.enabled = true;
+
+    // The pin over whatever is being looked at. See tour/marker.js.
+    const focusMarker = createFocusMarker();
+    scene.add(focusMarker.group);
 
     // Store references
     sceneRef.current = scene;
@@ -821,6 +826,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
       atmosphere.update(delta);
 
+      // WHAT IS BEING LOOKED AT GETS THE PIN. On the guided tour that is
+      // whatever she has turned to (nothing while she walks between rooms);
+      // otherwise it is whatever the visitor last clicked.
+      const touring = tourRef.current?.touring;
+      focusMarker.aim(touring
+        ? markerAimFor(tourRef.current.showing)
+        : pickedNodeRef.current);
+      focusMarker.update(delta);
+
       // Keep the sky centred on the viewer so it can never be reached.
       atmosphere.group.position.set(camera.position.x, 0, camera.position.z);
       // And the shadow frustum centred on what is being looked at.
@@ -884,6 +898,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       observer.disconnect();
       cleanupPointer?.();
 
+      focusMarker.dispose();
       tourRef.current?.detach(window);
       tourRef.current = null;
       walkVolumeRef.current = null;
