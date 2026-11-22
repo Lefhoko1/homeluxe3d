@@ -47,6 +47,7 @@ import ShowcaseCard from './tour/ShowcaseCard';
 import { fetchLiveNarrations } from '../../lib/narration/NarrationService.js';
 import { elevationOf } from '../../lib/narration/elevationView.js';
 import { createAmbientMusic } from '../../lib/audio/ambientMusic.js';
+import { deviceTier, qualityFor } from '../../lib/device/capability.js';
 
 /** The showroom's background music. See public/media/music/README.md. */
 const MUSIC_URL = '/media/music/calm-piano.mp3';
@@ -249,9 +250,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     // STENCIL ON: the glossy line round the piece being shown is cut out of
     // a stencil mask (tour/outline.js), and three.js no longer creates a
     // stencil buffer unless asked.
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, stencil: true });
+    //
+    // A BUDGET PHONE GETS THE LIGHT VERSION: no soft shadows, no
+    // antialiasing, one pixel per screen pixel, a few trees, no TV video.
+    // See lib/device/capability.js.
+    const quality = qualityFor(deviceTier());
+    if (quality.shadows === false) console.info('[scene] light mode for this device');
+    const renderer = new THREE.WebGLRenderer({ antialias: quality.antialias, alpha: true, stencil: true });
     renderer.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = quality.shadows;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -306,6 +313,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       try {
         const { house, errors, stats } = await loadHouse({
           materials: houseMaterials,
+          maxTrees: quality.maxTrees,
         });
 
         // The component can unmount while the GLBs are still in flight.
@@ -351,7 +359,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // Give any television in the room something to play. See screens.js
         // for why that cannot be a YouTube video and what it is instead.
         screensRef.current?.dispose();
-        screensRef.current = attachScreens(group, products);
+        screensRef.current = attachScreens(group, products, { video: quality.screenVideo });
         if (screensRef.current.screens) {
           console.info(`[screens] ${screensRef.current.screens} screen(s) live`);
         }
@@ -1024,7 +1032,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       renderer.setSize(width, height, true);
       // Sharp on a phone, and capped: at devicePixelRatio 3 the house is
       // nine times the pixels for no visible gain.
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality.pixelRatio));
     };
 
     let lastWidth = 0;

@@ -104,7 +104,7 @@ function standbyTexture() {
  * @param {Map} products             id -> product, from loadProducts
  * @returns {{dispose: () => void, screens: number}}
  */
-export function attachScreens(group, products) {
+export function attachScreens(group, products, { video: playVideo = true } = {}) {
   if (!group) return { dispose: () => {}, screens: 0 };
 
   const created = [];
@@ -130,7 +130,9 @@ export function attachScreens(group, products) {
 
     let map;
 
-    if (source && /\.(mp4|webm|m3u8)(\?|$)/i.test(source)) {
+    // A budget phone shows the standby picture: decoding a video into a
+    // texture every frame is a cost it cannot spare.
+    if (playVideo && source && /\.(mp4|webm|m3u8)(\?|$)/i.test(source)) {
       const video = videoElement(source);
 
       map = new THREE.VideoTexture(video);

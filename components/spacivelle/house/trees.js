@@ -40,7 +40,7 @@ export const TREE_MANIFEST_URL = "/models/site/trees.json";
  *
  * @returns {Promise<THREE.Group|null>}
  */
-export async function addTrees(house, { materials, dracoLoader } = {}) {
+export async function addTrees(house, { materials, dracoLoader, maxTrees = Infinity } = {}) {
   if (!house) return null;
 
   let manifest;
@@ -53,8 +53,17 @@ export async function addTrees(house, { materials, dracoLoader } = {}) {
     return null;
   }
 
-  const points = manifest?.trees ?? [];
+  let points = manifest?.trees ?? [];
   if (!points.length) return null;
+  // A BUDGET PHONE GETS THE NEAREST FEW. Each tree is ~54,000 triangles; a
+  // garden of them is the heaviest thing in the scene. The ones kept are
+  // those nearest the middle of the house -- what the windows look onto.
+  if (points.length > maxTrees) {
+    const cx = -(house.position?.x ?? 0);
+    const cz = -(house.position?.z ?? 0);
+    const d = (t) => (t.position[0] - cx) ** 2 + (t.position[2] - cz) ** 2;
+    points = [...points].sort((a, b) => d(a) - d(b)).slice(0, maxTrees);
+  }
 
   let source;
   try {

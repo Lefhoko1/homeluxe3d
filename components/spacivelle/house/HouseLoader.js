@@ -172,6 +172,7 @@ export async function loadHouse(options = {}) {
     includeSite = true,
     materials = createHouseMaterials(),
     recentre = true,
+    maxTrees = Infinity,
   } = options;
 
   const loader = createGltfLoader();
@@ -220,7 +221,7 @@ export async function loadHouse(options = {}) {
     // Trees are a model instanced from a manifest, not baked geometry. This
     // is awaited so callers get a finished yard rather than one that grows
     // trees a second later.
-    await addTrees(house, { materials, dracoLoader: getDracoLoader() });
+    await addTrees(house, { materials, dracoLoader: getDracoLoader(), maxTrees });
   }
 
   return { house, errors, bounds, stats };
