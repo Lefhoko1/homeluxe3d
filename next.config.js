@@ -1,5 +1,29 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // BROWSER BUILDS GET NO NODE FILE SYSTEM. @gltf-transform/core (which
+  // optimises shops' uploads in the browser, lib/gltf/optimizeModel.js) also
+  // ships a NodeIO class that imports node:fs and node:path. The browser never
+  // calls it, but the bundler still has to resolve the imports, so they are
+  // given an empty module in client builds. Server builds are untouched.
+  webpack(config, { isServer, webpack }) {
+    if (!isServer) {
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:(fs|path)(\/promises)?$/, (resource) => {
+          resource.request = resource.request.replace(/^node:/, "");
+        })
+      );
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false, path: false };
+    }
+    return config;
+  },
+  // The same for `next dev --turbopack`.
+  turbopack: {
+    resolveAlias: {
+      "node:fs": { browser: "./lib/empty-module.js" },
+      "node:path": { browser: "./lib/empty-module.js" },
+    },
+  },
+
   async headers() {
     return [
       {

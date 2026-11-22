@@ -202,6 +202,28 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     };
   }, []);
 
+  // ---- Phones: the controls fold away ----------------------------------------
+  // On a phone the tour pad, the tour bar, the room tabs and the product card
+  // between them covered most of the house. "Hide controls" puts them all
+  // away -- the tour carries on, the shop keeps talking -- leaving one small
+  // button to bring them back. Remembered. Phones only (see CSS); the flag
+  // lives on <html> because the tour bar and the tabs are not in this tree.
+  const [controlsHidden, setControlsHidden] = useState(false);
+  useEffect(() => {
+    try { setControlsHidden(window.localStorage.getItem('spacivelle.tour.controlsHidden') === '1'); } catch { /* shown */ }
+  }, []);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (touring && controlsHidden) root.dataset.tourControls = 'hidden';
+    else delete root.dataset.tourControls;
+    return () => { delete root.dataset.tourControls; };
+  }, [touring, controlsHidden]);
+  const toggleControls = () => {
+    const next = !controlsHidden;
+    setControlsHidden(next);
+    try { window.localStorage.setItem('spacivelle.tour.controlsHidden', next ? '1' : '0'); } catch { /* ignore */ }
+  };
+
   const toggleMusic = () => {
     const next = !musicOn;
     setMusicOn(next);
@@ -1945,6 +1967,18 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       <div ref={canvasRef} style={{ width: '100%', height: '100%' }}></div>
 
       <ShowroomLoader {...loadState} />
+
+      {touring && (
+        <button
+          type="button"
+          className={`tour-controls-toggle${controlsHidden ? ' hidden-mode' : ''}`}
+          onClick={toggleControls}
+          aria-pressed={controlsHidden}
+          aria-label={controlsHidden ? 'Show the tour controls' : 'Hide the tour controls to see the house'}
+        >
+          {controlsHidden ? '☰ Controls' : '⌄ Hide'}
+        </button>
+      )}
     </div>
   );
 };
