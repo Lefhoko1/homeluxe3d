@@ -164,6 +164,11 @@ export async function loadProducts(options = {}) {
     house = "3bed",
     materials = null,
     dracoLoader = null,
+    // (done, total) as each model arrives, for a loading counter.
+    onProgress = null,
+    // Only these rooms' furniture -- the landing page's background shows
+    // one room and should not download the house's worth.
+    rooms = null,
   } = options;
 
   const group = new THREE.Group();
@@ -223,9 +228,18 @@ export async function loadProducts(options = {}) {
   const loader = createGltfLoader();
   if (dracoLoader) loader.setDRACOLoader(dracoLoader);
 
+  if (rooms) {
+    const wanted = new Set(rooms);
+    for (let i = placements.length - 1; i >= 0; i -= 1) {
+      if (!wanted.has(placements[i].room)) placements.splice(i, 1);
+    }
+  }
+
   // One fetch per distinct product, however many times it is placed.
   const needed = [...new Set(placements.map((p) => p.product))];
   const scenes = new Map();
+  let arrived = 0;
+  onProgress?.(0, needed.length);
 
   await Promise.all(
     needed.map(async (productId) => {
@@ -236,12 +250,17 @@ export async function loadProducts(options = {}) {
           productId,
           error: new Error("not in catalogue, or has no model"),
         });
+        arrived += 1;
+        onProgress?.(arrived, needed.length);
         return;
       }
       try {
         scenes.set(productId, await loadGltf(loader, product.model));
       } catch (error) {
         errors.push({ stage: "model", productId, error });
+      } finally {
+        arrived += 1;
+        onProgress?.(arrived, needed.length);
       }
     })
   );

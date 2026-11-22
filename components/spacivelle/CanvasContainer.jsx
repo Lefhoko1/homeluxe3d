@@ -44,6 +44,7 @@ import { createTween, easeInOutCubic } from './tour/easing';
 import { createFocusMarker, markerAimFor } from './tour/marker';
 import { createFocusOutline } from './tour/outline';
 import ShowcaseCard from './tour/ShowcaseCard';
+import ShowroomLoader from './ShowroomLoader';
 import { fetchLiveNarrations } from '../../lib/narration/NarrationService.js';
 import { elevationOf } from '../../lib/narration/elevationView.js';
 import { createAmbientMusic } from '../../lib/audio/ambientMusic.js';
@@ -133,6 +134,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   const [tourView, setTourView] = useState('third');
   const [stopLabel, setStopLabel] = useState(null);
   const [progress, setProgress] = useState(null);
+  // How far the house has got: the loading screen until the house is up,
+  // then a furniture counter. See ShowroomLoader.
+  const [loadState, setLoadState] = useState({ phase: 'house', done: 0, total: 0, failed: null });
   // What the character is looking at right now, and how far through the
   // room's list it is -- "Sandton 3-seater · 2 of 8".
   const [showing, setShowing] = useState(null);
@@ -309,6 +313,18 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     // scene. The house group carries the recentring offset; a product added
     // to the scene instead would sit at raw Blender coordinates, metres away.
     // Chaining also avoids racing the two loads against each other.
+    // THE FURNITURE STARTS DOWNLOADING NOW, alongside the house -- it does
+    // not need the house to fetch, only to be added to it, which still waits.
+    const productsPromise = loadProducts({
+      house: '3bed',
+      materials: houseMaterials,
+      dracoLoader: getDracoLoader(),
+      onProgress: (done, total) => {
+        if (!disposed) setLoadState((s) => ({ ...s, done, total }));
+      },
+    });
+    productsPromise.catch(() => {}); // handled where it is awaited
+
     (async () => {
       try {
         const { house, errors, stats } = await loadHouse({
@@ -324,6 +340,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
         scene.add(house);
         houseRef.current = house;
+        // The house is up: the visitor can look round while the furniture
+        // arrives.
+        setLoadState((s) => ({ ...s, phase: 'furniture' }));
 
         if (errors.length) {
           console.error(
@@ -342,11 +361,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // ---- Shop products ---------------------------------------------
         // Real retail furniture from the Blender catalogue, positioned by
         // the manifest. The old primitive sofas and sofa.glb are gone.
-        const { group, placed, errors: productErrors, products } = await loadProducts({
-          house: '3bed',
-          materials: houseMaterials,
-          dracoLoader: getDracoLoader(),
-        });
+        const { group, placed, errors: productErrors, products } = await productsPromise;
 
         if (disposed) {
           disposeProducts(group);
@@ -825,8 +840,16 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           tour.enter();
           setTouring(true);
         }
+        setLoadState((s) => ({ ...s, phase: 'ready' }));
       } catch (error) {
         console.error('[scene] failed to load:', error);
+        setLoadState((s) => ({
+          ...s,
+          failed: s.phase === 'house'
+            ? (error?.message ?? 'Check your connection and try again.')
+            : null,
+          phase: s.phase === 'house' ? 'house' : 'ready',
+        }));
       }
     })();
 
@@ -1920,6 +1943,8 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       )}
 
       <div ref={canvasRef} style={{ width: '100%', height: '100%' }}></div>
+
+      <ShowroomLoader {...loadState} />
     </div>
   );
 };
