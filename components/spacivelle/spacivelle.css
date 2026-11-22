@@ -2284,3 +2284,24 @@ body {
 .showroom-furniture-dot { width: 8px; height: 8px; border-radius: 50%; background: #e0a63a; animation: narr-pulse 1s ease-in-out infinite; }
 @keyframes narr-pulse { 50% { opacity: .25; } }
 @media (max-width: 820px) { .showroom-furniture-pill { top: 56px; font-size: 12px; } }
+
+/* ---------------------------------------------------------------------------
+   PHONES, ON THE GUIDED TOUR: fewer controls over the furniture.
+   The card already says what is being looked at, and the tour bar along the
+   bottom already has "Stop the tour" -- so the pad drops its own copies of
+   both, and puts Follow and Exit side by side instead of stacked.
+   --------------------------------------------------------------------------- */
+@media (max-width: 820px) {
+  .tour-pad[data-guided="true"] .tour-pad-looking,
+  .tour-pad[data-guided="true"] .tour-pad-guided { display: none !important; }
+  .tour-pad[data-guided="true"] {
+    flex-direction: row !important; flex-wrap: wrap; justify-content: center; align-items: center;
+    max-width: 230px;
+  }
+  .tour-pad[data-guided="true"] .tour-pad-room { flex-basis: 100%; text-align: center; }
+  .tour-pad[data-guided="true"] > button { margin-top: 0 !important; }
+  /* The expanded card on a phone: what it is and what it costs. The full
+     description is one tap away, under "More details". */
+  .showcase-card-text, .showcase-card-meta { display: none; }
+  .showcase-card { max-height: 38%; }
+}

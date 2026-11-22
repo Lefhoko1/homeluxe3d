@@ -377,7 +377,17 @@
   overflow: hidden;
   background: #ebece5;
 }
-.lp-hero-background { position: absolute; inset: 0; z-index: -2; pointer-events: none; }
+.lp-hero-background {
+  position: absolute; inset: 0; z-index: -2; pointer-events: none;
+  /* THE ROOM PHOTOGRAPH IS THERE AT ONCE, behind the 3D. It is all a budget
+     phone shows; elsewhere the live room fades in over it when it is ready,
+     so the hero is never blank or half-built. */
+  background: #ebece5 url('/images/landing/living-room-720.webp') 62% center / cover no-repeat;
+  background-image: image-set(url('/images/landing/living-room-720.webp') 1x, url('/images/landing/living-room-1440.webp') 2x);
+}
+@media (min-width: 900px) {
+  .lp-hero-background { background-image: url('/images/landing/living-room-1440.webp'); }
+}
 .lp-hero-background .lp-house {
   width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0;
   background: transparent; cursor: default; touch-action: auto;

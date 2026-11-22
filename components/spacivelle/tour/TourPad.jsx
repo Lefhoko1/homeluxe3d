@@ -79,6 +79,7 @@ const TourPad = ({
          `!important`, so the position moves to CSS where the dock's width is
          already written down. See `.tour-pad` in spacivelle.css. */
       className="tour-pad"
+      data-guided={guided ? 'true' : 'false'}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -87,6 +88,7 @@ const TourPad = ({
       }}
     >
       <div
+        className="tour-pad-room"
         style={{
           color: '#fff',
           fontSize: 11,
@@ -118,6 +120,7 @@ const TourPad = ({
           the pause read as deliberate rather than as a stall. */}
       {guided && showing && (
         <div
+          className="tour-pad-looking"
           style={{
             color: '#cfe3ff',
             fontSize: 11,
@@ -158,6 +161,7 @@ const TourPad = ({
       <div style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
         <button
           type="button"
+          className="tour-pad-guided"
           onClick={onGuided}
           style={{
             ...wide,

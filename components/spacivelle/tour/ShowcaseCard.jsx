@@ -26,13 +26,21 @@ import React, { useEffect, useState } from 'react';
 
 const COLLAPSED_KEY = 'spacivelle.showcaseCard.collapsed';
 
-/** Per-viewer convenience only; a private window just starts expanded. */
+/**
+ * Per-viewer convenience only. With nothing remembered, a PHONE starts
+ * collapsed: open, the card covered the top third of the screen -- the
+ * furniture it describes -- and a visitor can open it with one tap.
+ */
 function readCollapsed() {
+  const phone = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 820px)').matches;
   try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === '1';
+    const saved = window.localStorage.getItem(COLLAPSED_KEY);
+    if (saved === '1') return true;
+    if (saved === '0') return false;
   } catch {
-    return false;
+    // storage blocked: fall through to the default
   }
+  return Boolean(phone);
 }
 
 function writeCollapsed(value) {

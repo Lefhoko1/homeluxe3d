@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 import {
@@ -18,6 +18,7 @@ import { loadProducts, disposeProducts } from '../products/ProductLoader';
 import { createLighting } from '../lighting/Lighting';
 import { getSupabase } from '../../../lib/supabase/client';
 import { NEAR_CLIP } from './showcaseData';
+import { deviceTier, qualityFor } from '../../../lib/device/capability.js';
 
 /**
  * The showroom, on the front page, from inside the house.
@@ -184,13 +185,32 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
   }, [room]);
 
   // ---- do not boot a 3D engine nobody has looked at -----------------------
+  //
+  // NOR ONE THAT CANNOT KEEP UP. On a budget phone (lib/device/capability.js)
+  // the hero's background stays the room photograph behind it -- instant,
+  // 69 KB -- rather than downloading a house to draw at four frames a
+  // second. The featured view further down still opens on demand, without
+  // shadows. And the hero waits for the page itself to finish first: the
+  // words and buttons matter more than the backdrop.
+
+  const tier = useMemo(() => deviceTier(), []);
 
   useEffect(() => {
     const holder = holderRef.current;
 
     if (!holder) return undefined;
+    if (background && tier === 'low') return undefined;
+
+    const goLive = () => {
+      if (!background) { setLive(true); return; }
+      const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 600));
+      const start = () => idle(() => setLive(true), { timeout: 2500 });
+      if (document.readyState === 'complete') start();
+      else window.addEventListener('load', start, { once: true });
+    };
+
     if (typeof IntersectionObserver === 'undefined') {
-      setLive(true);
+      goLive();
 
       return undefined;
     }
@@ -198,7 +218,7 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
     const watch = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setLive(true);
+          goLive();
           watch.disconnect();
         }
       },
@@ -233,11 +253,12 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
     // retina laptop draws four times the pixels of 1x on every frame -- for a
     // backdrop that sits under text and a gradient. 1.5 is indistinguishable
     // there and a little over half the fill.
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    const quality = qualityFor(tier);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(1.5, quality.pixelRatio)));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.18;
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = quality.shadows;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // SHADOWS ARE DRAWN ONCE, NOT EVERY FRAME. Nothing here moves but the
     // camera: the sun is fixed, the house and the furniture stand still, and
@@ -325,6 +346,8 @@ const HouseView = ({ featured = [], index = 0, onIndexChange, room = null, backg
           house: '3bed',
           materials,
           dracoLoader: getDracoLoader(),
+          // A background shows one room: only its furniture is fetched.
+          rooms: room ? [room] : null,
         });
 
         if (cancelled || kit.disposed) {
