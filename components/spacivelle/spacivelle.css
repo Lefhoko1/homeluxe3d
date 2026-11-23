@@ -2408,25 +2408,3 @@ body {
 .showcase-card-actions button:focus-visible { outline: 2px solid #ffce7a; outline-offset: 2px; }
 
 
-/* ---------------------------------------------------------------------------
-   "View more" (CanvasContainer): the details card, where a thumb reaches it,
-   whenever the tour is showing something for sale.
-   --------------------------------------------------------------------------- */
-.tour-view-more {
-  position: absolute; z-index: 24; left: 50%; transform: translateX(-50%);
-  bottom: 84px;
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 12px 22px; border-radius: 999px; border: 0; cursor: pointer;
-  background: #c08a2e; color: #17212e; font-size: 15px; font-weight: 800;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, .3);
-  animation: view-more-in .3s ease-out both;
-}
-.tour-view-more span { font-size: 20px; line-height: 1; }
-.tour-view-more:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-@keyframes view-more-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@media (prefers-reduced-motion: reduce) { .tour-view-more { animation: none; } }
-@media (max-width: 820px) {
-  /* Above the tour pad, which has the bottom-left corner. */
-  .tour-view-more { bottom: calc(152px + env(safe-area-inset-bottom)); padding: 11px 20px; }
-  html[data-tour-controls="hidden"] .tour-view-more { display: none !important; }
-}

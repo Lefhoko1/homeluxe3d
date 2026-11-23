@@ -1736,21 +1736,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // ---- See it properly, and again -------------------------------------------
 
   /**
-   * "View more": the details card for what the tour is showing -- its
-   * gallery opens on the piece in 3D. The page holds the tour while the card
-   * is open (see LuxeHomePage), so it does not move on underneath it.
-   */
-  const viewMore = useCallback(() => {
-    const target = tourRef.current?.showing ?? lastShownRef.current;
-    if (target?.advert) onSelectRef.current?.(target.advert, { fromTour: true });
-    onShowDetails?.();
-  }, [onShowDetails]);
-
-  /**
    * Replay: the current piece again, from the start -- the shop's narration
-   * from its first clip, the walk-round from the front. Once the tour has
-   * left the room it cannot walk back to replay it, so its details open
-   * instead, where it turns in 3D.
+   * from its first clip. Once the tour has left the room it cannot walk back
+   * to replay it, so its details open instead, where it turns in 3D.
    */
   const replayShown = useCallback(() => {
     const tour = tourRef.current;
@@ -2026,14 +2014,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
 
       <ShowroomLoader {...loadState} />
 
-      {/* VIEW MORE, where a thumb reaches it, whenever the tour is showing
-          something that is for sale. The details card on the edge is easy to
-          miss; this is not. */}
-      {touring && guided && advert && showing && showing.kind !== 'slot' && (
-        <button type="button" className="tour-view-more" onClick={viewMore}>
-          View more <span aria-hidden>›</span>
-        </button>
-      )}
+
 
       {touring && (
         <button

@@ -293,44 +293,6 @@ const NARRATION_CLEAR_SHARE = 0.85;
 const NARRATION_MIN_DISTANCE = 0.8;
 
 /**
- * THE WALK-ROUND. A product without a shop's narration is no longer shown
- * from one side only: a visitor shown the front of a sofa has not seen the
- * sofa, and on a phone held upright the companion camera did not even fit
- * its width in. So the camera first holds a front view FRAMED TO FIT THE
- * WHOLE PIECE, for this screen's shape, then goes round it -- left side,
- * back, right side, front -- as far as the room allows. A sofa against a
- * wall is swept round as far as each side goes and brought back.
- *
- *   WALKAROUND_HOLD     seconds on the front before setting off
- *   WALKAROUND_SPEED    degrees per second round the piece
- *   WALKAROUND_MIN_ARC  a side that opens less than this is not worth a trip
- *   WALKAROUND_CLEAR    share of the framing distance that must be free of
- *                       walls for an angle to be used
- *   WALKAROUND_PITCH    degrees above level the camera looks down from
- */
-const WALKAROUND_HOLD = 2.5;
-const WALKAROUND_SPEED = 50;
-const WALKAROUND_MIN_ARC = 25;
-const WALKAROUND_CLEAR = 0.45;
-
-/**
- * A WIDER LENS WHILE A PRODUCT IS BEING SHOWN. The tour's lens is set by the
- * screen's width, so on a phone held upright it takes in about 30 degrees
- * across -- and no room is deep enough to step back far enough to fit a
- * two-metre sofa into 30 degrees. That is why products were never seen whole
- * on a phone. While a product is shown (walk-round or narration) the lens
- * opens to SHOW_ACROSS degrees across, within SHOW_MIN_FOV..SHOW_MAX_FOV
- * vertically -- a phone camera's wide setting. The camera stays level, so
- * walls stay upright.
- */
-const SHOW_ACROSS = 68;
-const SHOW_MIN_FOV = 50;
-const SHOW_MAX_FOV = 90;
-const WALKAROUND_PITCH = 16;
-/** How far round each side is tested, and in what steps (degrees). */
-const WALKAROUND_STEP = 15;
-
-/**
  * Heights at which the forward ray is fired.
  *
  * One ray at chest height walks straight through a coffee table and a sofa
@@ -665,9 +627,6 @@ export function createTourController(options = {}) {
   let narr = null;
   let narrationView = null;
   let onNarrate = null;
-  // The walk-round of a product without narration: its target, the yaws it
-  // visits in order, and where it has got to. See WALKAROUND_*.
-  let walk = null;
 
   // -- The stall guard ----------------------------------------------------
   // How long the walk has been failing to get closer to the waypoint it is
@@ -830,26 +789,7 @@ export function createTourController(options = {}) {
     if (!v.across || !camera?.aspect) return v.fov;
     const half = THREE.MathUtils.degToRad(v.across / 2);
     const vertical = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(half) / camera.aspect));
-    const normal = Math.min(v.maxFov, Math.max(v.minFov, vertical));
-    // Showing a product: never narrower than the wide lens. See SHOW_ACROSS.
-    return narrationView ? Math.max(normal, showFov()) : normal;
-  }
-
-  /**
-   * The lens a product is framed for: the wide one it is shown through.
-   * (Its own function because the narration's camera code has a local
-   * called `view`, which would hide the tour's.)
-   */
-  function showLens() {
-    return { fov: Math.max(lensFor(view), showFov()), aspect: camera?.aspect ?? 1.6 };
-  }
-
-  /** The vertical field of view that takes in SHOW_ACROSS degrees across. */
-  function showFov() {
-    const aspect = camera?.aspect ?? 1.6;
-    const half = THREE.MathUtils.degToRad(SHOW_ACROSS / 2);
-    const vertical = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(half) / aspect));
-    return Math.min(SHOW_MAX_FOV, Math.max(SHOW_MIN_FOV, vertical));
+    return Math.min(v.maxFov, Math.max(v.minFov, vertical));
   }
 
   function applyFov() {
@@ -1261,21 +1201,6 @@ export function createTourController(options = {}) {
       return 0;
     }
 
-    // A PRODUCT WITHOUT NARRATION GETS THE WALK-ROUND, once she has turned
-    // to it. Surfaces and fittings are still looked at as before.
-    if (current.kind === "product" && current.object && !bodyTurning) {
-      if (!walk || walk.target !== current) startWalkaround(current);
-      if (walk.keys && runWalkaround(step)) {
-        endWalkaround();
-        showIndex += 1;
-        if (showIndex >= showTargets.length) finishStop();
-        else beginTarget();
-        return 0;
-      }
-      if (walk.keys) return 0;
-      // No angle round it was clear enough: an ordinary look, below.
-    }
-
     // The looking starts once the turn has finished AND the camera has come
     // to rest on the thing. Counting from the moment the turn began spent the
     // time on the turn; counting from when her body stopped still spent most
@@ -1428,153 +1353,6 @@ export function createTourController(options = {}) {
     showIndex = 0;
     showLeft = 0;
     endNarration();
-    endWalkaround();
-  }
-
-  // ---- The walk-round ----------------------------------------------------
-
-  /** Box, facing and lens for a piece, as the narration uses them. */
-  function framingOf(target) {
-    const approach = approachOf(target.object);
-    if (!approach) return null;
-    return {
-      box: new THREE.Box3().setFromObject(target.object),
-      front: approach.front,
-      lens: showLens(),
-    };
-  }
-
-  /** How much of the framing distance is clear at this yaw, 0..1. */
-  function clearShareAt(target, framing, yaw) {
-    const view = elevationView(
-      { box: framing.box, front: framing.front },
-      { yaw, pitch: WALKAROUND_PITCH },
-      framing.lens
-    );
-    const clear = Math.min(
-      clearDistance(view.target, view.eye),
-      insideRoom(target.roomRect, view.target, view.eye)
-    );
-    return { view, clear, share: clear / view.distance };
-  }
-
-  /**
-   * Which way round to go.
-   *
-   * Every WALKAROUND_STEP degrees round the piece is tested for room to
-   * stand. The walk covers the longest unbroken clear stretch -- preferring
-   * the one the front is in -- and goes all the way round if it can;
-   * otherwise from the angle nearest the front out to one end of the
-   * stretch, back across to the other end, and home. Two things it no longer
-   * gives up on:
-   *
-   *   - a piece whose FRONT is blocked (a bed whose foot is close to a wall):
-   *     it starts from its clearest side instead;
-   *   - a piece too big for its room everywhere (a 3m rug in a 4m room):
-   *     "clear" is then judged against the best angle there is, down to a
-   *     floor, so the walk comes in closer rather than not happening.
-   */
-  function planWalkaround(target, framing) {
-    const yaws = [];
-    for (let yaw = -180; yaw < 180; yaw += WALKAROUND_STEP) yaws.push(yaw);
-    const shares = yaws.map((yaw) => clearShareAt(target, framing, yaw).share);
-    const best = Math.max(...shares);
-    if (best < 0.25) return null;
-    const threshold = Math.min(WALKAROUND_CLEAR, best * 0.8);
-    const ok = shares.map((share) => share >= threshold);
-    const n = yaws.length;
-    if (ok.every(Boolean)) return [0, 360];
-
-    // Unbroken clear stretches, going round the circle.
-    const firstGap = ok.indexOf(false);
-    const arcs = [];
-    let run = null;
-    for (let k = 1; k <= n; k += 1) {
-      const i = (firstGap + k) % n;
-      if (ok[i]) {
-        if (!run) run = { from: firstGap + k, length: 0 };
-        run.length += 1;
-      } else if (run) {
-        arcs.push(run);
-        run = null;
-      }
-    }
-    if (run) arcs.push(run);
-    if (!arcs.length) return null;
-
-    // Its ends in degrees, unwrapped so the stretch runs upward.
-    const span = (arc) => {
-      const a = yaws[arc.from % n];
-      return [a, a + (arc.length - 1) * WALKAROUND_STEP];
-    };
-    const zero = yaws.indexOf(0);
-    const withFront = arcs.find((arc) => {
-      for (let k = 0; k < arc.length; k += 1) if ((arc.from + k) % n === zero) return true;
-      return false;
-    });
-    const arc = withFront ?? arcs.reduce((a, b) => (b.length > a.length ? b : a));
-    let [lo, hi] = span(arc);
-    // The start: the front if it is in the stretch, else the end nearest it.
-    const wrap = (deg) => ((deg + 540) % 360) - 180;
-    let startYaw;
-    if (withFront) {
-      startYaw = lo <= 0 && 0 <= hi ? 0 : lo <= 360 && 360 <= hi ? 360 : 0;
-    } else {
-      startYaw = Math.abs(wrap(lo)) <= Math.abs(wrap(hi)) ? lo : hi;
-    }
-    const keys = [startYaw];
-    if (hi - startYaw >= WALKAROUND_MIN_ARC) keys.push(hi);
-    if (startYaw - lo >= WALKAROUND_MIN_ARC) keys.push(lo);
-    if (keys.length > 1) keys.push(startYaw);
-    return keys;
-  }
-
-  function startWalkaround(target) {
-    const framing = framingOf(target);
-    const keys = framing ? planWalkaround(target, framing) : null;
-    walk = { target, framing, keys, at: 0, yaw: keys ? keys[0] : 0, hold: WALKAROUND_HOLD };
-    if (keys) {
-      narrationView = walkViewAt(walk.yaw);
-      showWalker();
-    }
-  }
-
-  /** The camera for one yaw of the walk-round, pulled in off any wall. */
-  function walkViewAt(yaw) {
-    const { view, clear } = clearShareAt(walk.target, walk.framing, yaw);
-    const reach = Math.max(Math.min(view.distance, clear), Math.min(NARRATION_MIN_DISTANCE, view.distance));
-    const dir = view.eye.clone().sub(view.target).normalize();
-    return { eye: view.target.clone().addScaledVector(dir, reach), target: view.target.clone() };
-  }
-
-  /** One frame of the walk-round. True once it is home. */
-  function runWalkaround(step) {
-    if (walk.hold > 0) {
-      walk.hold -= step;
-      narrationView = walkViewAt(walk.yaw);
-      return false;
-    }
-    const goal = walk.keys[walk.at + 1];
-    if (goal === undefined) return true;
-    const move = WALKAROUND_SPEED * step;
-    const gap = goal - walk.yaw;
-    if (Math.abs(gap) <= move) {
-      walk.yaw = goal;
-      walk.at += 1;
-    } else {
-      walk.yaw += Math.sign(gap) * move;
-    }
-    narrationView = walkViewAt(walk.yaw);
-    return walk.at >= walk.keys.length - 1;
-  }
-
-  function endWalkaround() {
-    if (!walk) return;
-    walk = null;
-    if (!narr) {
-      narrationView = null;
-      showWalker();
-    }
   }
 
   // ---- Narration ---------------------------------------------------------
@@ -1596,7 +1374,7 @@ export function createTourController(options = {}) {
     if (!approach) return null;
     const box = new THREE.Box3().setFromObject(object);
     const spec = elevationOf(clip.elevation);
-    const lens = showLens();
+    const lens = { fov: camera?.fov ?? 55, aspect: camera?.aspect ?? 1.6 };
 
     let best = null;
     for (const turn of NARRATION_YAW_TRIES) {
@@ -2048,15 +1826,14 @@ export function createTourController(options = {}) {
     },
 
     /**
-     * Show the current thing again from the start -- its narration from the
-     * first clip, its walk-round from the front -- or, with `offset` -1, the
+     * Show the current thing again from the start -- a shop's narration from
+     * its first clip, a look from its beginning -- or, with `offset` -1, the
      * one before it in this room. False when there is nothing to replay: the
      * tour is between rooms, or not running.
      */
     replayItem(offset = 0) {
       if (!route || stopState !== "show" || !showTargets.length) return false;
       endNarration();
-      endWalkaround();
       showIndex = Math.min(Math.max(showIndex + offset, 0), showTargets.length - 1);
       showTargets[showIndex].begun = false;
       return true;
@@ -2065,11 +1842,6 @@ export function createTourController(options = {}) {
     /** Whether `replayItem` would do anything now. */
     get canReplay() {
       return Boolean(route && stopState === "show" && showTargets.length);
-    },
-
-    /** Where the walk-round of the current product is, or null. */
-    get walkingRound() {
-      return walk?.keys ? { target: walk.target, yaw: walk.yaw, keys: walk.keys.slice() } : null;
     },
 
     /**
