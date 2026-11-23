@@ -45,6 +45,7 @@ import { createFocusMarker, markerAimFor } from './tour/marker';
 import { createFocusOutline } from './tour/outline';
 import ShowcaseCard from './tour/ShowcaseCard';
 import ShowroomLoader from './ShowroomLoader';
+import ProductViewer from './tour/ProductViewer';
 import { fetchLiveNarrations } from '../../lib/narration/NarrationService.js';
 import { elevationOf } from '../../lib/narration/elevationView.js';
 import { createAmbientMusic } from '../../lib/audio/ambientMusic.js';
@@ -137,6 +138,11 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
   // How far the house has got: the loading screen until the house is up,
   // then a furniture counter. See ShowroomLoader.
   const [loadState, setLoadState] = useState({ phase: 'house', done: 0, total: 0, failed: null });
+  // "All sides": the piece on its own, to turn round. {object, advert, resume}
+  const [viewer, setViewer] = useState(null);
+  // The last piece the tour showed, so the card can still open or replay it
+  // after the tour has moved on.
+  const lastShownRef = useRef(null);
   // What the character is looking at right now, and how far through the
   // room's list it is -- "Sandton 3-seater · 2 of 8".
   const [showing, setShowing] = useState(null);
@@ -1624,6 +1630,7 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
         // is looking at the recliner while reading about the rug, which is
         // worse than showing nothing.
         onShow: (target, index, total) => {
+          if (target.kind === 'product' && target.object) lastShownRef.current = target;
           setAdvert(target.advert ?? null);
           setShowing({ caption: target.caption, kind: target.kind, at: index + 1, of: total });
           // Marked as the tour's, not the visitor's: the same call arrives
@@ -1728,6 +1735,50 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
     if (resumed) setPaused(false);
     return resumed;
   }, []);
+
+  // ---- See it properly, and again -------------------------------------------
+
+  /**
+   * "All sides": the piece the tour is showing (or last showed) on its own.
+   * The tour HOLDS while it is open -- the shop stops talking, she stands
+   * still -- and carries on from the same moment when it closes.
+   */
+  const openAllSides = useCallback(() => {
+    const target = tourRef.current?.showing?.object ? tourRef.current.showing : lastShownRef.current;
+    if (!target?.object) return;
+    const held = holdTour();
+    setViewer({ object: target.object, advert: target.advert ?? {}, resume: held });
+  }, [holdTour]);
+
+  const closeAllSides = useCallback(() => {
+    setViewer((was) => {
+      if (was?.resume) resumeTour();
+      return null;
+    });
+  }, [resumeTour]);
+
+  /**
+   * Replay: the current piece again, from the start -- the shop's narration
+   * from its first clip, the walk-round from the front. Once the tour has
+   * left the room it can no longer walk back to replay it, so the piece opens
+   * on its own instead.
+   */
+  const replayShown = useCallback(() => {
+    const tour = tourRef.current;
+    if (tour?.canReplay) {
+      tour.replayItem(0);
+      if (tour.paused) resumeTour();
+      return;
+    }
+    openAllSides();
+  }, [openAllSides, resumeTour]);
+
+  const backShown = useCallback(() => {
+    const tour = tourRef.current;
+    if (!tour?.canReplay) return;
+    tour.replayItem(-1);
+    if (tour.paused) resumeTour();
+  }, [resumeTour]);
 
   /**
    * Tell the page what the tour is doing.
@@ -1928,6 +1979,9 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
           advert={advert}
           showing={showing}
           onMore={onShowDetails}
+          onAllSides={showing?.kind === 'product' ? openAllSides : null}
+          onReplay={showing?.kind === 'product' ? replayShown : null}
+          onBack={showing && showing.at > 1 ? backShown : null}
           narration={narrationNow && {
             ...narrationNow,
             muted: narrationMuted,
@@ -1967,6 +2021,15 @@ const CanvasContainer = ({ currentRoom, currentIndex, isAdmin,
       <div ref={canvasRef} style={{ width: '100%', height: '100%' }}></div>
 
       <ShowroomLoader {...loadState} />
+
+      {viewer && (
+        <ProductViewer
+          object={viewer.object}
+          advert={viewer.advert}
+          onClose={closeAllSides}
+          onReplay={tourRef.current?.canReplay ? replayShown : null}
+        />
+      )}
 
       {touring && (
         <button

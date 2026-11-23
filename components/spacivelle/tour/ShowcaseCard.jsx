@@ -71,7 +71,10 @@ const words = (text) => (text ? String(text).replace(/[_-]+/g, ' ') : '');
  *        `{shopName, elevation, index, count, imageUrl, muted, blocked,
  *          onToggleMute, onPlay}`
  */
-const ShowcaseCard = ({ advert = null, showing = null, onMore = null, narration = null }) => {
+const ShowcaseCard = ({
+  advert = null, showing = null, onMore = null, narration = null,
+  onAllSides = null, onReplay = null, onBack = null,
+}) => {
   const [collapsed, setCollapsed] = useState(false);
 
   // Read after mount, not during render: the server has no localStorage, and
@@ -163,6 +166,24 @@ const ShowcaseCard = ({ advert = null, showing = null, onMore = null, narration 
           <span aria-hidden>{collapsed ? '▴' : '▾'}</span>
         </button>
       </div>
+
+      {/* SEE IT PROPERLY, AND AGAIN. Shown folded or open: on a phone the
+          card starts folded, and these are what a visitor most wants from it.
+          All sides opens the piece on its own to turn round; Replay shows it
+          again in the house, narration and all; Back, the one before it. */}
+      {(onAllSides || onReplay || onBack) && !isSlot && (
+        <div className="showcase-card-actions">
+          {onAllSides && (
+            <button type="button" onClick={onAllSides} title="Turn it round, zoom in, see the photos">⟳ All sides</button>
+          )}
+          {onReplay && (
+            <button type="button" onClick={onReplay} title="Show this again">↺ Replay</button>
+          )}
+          {onBack && (
+            <button type="button" onClick={onBack} title="The one before this">‹ Back</button>
+          )}
+        </div>
+      )}
 
       {!collapsed && (
         <div className="showcase-card-body">

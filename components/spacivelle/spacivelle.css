@@ -2333,3 +2333,88 @@ body {
   html[data-tour-controls="hidden"] .camera-controls,
   html[data-tour-controls="hidden"] .showroom-furniture-pill { display: none !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   The card's actions: All sides, Replay, Back (ShowcaseCard.jsx). Shown when
+   the card is folded too -- on a phone it starts folded.
+   --------------------------------------------------------------------------- */
+.showcase-card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.showcase-card.collapsed .showcase-card-actions { margin-top: 8px; }
+.showcase-card-actions button {
+  flex: 1 1 auto; padding: 8px 10px; border-radius: 9px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .08);
+  color: #f2f5f8; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.showcase-card-actions button:first-child { background: rgba(192, 138, 46, .22); border-color: rgba(224, 166, 58, .6); color: #ffe2a8; }
+.showcase-card-actions button:hover { background: rgba(255, 255, 255, .16); }
+.showcase-card-actions button:focus-visible { outline: 2px solid #ffce7a; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   All sides (tour/ProductViewer.jsx). A window on a laptop; the whole screen
+   on a phone, where the point is to see the piece bigger than the house can.
+   --------------------------------------------------------------------------- */
+.pv-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  display: grid; place-items: center; padding: 24px;
+  background: rgba(10, 16, 24, .62);
+}
+.pv {
+  width: min(980px, 100%); height: min(720px, 100%);
+  display: flex; flex-direction: column;
+  border-radius: 18px; overflow: hidden;
+  background: #f4f1ec; color: #17212e;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .45);
+}
+.pv-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px 20px; }
+.pv-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv-title strong { font-size: 18px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-title span { font-size: 14px; color: #5f6b78; }
+.pv-close {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  border: 1px solid #d9d2c6; background: #fff; color: #17212e; font-size: 16px;
+}
+.pv-tabs { display: flex; gap: 6px; padding: 0 16px 10px 20px; }
+.pv-tabs button {
+  padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600;
+  border: 1px solid #d9d2c6; background: #fff; color: #17212e;
+}
+.pv-tabs button.on { background: #17212e; border-color: #17212e; color: #fff; }
+.pv-stage {
+  position: relative; flex: 1; min-height: 0;
+  background: radial-gradient(ellipse at 50% 70%, #fffdf8 0%, #ece6dc 70%, #e2dace 100%);
+}
+.pv-stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.pv-stage canvas:active { cursor: grabbing; }
+.pv-hint {
+  position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
+  padding: 5px 12px; border-radius: 999px; pointer-events: none;
+  background: rgba(23, 33, 46, .7); color: #fff; font-size: 12px; white-space: nowrap;
+}
+.pv-sides { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 12px 16px; }
+.pv-sides button {
+  padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px;
+  border: 1px solid #d9d2c6; background: #fff; color: #17212e;
+}
+.pv-sides button.on { background: #17212e; border-color: #17212e; color: #fff; }
+.pv-sides .pv-spin { border-color: #c08a2e; color: #8b5f16; }
+.pv-sides .pv-spin.on { background: #c08a2e; border-color: #c08a2e; color: #17212e; }
+.pv-photos { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 0 16px 12px; }
+.pv-photo { flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #fff; border-radius: 12px; }
+.pv-thumbs { display: flex; gap: 8px; overflow-x: auto; }
+.pv-thumbs button { flex: none; width: 64px; height: 64px; padding: 0; border-radius: 9px; overflow: hidden; cursor: pointer; border: 2px solid transparent; background: #fff; }
+.pv-thumbs button.on { border-color: #c08a2e; }
+.pv-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pv-foot { padding: 0 16px 16px; display: flex; justify-content: center; }
+.pv-replay {
+  padding: 11px 20px; border-radius: 999px; border: 0; cursor: pointer;
+  background: #c08a2e; color: #17212e; font-size: 15px; font-weight: 700;
+}
+.pv button:focus-visible { outline: 2px solid #c08a2e; outline-offset: 2px; }
+
+@media (max-width: 820px) {
+  .pv-backdrop { padding: 0; }
+  .pv { width: 100%; height: 100%; border-radius: 0; }
+  .pv-head { padding-top: calc(12px + env(safe-area-inset-top)); }
+  .pv-foot { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .pv-sides button { padding: 8px 11px; font-size: 13px; }
+}
