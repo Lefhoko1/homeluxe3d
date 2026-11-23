@@ -1,5 +1,7 @@
 import React from 'react';
 
+import ProductGallery from './products/ProductGallery';
+
 /**
  * Details for the selected product.
  *
@@ -30,7 +32,11 @@ const money = (amount, currency = 'BWP') => {
   return parts ? `${parts.symbol} ${parts.amount}` : null;
 };
 
-const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
+/**
+ * @param {Function} [getPiece]  the placed piece for a product, from the
+ *        house -- the gallery's first slide is that piece in 3D
+ */
+const ProductPanel = ({ product, shops = [], loading = false, onEnquire, getPiece = null }) => {
   if (loading) {
     return (
       <div id="product-panel">
@@ -83,18 +89,12 @@ const ProductPanel = ({ product, shops = [], loading = false, onEnquire }) => {
       {/* The advert's picture. The column has been travelling all the way
           from the database to this component since the catalogue was wired
           up; nothing rendered it until now. */}
-      {images.length > 0 && (
-        <div className="product-gallery">
-          <img className="product-hero" src={images[0]} alt={product.name} />
-          {images.length > 1 && (
-            <div className="product-thumbs">
-              {images.slice(1).map((url) => (
-                <img key={url} src={url} alt="" />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <ProductGallery
+        key={`${product.placementId ?? ''}:${product.productId ?? product.id}`}
+        piece={getPiece?.(product) ?? null}
+        images={images}
+        name={product.name}
+      />
 
       <div className="product-header">
         <div className="product-category">{product.category}</div>

@@ -176,6 +176,24 @@ const LuxeHomePage = () => {
     tourApi.current?.resumeTour?.();
   }, []);
 
+  // "VIEW MORE" FROM THE TOUR. The details card opens over the house, and
+  // the tour HOLDS while it is open -- otherwise it walks on to the next
+  // piece and the card changes under the visitor's thumb. It carries on from
+  // the same moment when the card is closed.
+  const heldForDetails = useRef(false);
+  const openDetailsFromTour = useCallback(() => {
+    if (tourApi.current?.isGuided?.() && !tourApi.current?.isPaused?.()) {
+      heldForDetails.current = Boolean(tourApi.current?.holdTour?.());
+    }
+    setDrawer('details');
+  }, []);
+  useEffect(() => {
+    if (drawer !== 'details' && heldForDetails.current) {
+      heldForDetails.current = false;
+      tourApi.current?.resumeTour?.();
+    }
+  }, [drawer]);
+
   // Picking a shop narrows the catalogue AND takes the visitor to that
   // shop's first product, so the click visibly does something in the room
   // rather than only changing a list.
@@ -461,6 +479,8 @@ const LuxeHomePage = () => {
       shops={shops}
       loading={loading}
       onEnquire={handleEnquire}
+      // The first picture is the piece itself, in 3D, from the house.
+      getPiece={(product) => tourApi.current?.pieceFor?.(product) ?? null}
     />
   );
 
@@ -504,7 +524,7 @@ const LuxeHomePage = () => {
         onTourState={handleTourState}
         // The tour's product card opens the full details -- with Enquire --
         // only when the visitor asks for it.
-        onShowDetails={() => setDrawer('details')}
+        onShowDetails={openDetailsFromTour}
           roomLabel={rooms.find((r) => r.code === currentRoom)?.label ?? null}
         />
 

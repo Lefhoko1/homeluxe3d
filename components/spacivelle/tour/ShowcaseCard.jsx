@@ -73,7 +73,7 @@ const words = (text) => (text ? String(text).replace(/[_-]+/g, ' ') : '');
  */
 const ShowcaseCard = ({
   advert = null, showing = null, onMore = null, narration = null,
-  onAllSides = null, onReplay = null, onBack = null,
+  onReplay = null, onBack = null,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -167,15 +167,12 @@ const ShowcaseCard = ({
         </button>
       </div>
 
-      {/* SEE IT PROPERLY, AND AGAIN. Shown folded or open: on a phone the
-          card starts folded, and these are what a visitor most wants from it.
-          All sides opens the piece on its own to turn round; Replay shows it
-          again in the house, narration and all; Back, the one before it. */}
-      {(onAllSides || onReplay || onBack) && !isSlot && (
+      {/* SEE IT AGAIN. Shown folded or open: on a phone the card starts
+          folded. Replay shows it again in the house, narration and all; Back,
+          the one before it. (Everything else -- the piece turning in 3D, the
+          photographs -- is the details card's, behind "View more".) */}
+      {(onReplay || onBack) && !isSlot && (
         <div className="showcase-card-actions">
-          {onAllSides && (
-            <button type="button" onClick={onAllSides} title="Turn it round, zoom in, see the photos">⟳ All sides</button>
-          )}
           {onReplay && (
             <button type="button" onClick={onReplay} title="Show this again">↺ Replay</button>
           )}
